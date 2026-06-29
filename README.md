@@ -127,13 +127,13 @@ git config --global user.email "email-lisy@gmail.com"
 ### Cloner les dépôts sur ton ordinateur
 
 ```bash
-git clone https://github.com/Agenxia/noxia-backend.git
-git clone https://github.com/Agenxia/noxia-frontend.git
+git clone https://github.com/AgenxiaOrganization/noxia-backend.git
+git clone https://github.com/AgenxiaOrganization/noxia-frontend.git
 ```
 
 Cela crée un dossier `noxia-backend` et `noxia-frontend` sur ton ordinateur avec tout le code.
 
-### Créer la branche develop (à faire une seule fois, par Danis)
+### Créer la branche develop (à faire une seule fois, par Danis) c'est déja fait par moi sur github
 
 ```bash
 cd noxia-backend
@@ -147,7 +147,7 @@ git checkout -b develop
 git push -u origin develop
 ```
 
-### Récupérer la branche develop (Lisy fait ça après que Danis ait créé develop)
+### Récupérer la branche develop (Lisy fait ça après que Danis ait créé develop) donc apres avoir clonner le projet  et même chaque fois que tu travail
 
 ```bash
 cd noxia-backend
