@@ -40,7 +40,7 @@ git pull                    Tu récupères le travail
 
 ## 2. Organisation des dépôts
 
-Le projet NOXIA est hébergé dans l'organisation **Agenxia** sur GitHub. Il y a deux dépôts privés :
+Le projet NOXIA est hébergé dans l'organisation **AgenxiaOrganization** sur GitHub. Il y a deux dépôts privés :
 
 | Dépôt | Contenu |
 |---|---|
