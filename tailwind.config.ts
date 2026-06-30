@@ -1,24 +1,15 @@
-// tailwind.config.ts
-import type { Config } from 'tailwindcss'
+import type { Config } from "tailwindcss";
 
-const config: Config = {
-  darkMode: ["class"],
+export default {
   content: [
-    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    container: {
-      center: true,
-      padding: "2rem",
-      screens: {
-        "2xl": "1400px",
-      },
-    },
     extend: {
       colors: {
-        // REPRISE EXACTE DES COULEURS DE LA MAQUETTE
+        // Couleurs PRIMARY (indigo/violet)
         primary: {
           50: '#eef2ff',
           100: '#e0e7ff',
@@ -30,7 +21,9 @@ const config: Config = {
           700: '#4338ca',
           800: '#3730a3',
           900: '#312e81',
+          DEFAULT: '#6366f1',
         },
+        // Couleurs ACCENT (vert)
         accent: {
           50: '#f0fdf4',
           100: '#dcfce7',
@@ -42,7 +35,9 @@ const config: Config = {
           700: '#15803d',
           800: '#166534',
           900: '#14532d',
+          DEFAULT: '#22c55e',
         },
+        // Couleurs DARK (gris foncé)
         dark: {
           50: '#f8fafc',
           100: '#f1f5f9',
@@ -54,15 +49,8 @@ const config: Config = {
           700: '#334155',
           800: '#1e293b',
           900: '#0f172a',
+          DEFAULT: '#0f172a',
         },
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-      },
-      fontFamily: {
-        sans: ['Inter', 'sans-serif'],
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',
@@ -91,6 +79,4 @@ const config: Config = {
     },
   },
   plugins: [require("tailwindcss-animate")],
-}
-
-export default config
+} satisfies Config;
