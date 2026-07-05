@@ -8,11 +8,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex h-screen bg-dark-900">
+    <div className="flex h-screen" style={{ background: '#0f172a' }}>
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopBar onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-dark-900">
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
       </div>

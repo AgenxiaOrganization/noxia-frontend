@@ -24,19 +24,36 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   }, [])
 
   return (
-    <header className="h-14 border-b border-dark-700 flex items-center justify-between px-4 sm:px-6 bg-dark-800/50 shrink-0">
+    <header 
+      className="h-14 border-b flex items-center justify-between px-4 sm:px-6 shrink-0"
+      style={{ 
+        borderColor: '#1e293b',
+        background: 'rgba(30, 41, 59, 0.5)'
+      }}
+    >
       <div className="flex items-center gap-4">
-        <button onClick={onMenuClick} className="md:hidden text-dark-300 hover:text-white">
+        <button 
+          onClick={onMenuClick} 
+          className="md:hidden hover:text-white transition"
+          style={{ color: '#94a3b8' }}
+        >
           <Menu className="w-5 h-5" />
         </button>
-        <h2 className="font-semibold text-sm truncate max-w-[120px] sm:max-w-none">Tableau de bord</h2>
+        <h2 className="font-semibold text-sm truncate max-w-[120px] sm:max-w-none text-white">
+          Tableau de bord
+        </h2>
       </div>
       <div className="flex items-center gap-3">
         <div className="relative cursor-pointer">
-          <Bell className="w-5 h-5 text-dark-400" />
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">3</span>
+          <Bell className="w-5 h-5" style={{ color: '#94a3b8' }} />
+          <span 
+            className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-[10px] flex items-center justify-center font-bold"
+            style={{ background: '#ef4444' }}
+          >
+            3
+          </span>
         </div>
-        <span className="text-xs text-dark-400 hidden sm:block">{time}</span>
+        <span className="text-xs hidden sm:block" style={{ color: '#94a3b8' }}>{time}</span>
       </div>
     </header>
   )
