@@ -1,10 +1,14 @@
 'use client'
 
-import { Menu, Bell } from 'lucide-react'
+import { Menu, Bell, Copy, Check } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const [time, setTime] = useState('')
+  const [copied, setCopied] = useState(false)
+  
+  // Code unique de l'entreprise (mocké pour l'instant)
+  const companyCode = 'NOX-1234567890'
 
   useEffect(() => {
     const updateTime = () => {
@@ -22,6 +26,12 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
     const interval = setInterval(updateTime, 30000)
     return () => clearInterval(interval)
   }, [])
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(companyCode)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <header 
@@ -43,8 +53,26 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
           Tableau de bord
         </h2>
       </div>
-      <div className="flex items-center gap-3">
-        <div className="relative cursor-pointer">
+      
+      <div className="flex items-center gap-4">
+        {/* Code Entreprise */}
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
+          <span className="text-xs" style={{ color: '#94a3b8' }}>ID:</span>
+          <code className="text-xs font-mono" style={{ color: '#818cf8' }}>{companyCode}</code>
+          <button
+            onClick={copyCode}
+            className="p-0.5 rounded hover:bg-white/10 transition"
+            style={{ color: '#94a3b8' }}
+          >
+            {copied ? <Check className="w-3 h-3" style={{ color: '#22c55e' }} /> : <Copy className="w-3 h-3" />}
+          </button>
+        </div>
+
+        {/* Notifications */}
+        <div className="relative cursor-pointer" onClick={() => {
+          // TODO: Ouvrir le modal de notifications
+          alert('📋 Notifications :\n\n• Stock faible : Bière Guinness (12/15)\n• Nouvelle vente : 25 000 F\n• Alerte caisse : Écart de 5 000 F')
+        }}>
           <Bell className="w-5 h-5" style={{ color: '#94a3b8' }} />
           <span 
             className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-[10px] flex items-center justify-center font-bold"
@@ -53,6 +81,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
             3
           </span>
         </div>
+        
         <span className="text-xs hidden sm:block" style={{ color: '#94a3b8' }}>{time}</span>
       </div>
     </header>
