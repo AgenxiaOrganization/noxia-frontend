@@ -75,7 +75,7 @@ export default function EmployeesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
-  const [showEmployeeId, setShowEmployeeId] = useState<string | null>(null)
+const [showEmployeeId, setShowEmployeeId] = useState<number | null>(null)
   const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false)
   const [draggedPermission, setDraggedPermission] = useState<string | null>(null)
   const [selectedRole, setSelectedRole] = useState<string>('caissier')
