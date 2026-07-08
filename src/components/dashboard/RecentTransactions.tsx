@@ -43,24 +43,30 @@ const generateInitialTransactions = () => {
 }
 
 export function RecentTransactions() {
-  const [transactions, setTransactions] = useState(generateInitialTransactions)
+  const [isClient, setIsClient] = useState(false) // 👈 État pour le rendu client
+  const [transactions, setTransactions] = useState<Array<any>>([])
   const containerRef = useRef<HTMLDivElement>(null)
   const [isAtBottom, setIsAtBottom] = useState(true)
 
+  // 👇 Ne générer les transactions qu'une fois côté client
+  useEffect(() => {
+    setIsClient(true)
+    setTransactions(generateInitialTransactions())
+  }, [])
+
   // Ajouter une nouvelle transaction toutes les 3-8 secondes
   useEffect(() => {
+    if (!isClient) return
+
     const interval = setInterval(() => {
       const newTransaction = generateRandomTransaction()
-      setTransactions(prev => [newTransaction, ...prev])
-      
-      // Limiter à 50 transactions pour éviter de surcharger
-      setTransactions(prev => prev.slice(0, 50))
+      setTransactions(prev => [newTransaction, ...prev].slice(0, 50))
     }, 3000 + Math.random() * 5000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [isClient])
 
-  // Scroll auto si on est en bas
+  // Scroll auto
   useEffect(() => {
     if (containerRef.current && isAtBottom) {
       containerRef.current.scrollTop = 0
@@ -74,14 +80,39 @@ export function RecentTransactions() {
     }
   }
 
+  // 👇 Pendant le SSR, ne rien afficher (ou un loader)
+  if (!isClient) {
+    return (
+      <div 
+        className="p-4 rounded-xl border flex flex-col h-[300px]"
+        style={{ 
+          background: '#1e293b',
+          borderColor: '#334155'
+        }}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-sm text-white">Dernières transactions</h3>
+          <span className="text-xs" style={{ color: '#64748b' }}>Chargement...</span>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex gap-1">
+            <span className="w-2 h-2 rounded-full bg-primary-400 animate-bounce" style={{ animationDelay: '0s' }} />
+            <span className="w-2 h-2 rounded-full bg-primary-400 animate-bounce" style={{ animationDelay: '0.2s' }} />
+            <span className="w-2 h-2 rounded-full bg-primary-400 animate-bounce" style={{ animationDelay: '0.4s' }} />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-   <div 
-  className="p-4 rounded-xl border flex flex-col h-full"
-  style={{ 
-    background: '#1e293b',
-    borderColor: '#334155'
-  }}
->
+    <div 
+      className="p-4 rounded-xl border flex flex-col h-[300px]"
+      style={{ 
+        background: '#1e293b',
+        borderColor: '#334155'
+      }}
+    >
       <div className="flex items-center justify-between mb-3">
         <h3 className="font-semibold text-sm text-white">Dernières transactions</h3>
         <span className="text-xs" style={{ color: '#22c55e' }}>
@@ -94,7 +125,6 @@ export function RecentTransactions() {
         ref={containerRef}
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto space-y-2 pr-1"
-        style={{ maxHeight: '330px' }}
       >
         {transactions.map((t, i) => (
           <div 
