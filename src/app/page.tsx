@@ -3,6 +3,7 @@ import { Hero } from '@/components/landing/Hero'
 import { Features } from '@/components/landing/Features'
 import { HowItWorks } from '@/components/landing/HowItWorks'
 import { Pricing } from '@/components/landing/Pricing'
+import { FeatureComparison } from '@/components/landing/FeatureComparison'
 import { Testimonials } from '@/components/landing/Testimonials'
 import { CTA } from '@/components/landing/CTA'
 import { FAQ } from '@/components/landing/FAQ'
@@ -16,10 +17,11 @@ export default function Home() {
       <Features />
       <HowItWorks />
       <Pricing />
+      <FeatureComparison />
       <Testimonials />
       <CTA />
       <FAQ />
-      <Footer /> 
+      <Footer />
     </>
-  );
+  )
 }

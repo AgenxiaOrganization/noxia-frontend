@@ -12,14 +12,14 @@ export function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <a href="/" className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white font-bold text-lg">
               N
             </div>
-            <span className="text-xl font-bold tracking-tight">
+            <span className="text-xl font-bold tracking-tight text-white">
               NOXIA<span className="text-primary-400">.</span>
             </span>
-          </div>
+          </a>
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-dark-300">
@@ -27,6 +27,8 @@ export function Navbar() {
             <a href="#pricing" className="hover:text-white transition">Tarifs</a>
             <a href="#demo" className="hover:text-white transition">Démo</a>
             <a href="#faq" className="hover:text-white transition">FAQ</a>
+            <a href="#" className="hover:text-white transition">Documentation</a>
+            <a href="#contact" className="hover:text-white transition">Contact</a>
           </div>
 
           {/* Desktop Actions */}
@@ -34,7 +36,7 @@ export function Navbar() {
             <a href="/login" className="text-sm font-medium text-dark-300 hover:text-white transition">
               Connexion
             </a>
-            <a href="/register" className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary-600 hover:bg-primary-500 transition shadow-lg shadow-primary-600/25">
+            <a href="/register" className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary-600 hover:bg-primary-500 transition shadow-lg shadow-primary-600/25 text-white">
               Essai gratuit
             </a>
           </div>
@@ -62,12 +64,14 @@ export function Navbar() {
           <a href="#pricing" className="block text-dark-300 hover:text-white py-2" onClick={() => setIsOpen(false)}>Tarifs</a>
           <a href="#demo" className="block text-dark-300 hover:text-white py-2" onClick={() => setIsOpen(false)}>Démo</a>
           <a href="#faq" className="block text-dark-300 hover:text-white py-2" onClick={() => setIsOpen(false)}>FAQ</a>
+          <a href="#" className="block text-dark-300 hover:text-white py-2" onClick={() => setIsOpen(false)}>Documentation</a>
+          <a href="#contact" className="block text-dark-300 hover:text-white py-2" onClick={() => setIsOpen(false)}>Contact</a>
           <div className="pt-4 border-t border-dark-700 space-y-2">
             <a href="/login" className="block text-sm font-medium text-dark-300 hover:text-white">Connexion</a>
-            <a href="/register" className="block text-center px-4 py-2 text-sm font-semibold rounded-lg bg-primary-600 hover:bg-primary-500 transition">Essai gratuit</a>
+            <a href="/register" className="block text-center px-4 py-2 text-sm font-semibold rounded-lg bg-primary-600 hover:bg-primary-500 transition text-white">Essai gratuit</a>
           </div>
         </div>
       </div>
     </nav>
-  );
+  )
 }
