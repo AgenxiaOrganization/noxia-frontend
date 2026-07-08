@@ -1,51 +1,63 @@
 'use client'
 
 import { useState } from 'react'
+import React from 'react'
 import {
   CreditCard, Check, X, Crown, Star,
   Zap, Users, Package, BarChart, Bot,
   Smartphone, Globe, Headphones, ChevronRight,
-  Calendar, Download, AlertCircle
+  Calendar, Download, AlertCircle, Gift, Sparkles
 } from 'lucide-react'
 
-// Données mockées
+// --- Données Mockées ---
 const currentPlan = {
   id: 'premium',
   name: 'Premium',
-  price: 49900,
+  price: 11000,
   period: 'mois',
   status: 'actif',
-  startDate: '2026-06-01',
-  endDate: '2026-07-01',
-  features: [
-    'Tableau de bord',
-    'Gestion des ventes',
-    'Gestion des stocks',
-    'Rapports basiques',
-    'WhatsApp & Telegram',
-    'Rapports avancés',
-    'Multi-utilisateurs',
-    'Multi-caisses',
-    'Assistant IA',
-    'Multi-établissements',
-    'API publique'
-  ]
+  startDate: '2026-07-01',
+  endDate: '2026-08-01',
 }
 
 const plans = [
   {
+    id: 'gratuit',
+    name: 'Gratuit',
+    price: 0,
+    period: '30 jours',
+    description: 'Découvrez toutes les fonctionnalités',
+    popular: false,
+    features: [
+      'Tableau de bord complet',
+      'Gestion des ventes (POS)',
+      'Gestion des stocks',
+      'Rapports avancés',
+      'Multi-utilisateurs',
+      'Multi-caisses',
+      'Assistant IA',
+      'Multi-établissements',
+      'API publique',
+      'WhatsApp & Telegram',
+      'Alertes automatiques',
+      'Support prioritaire 24/7'
+    ],
+    notIncluded: []
+  },
+  {
     id: 'starter',
     name: 'Starter',
-    price: 0,
-    period: '5 jours',
-    description: 'Pour démarrer et tester',
+    price: 5000,
+    period: 'mois',
+    description: 'Pour les petits établissements',
     popular: false,
     features: [
       'Tableau de bord',
-      'Gestion des ventes',
+      'Gestion des ventes (POS)',
       'Gestion des stocks',
       'Rapports basiques',
-      'WhatsApp & Telegram'
+      'WhatsApp & Telegram',
+      'Alertes automatiques'
     ],
     notIncluded: [
       'Rapports avancés',
@@ -53,40 +65,53 @@ const plans = [
       'Multi-caisses',
       'Assistant IA',
       'Multi-établissements',
-      'API publique'
+      'API publique',
+      'Support prioritaire'
     ]
   },
   {
     id: 'premium',
     name: 'Premium',
-    price: 49900,
+    price: 11000,
     period: 'mois',
     description: 'Pour les établissements en croissance',
     popular: true,
     features: [
-      'Tableau de bord',
-      'Gestion des ventes',
+      'Tableau de bord complet',
+      'Gestion des ventes (POS)',
       'Gestion des stocks',
-      'Rapports basiques',
-      'WhatsApp & Telegram',
       'Rapports avancés',
       'Multi-utilisateurs',
       'Multi-caisses',
       'Assistant IA',
       'Multi-établissements',
-      'API publique'
+      'API publique',
+      'WhatsApp & Telegram',
+      'Alertes automatiques'
     ],
-    notIncluded: []
+    notIncluded: [
+      'Support prioritaire 24/7'
+    ]
   },
   {
     id: 'business',
     name: 'Business',
-    price: 0,
-    period: 'sur devis',
+    price: 14900,
+    period: 'mois',
     description: 'Pour les groupes et franchises',
     popular: false,
     features: [
-      'Tout Premium +',
+      'Tableau de bord complet',
+      'Gestion des ventes (POS)',
+      'Gestion des stocks',
+      'Rapports avancés',
+      'Multi-utilisateurs',
+      'Multi-caisses',
+      'Assistant IA',
+      'Multi-établissements',
+      'API publique',
+      'WhatsApp & Telegram',
+      'Alertes automatiques',
       'Support prioritaire 24/7',
       'Formation équipe',
       'Déploiement personnalisé',
@@ -94,16 +119,17 @@ const plans = [
       'SLA garanti'
     ],
     notIncluded: []
-  }
+  },
 ]
 
 const mockInvoices = [
-  { id: 'INV-2026-06', date: '2026-06-01', amount: 49900, status: 'payée', plan: 'Premium' },
-  { id: 'INV-2026-05', date: '2026-05-01', amount: 49900, status: 'payée', plan: 'Premium' },
-  { id: 'INV-2026-04', date: '2026-04-01', amount: 49900, status: 'payée', plan: 'Premium' },
-  { id: 'INV-2026-03', date: '2026-03-01', amount: 49900, status: 'payée', plan: 'Premium' },
+  { id: 'INV-2026-07', date: '2026-07-01', amount: 11000, status: 'payée', plan: 'Premium' },
+  { id: 'INV-2026-06', date: '2026-06-01', amount: 11000, status: 'payée', plan: 'Premium' },
+  { id: 'INV-2026-05', date: '2026-05-01', amount: 11000, status: 'payée', plan: 'Premium' },
+  { id: 'INV-2026-04', date: '2026-04-01', amount: 11000, status: 'payée', plan: 'Premium' },
 ]
 
+// --- Fonctionnalités pour la comparaison ---
 const featureCategories = [
   { id: 'base', label: 'Fonctionnalités de base', icon: Package },
   { id: 'advanced', label: 'Fonctionnalités avancées', icon: BarChart },
@@ -113,7 +139,8 @@ const featureCategories = [
 
 const featureMap: Record<string, { category: string, label: string }> = {
   'Tableau de bord': { category: 'base', label: 'Tableau de bord' },
-  'Gestion des ventes': { category: 'base', label: 'Gestion des ventes' },
+  'Tableau de bord complet': { category: 'base', label: 'Tableau de bord complet' },
+  'Gestion des ventes (POS)': { category: 'base', label: 'Gestion des ventes (POS)' },
   'Gestion des stocks': { category: 'base', label: 'Gestion des stocks' },
   'Rapports basiques': { category: 'base', label: 'Rapports basiques' },
   'Rapports avancés': { category: 'advanced', label: 'Rapports avancés' },
@@ -123,12 +150,12 @@ const featureMap: Record<string, { category: string, label: string }> = {
   'Multi-établissements': { category: 'advanced', label: 'Multi-établissements' },
   'API publique': { category: 'integration', label: 'API publique' },
   'WhatsApp & Telegram': { category: 'integration', label: 'WhatsApp & Telegram' },
+  'Alertes automatiques': { category: 'integration', label: 'Alertes automatiques' },
   'Support prioritaire 24/7': { category: 'support', label: 'Support prioritaire 24/7' },
   'Formation équipe': { category: 'support', label: 'Formation équipe' },
   'Déploiement personnalisé': { category: 'support', label: 'Déploiement personnalisé' },
   'Intégrations sur mesure': { category: 'integration', label: 'Intégrations sur mesure' },
   'SLA garanti': { category: 'support', label: 'SLA garanti' },
-  'Tout Premium +': { category: 'base', label: 'Tout Premium +' },
 }
 
 export default function SubscriptionPage() {
@@ -138,16 +165,15 @@ export default function SubscriptionPage() {
   const handlePlanChange = (planId: string) => {
     setSelectedPlan(planId)
     setIsChangingPlan(true)
-    // Simulation de changement
     setTimeout(() => {
       setIsChangingPlan(false)
-      alert(`Plan changé pour ${plans.find(p => p.id === planId)?.name}`)
+      alert(`🎉 Plan changé pour ${plans.find(p => p.id === planId)?.name}`)
     }, 1500)
   }
 
   return (
     <div className="p-4 space-y-4">
-      {/* Header */}
+      {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-white">Abonnement</h1>
@@ -169,7 +195,7 @@ export default function SubscriptionPage() {
         </div>
       </div>
 
-      {/* Plan actuel */}
+      {/* PLAN ACTUEL */}
       <div 
         className="rounded-xl border p-6"
         style={{ 
@@ -216,15 +242,17 @@ export default function SubscriptionPage() {
         </div>
       </div>
 
-      {/* Plans disponibles */}
+      {/* PLANS DISPONIBLES */}
       <h3 className="font-semibold text-sm text-white mt-2">Changer de plan</h3>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {plans.map((plan) => {
           const isCurrent = plan.id === currentPlan.id
+          const isFree = plan.price === 0
+          
           return (
             <div 
               key={plan.id}
-              className={`rounded-xl border p-6 transition-all ${
+              className={`rounded-xl border p-5 transition-all relative ${
                 isCurrent ? 'border-primary-500' : 'hover:border-primary-500'
               }`}
               style={{ 
@@ -244,55 +272,69 @@ export default function SubscriptionPage() {
                   Recommandé
                 </div>
               )}
+              {isFree && (
+                <div 
+                  className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-white text-xs font-bold"
+                  style={{ background: '#22c55e' }}
+                >
+                  <Gift className="w-3 h-3 inline mr-1" />
+                  Essai 30 jours
+                </div>
+              )}
               <h3 className="text-lg font-bold text-white">{plan.name}</h3>
               <p className="text-sm" style={{ color: '#94a3b8' }}>{plan.description}</p>
-              <div className="my-4">
-                <span className="text-3xl font-bold text-white">
+              <div className="my-3">
+                <span className={`text-3xl font-bold ${isFree ? 'text-green-400' : 'text-white'}`}>
                   {plan.price === 0 ? 'Gratuit' : plan.price.toLocaleString() + ' FCFA'}
                 </span>
                 {plan.period && plan.price > 0 && (
                   <span className="text-sm" style={{ color: '#94a3b8' }}>/{plan.period}</span>
                 )}
+                {isFree && (
+                  <p className="text-xs mt-1" style={{ color: '#22c55e' }}>30 jours d'essai complet</p>
+                )}
               </div>
 
-              <ul className="space-y-2 mb-6">
-                {plan.features.slice(0, 5).map((feature, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm">
-                    <Check className="w-4 h-4" style={{ color: '#22c55e' }} />
+              <ul className="space-y-1.5 mb-4 text-xs">
+                {plan.features.slice(0, 4).map((feature, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <Check className="w-3 h-3" style={{ color: '#22c55e' }} />
                     <span style={{ color: '#cbd5e1' }}>{feature}</span>
                   </li>
                 ))}
-                {plan.features.length > 5 && (
+                {plan.features.length > 4 && (
                   <li className="text-xs" style={{ color: '#64748b' }}>
-                    +{plan.features.length - 5} autres fonctionnalités
+                    +{plan.features.length - 4} autres fonctionnalités
                   </li>
                 )}
-                {plan.notIncluded && plan.notIncluded.slice(0, 3).map((feature, i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm">
-                    <X className="w-4 h-4" style={{ color: '#475569' }} />
-                    <span style={{ color: '#475569' }}>{feature}</span>
-                  </li>
-                ))}
               </ul>
 
               <button
                 onClick={() => handlePlanChange(plan.id)}
                 disabled={isCurrent || isChangingPlan}
-                className={`w-full py-2.5 rounded-lg text-white text-sm font-semibold transition ${
+                className={`w-full py-2 rounded-lg text-white text-sm font-semibold transition ${
                   isCurrent 
                     ? 'bg-dark-600 text-dark-400 cursor-default' 
+                    : isFree
+                    ? 'bg-green-600 hover:bg-green-500'
                     : 'bg-primary-600 hover:bg-primary-500'
                 } disabled:opacity-50`}
-                style={{ boxShadow: !isCurrent && !isChangingPlan ? '0 10px 25px -5px rgba(99, 102, 241, 0.3)' : 'none' }}
+                style={{ 
+                  boxShadow: !isCurrent && !isChangingPlan 
+                    ? isFree 
+                      ? '0 10px 25px -5px rgba(34, 197, 94, 0.3)' 
+                      : '0 10px 25px -5px rgba(99, 102, 241, 0.3)' 
+                    : 'none' 
+                }}
               >
-                {isCurrent ? 'Plan actuel' : isChangingPlan && selectedPlan === plan.id ? 'Changement...' : 'Choisir ce plan'}
+                {isCurrent ? 'Plan actuel' : isChangingPlan && selectedPlan === plan.id ? 'Changement...' : isFree ? 'Commencer l\'essai' : 'Choisir ce plan'}
               </button>
             </div>
           )
         })}
       </div>
 
-      {/* Comparaison des fonctionnalités */}
+      {/* COMPARAISON DES FONCTIONNALITÉS */}
       <div 
         className="rounded-xl border overflow-hidden"
         style={{ 
@@ -322,9 +364,9 @@ export default function SubscriptionPage() {
                   .map(([key]) => key)
 
                 return (
-                  <>
+                  <React.Fragment key={category.id}>
                     <tr className="border-b" style={{ borderColor: '#334155' }}>
-                      <td colSpan={4} className="px-4 py-2 text-xs font-semibold" style={{ color: '#818cf8' }}>
+                      <td colSpan={5} className="px-4 py-2 text-xs font-semibold" style={{ color: '#818cf8' }}>
                         <category.icon className="w-3 h-3 inline mr-1" />
                         {category.label}
                       </td>
@@ -335,7 +377,7 @@ export default function SubscriptionPage() {
                         {plans.map((plan) => {
                           const hasFeature = plan.features.includes(feature)
                           return (
-                            <td key={plan.id} className="px-4 py-2 text-center">
+                            <td key={`${plan.id}-${feature}`} className="px-4 py-2 text-center">
                               {hasFeature ? (
                                 <Check className="w-4 h-4 mx-auto" style={{ color: '#22c55e' }} />
                               ) : (
@@ -346,7 +388,7 @@ export default function SubscriptionPage() {
                         })}
                       </tr>
                     ))}
-                  </>
+                  </React.Fragment>
                 )
               })}
             </tbody>
@@ -354,7 +396,7 @@ export default function SubscriptionPage() {
         </div>
       </div>
 
-      {/* Historique des factures */}
+      {/* HISTORIQUE DES FACTURES */}
       <div 
         className="rounded-xl border p-4"
         style={{ 
@@ -414,7 +456,7 @@ export default function SubscriptionPage() {
         </div>
       </div>
 
-      {/* Méthodes de paiement */}
+      {/* MÉTHODES DE PAIEMENT */}
       <div 
         className="rounded-xl border p-4"
         style={{ 
@@ -451,7 +493,7 @@ export default function SubscriptionPage() {
         </div>
       </div>
 
-      {/* Support */}
+      {/* SUPPORT */}
       <div 
         className="rounded-xl border p-4"
         style={{ 
