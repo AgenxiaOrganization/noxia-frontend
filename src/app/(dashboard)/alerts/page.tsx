@@ -7,9 +7,22 @@ import {
   Mail, Smartphone, Settings, ChevronDown,
   Search, Filter, Clock, Zap
 } from 'lucide-react'
+import React from 'react'
+
+// --- Types ---
+interface Alert {
+  id: number
+  type: string
+  product: string
+  stock: number | null
+  threshold: number | null
+  status: string
+  date: string
+  channels: string[]
+}
 
 // --- Données Mockées ---
-const mockAlerts = [
+const mockAlerts: Alert[] = [
   { 
     id: 1, 
     type: 'stock_faible', 
@@ -219,6 +232,12 @@ export default function AlertsPage() {
             const bgColor = alert.status === 'critique' ? 'rgba(239, 68, 68, 0.08)' : 
                             'rgba(245, 158, 11, 0.05)'
 
+            // ✅ Correction : Vérification des valeurs null avant calcul
+            const stockValue = alert.stock ?? 0
+            const thresholdValue = alert.threshold ?? 1
+            const progress = Math.min(100, (stockValue / thresholdValue) * 100)
+            const barColor = stockValue <= thresholdValue / 2 ? '#ef4444' : '#f59e0b'
+
             return (
               <div 
                 key={alert.id}
@@ -260,7 +279,7 @@ export default function AlertsPage() {
                       </div>
                       
                       {/* Détails de l'alerte */}
-                      {alert.type === 'stock_faible' && (
+                      {alert.type === 'stock_faible' && alert.stock !== null && alert.threshold !== null && (
                         <div className="mt-1 flex items-center gap-3 flex-wrap">
                           <div className="flex items-center gap-2">
                             <span className="text-xs" style={{ color: '#94a3b8' }}>Stock actuel :</span>
@@ -270,14 +289,14 @@ export default function AlertsPage() {
                             <span className="text-xs" style={{ color: '#94a3b8' }}>Seuil :</span>
                             <span className="text-xs font-semibold text-white">{alert.threshold} unités</span>
                           </div>
-                          {/* Barre de progression */}
+                          {/* Barre de progression avec valeurs sécurisées */}
                           <div className="flex-1 min-w-[100px] max-w-[200px]">
                             <div className="w-full h-1.5 rounded-full" style={{ background: '#334155' }}>
                               <div 
                                 className="h-1.5 rounded-full transition-all"
                                 style={{
-                                  width: `${Math.min(100, (alert.stock / alert.threshold) * 100)}%`,
-                                  background: alert.stock <= alert.threshold / 2 ? '#ef4444' : '#f59e0b'
+                                  width: `${progress}%`,
+                                  background: barColor
                                 }}
                               />
                             </div>
@@ -288,7 +307,9 @@ export default function AlertsPage() {
                       {alert.type === 'stock_epuise' && (
                         <div className="mt-1 flex items-center gap-3 flex-wrap">
                           <span className="text-xs font-semibold text-red-400">⚠️ Produit en rupture !</span>
-                          <span className="text-xs" style={{ color: '#94a3b8' }}>Seuil : {alert.threshold} unités</span>
+                          <span className="text-xs" style={{ color: '#94a3b8' }}>
+                            Seuil : {alert.threshold ?? 'N/A'} unités
+                          </span>
                           <button
                             className="text-xs px-2 py-0.5 rounded transition"
                             style={{ 
@@ -363,7 +384,7 @@ export default function AlertsPage() {
         )}
       </div>
 
-      {/* CONFIGURATION DES SEUILS (intégrée en bas) */}
+      {/* CONFIGURATION DES SEUILS */}
       <div 
         className="rounded-xl border p-4"
         style={{ background: '#1e293b', borderColor: '#334155' }}
