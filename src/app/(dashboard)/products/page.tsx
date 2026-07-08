@@ -1,72 +1,130 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
-  Plus, Search, Edit, Trash2, Package, Coffee, Utensils, Sparkles, 
-  X, Save, AlertCircle, Check, PlusCircle, MinusCircle 
+import {
+  Plus, Search, Edit, Trash2, Package, Coffee, Utensils, Sparkles,
+  X, Save, AlertCircle, Check, PlusCircle, MinusCircle
 } from 'lucide-react'
 
-// --- Données Mockées (à remplacer par l'API) ---
-const mockSuppliers = [
+// --- Types ---
+interface Product {
+  id: number
+  name: string
+  category: string
+  subCategory: string
+  pricePerUnit: number
+  unitsPerPackage: number
+  stock: number
+  unit: string
+  supplierId: number | null
+  characteristics: Record<string, string>
+}
+
+interface Supplier {
+  id: number
+  name: string
+}
+
+// --- Données Mockées ---
+const mockSuppliers: Supplier[] = [
   { id: 1, name: 'Brasserie du Gabon' },
   { id: 2, name: 'Distriboissons SA' },
   { id: 3, name: 'FoodPro Gabon' },
   { id: 4, name: 'Coca-Cola Gabon' },
 ]
 
-const mockProducts = [
-  { 
-    id: 1, 
-    name: 'Bière Castel 65cl', 
-    category: 'boisson', 
-    subCategory: 'casier', 
-    pricePerUnit: 1500, 
-    unitsPerPackage: 24, 
-    stock: 48, 
+const mockProducts: Product[] = [
+  {
+    id: 1,
+    name: 'Bière Castel 65cl',
+    category: 'boisson',
+    subCategory: 'casier',
+    pricePerUnit: 1500,
+    unitsPerPackage: 24,
+    stock: 48,
     unit: 'unité',
-    supplierId: 1, 
-    characteristics: { 'Type': 'Lager', 'Contenance': '65cl' } 
+    supplierId: 1,
+    characteristics: { 'Type': 'Lager', 'Contenance': '65cl' }
   },
-  { 
-    id: 2, 
-    name: 'Whisky Jack Daniel\'s', 
-    category: 'boisson', 
-    subCategory: 'unite', 
-    pricePerUnit: 25000, 
-    unitsPerPackage: 1, 
-    stock: 8, 
+  {
+    id: 2,
+    name: 'Whisky Jack Daniel\'s',
+    category: 'boisson',
+    subCategory: 'unite',
+    pricePerUnit: 25000,
+    unitsPerPackage: 1,
+    stock: 8,
     unit: 'bouteille',
-    supplierId: 2, 
-    characteristics: { 'Taux d\'alcool': '40%', 'Volume': '70cl' } 
+    supplierId: 2,
+    characteristics: { 'Taux d\'alcool': '40%', 'Volume': '70cl' }
+  },
+  {
+    id: 3,
+    name: 'Coca-Cola 33cl',
+    category: 'boisson',
+    subCategory: 'casier',
+    pricePerUnit: 1000,
+    unitsPerPackage: 12,
+    stock: 120,
+    unit: 'unité',
+    supplierId: 4,
+    characteristics: { 'Type': 'Cola', 'Contenance': '33cl' }
+  },
+  {
+    id: 4,
+    name: 'Brochettes Poulet',
+    category: 'nourriture',
+    subCategory: 'unite',
+    pricePerUnit: 3500,
+    unitsPerPackage: 1,
+    stock: 45,
+    unit: 'unité',
+    supplierId: 3,
+    characteristics: { 'Type': 'Poulet', 'Poids': '100g' }
+  },
+  {
+    id: 5,
+    name: 'Chicha Session',
+    category: 'service',
+    subCategory: 'unite',
+    pricePerUnit: 10000,
+    unitsPerPackage: 1,
+    stock: -1,
+    unit: 'session',
+    supplierId: null,
+    characteristics: { 'Durée': '1h', 'Parfums': 'Multiples' }
   },
 ]
 
 // --- Composant Principal ---
 export default function ProductsPage() {
-  const [products, setProducts] = useState(mockProducts)
+  const [products, setProducts] = useState<Product[]>(mockProducts)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingProduct, setEditingProduct] = useState<any>(null)
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
 
-  // État du formulaire
-  const [formData, setFormData] = useState({
+  // État du formulaire (SANS l'ID)
+  const [formData, setFormData] = useState<Omit<Product, 'id'>>({
     name: '',
     category: 'boisson',
-    subCategory: 'casier', // 'casier' ou 'unite'
+    subCategory: 'casier',
     pricePerUnit: 0,
     unitsPerPackage: 1,
     stock: 0,
-    supplierId: '',
-    characteristics: {} as Record<string, string>,
+    unit: 'unité',
+    supplierId: null,
+    characteristics: {},
   })
-  
-  // État pour les champs flexibles
+
+  // États pour les champs flexibles (Caractéristiques)
   const [charKey, setCharKey] = useState('')
   const [charValue, setCharValue] = useState('')
   const [newSupplierName, setNewSupplierName] = useState('')
   const [showNewSupplierInput, setShowNewSupplierInput] = useState(false)
+  const [suppliers, setSuppliers] = useState<Supplier[]>(mockSuppliers)
 
+  // Calcul des catégories uniques pour les filtres
   const categories = ['all', ...new Set(products.map(p => p.category))]
 
   // Filtrer les produits
@@ -77,7 +135,7 @@ export default function ProductsPage() {
   })
 
   // --- Logique du formulaire ---
-  const openModal = (product: any = null) => {
+  const openModal = (product: Product | null = null) => {
     if (product) {
       setFormData({
         name: product.name,
@@ -86,7 +144,8 @@ export default function ProductsPage() {
         pricePerUnit: product.pricePerUnit,
         unitsPerPackage: product.unitsPerPackage || 1,
         stock: product.stock,
-        supplierId: product.supplierId?.toString() || '',
+        unit: product.unit,
+        supplierId: product.supplierId,
         characteristics: product.characteristics || {},
       })
       setEditingProduct(product)
@@ -99,7 +158,8 @@ export default function ProductsPage() {
         pricePerUnit: 0,
         unitsPerPackage: 1,
         stock: 0,
-        supplierId: '',
+        unit: 'unité',
+        supplierId: null,
         characteristics: {},
       })
       setEditingProduct(null)
@@ -137,12 +197,12 @@ export default function ProductsPage() {
   // Mise à jour du champ "Sous-catégorie" quand la catégorie change
   useEffect(() => {
     if (formData.category === 'boisson') {
-      // Si c'est une boisson, on garde le choix entre casier/unite
+      // Si c'est une boisson, on propose casier/unite
       if (!['casier', 'unite'].includes(formData.subCategory)) {
         setFormData(prev => ({ ...prev, subCategory: 'casier' }))
       }
     } else {
-      // Si c'est nourriture ou service, on force "unite" (pas de casier)
+      // Si c'est nourriture ou service, on force "unite"
       setFormData(prev => ({ ...prev, subCategory: 'unite' }))
     }
   }, [formData.category])
@@ -150,10 +210,9 @@ export default function ProductsPage() {
   // Ajouter un fournisseur à la volée
   const addNewSupplier = () => {
     if (newSupplierName.trim()) {
-      // Simulation d'ajout
-      const newSupplier = { id: Date.now(), name: newSupplierName.trim() }
-      mockSuppliers.push(newSupplier)
-      setFormData({ ...formData, supplierId: newSupplier.id.toString() })
+      const newSupplier: Supplier = { id: Date.now(), name: newSupplierName.trim() }
+      setSuppliers([...suppliers, newSupplier])
+      setFormData({ ...formData, supplierId: newSupplier.id })
       setNewSupplierName('')
       setShowNewSupplierInput(false)
     }
@@ -162,18 +221,24 @@ export default function ProductsPage() {
   // Sauvegarder le produit (Création ou Mise à jour)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // Calcul du stock total (si casier)
-    const totalStock = formData.subCategory === 'casier' 
-      ? formData.unitsPerPackage * formData.stock 
-      : formData.stock
 
-    const productData = {
-      ...formData,
+    // Calcul du stock total (si casier)
+    let totalStock = formData.stock
+    if (formData.subCategory === 'casier') {
+      totalStock = formData.unitsPerPackage * formData.stock
+    }
+
+    const productData: Product = {
       id: editingProduct ? editingProduct.id : Date.now(),
+      name: formData.name,
+      category: formData.category,
+      subCategory: formData.subCategory,
+      pricePerUnit: formData.pricePerUnit,
+      unitsPerPackage: formData.subCategory === 'casier' ? formData.unitsPerPackage : 1,
       stock: totalStock,
-      unit: formData.subCategory === 'casier' ? 'unité' : 'bouteille/portion',
-      supplierId: parseInt(formData.supplierId) || null,
+      unit: formData.subCategory === 'casier' ? 'unité' : 'pièce',
+      supplierId: formData.supplierId,
+      characteristics: formData.characteristics,
     }
 
     if (editingProduct) {
@@ -181,7 +246,7 @@ export default function ProductsPage() {
     } else {
       setProducts([...products, productData])
     }
-    
+
     setIsModalOpen(false)
   }
 
@@ -192,20 +257,21 @@ export default function ProductsPage() {
     }
   }
 
+  // --- Rendu ---
   return (
     <div className="p-4 space-y-4">
-      {/* Header */}
+      {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-white">Produits</h1>
           <p className="text-sm" style={{ color: '#94a3b8' }}>
-            {products.length} produits • {products.filter(p => p.stock <= 10).length} alertes stock
+            {products.length} produits • {products.filter(p => p.stock <= 10 && p.stock >= 0).length} alertes stock
           </p>
         </div>
         <button
           onClick={() => openModal()}
           className="px-4 py-2 rounded-lg text-white text-sm font-semibold transition flex items-center gap-2"
-          style={{ 
+          style={{
             background: '#4f46e5',
             boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
           }}
@@ -215,7 +281,7 @@ export default function ProductsPage() {
         </button>
       </div>
 
-      {/* Filtres et recherche */}
+      {/* FILTRES ET RECHERCHE */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
@@ -225,7 +291,7 @@ export default function ProductsPage() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
-            style={{ 
+            style={{
               background: 'rgba(51, 65, 85, 0.5)',
               border: '1px solid #334155'
             }}
@@ -236,9 +302,8 @@ export default function ProductsPage() {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
-                selectedCategory === cat ? 'border' : 'border-transparent'
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${selectedCategory === cat ? 'border' : 'border-transparent'
+                }`}
               style={{
                 background: selectedCategory === cat ? 'rgba(99, 102, 241, 0.15)' : 'rgba(51, 65, 85, 0.3)',
                 borderColor: selectedCategory === cat ? '#6366f1' : 'transparent',
@@ -251,17 +316,18 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Liste des produits */}
+      {/* LISTE DES PRODUITS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {filteredProducts.map((product) => {
-          const isLowStock = product.stock <= 10 && product.stock > 0
+          const isLowStock = product.stock >= 0 && product.stock <= 10
           const isOutOfStock = product.stock === 0
+          const isInfinite = product.stock < 0
 
           return (
-            <div 
+            <div
               key={product.id}
               className="rounded-xl p-4 border transition-all hover:border-primary-500"
-              style={{ 
+              style={{
                 background: '#1e293b',
                 borderColor: isOutOfStock ? '#ef4444' : isLowStock ? '#f59e0b' : '#334155'
               }}
@@ -270,17 +336,17 @@ export default function ProductsPage() {
                 <div>
                   <h3 className="font-medium text-sm text-white truncate max-w-[150px]">{product.name}</h3>
                   <p className="text-xs" style={{ color: '#94a3b8' }}>
-                    {product.category} • {product.subCategory}
+                    {product.category} • {product.subCategory === 'casier' ? 'Par casier' : 'À l\'unité'}
                   </p>
                 </div>
-                <span 
-                  className={`text-xs px-2 py-0.5 rounded-full ${
-                    isOutOfStock ? 'bg-red-500/20 text-red-400' :
-                    isLowStock ? 'bg-orange-500/20 text-orange-400' : 
-                    'bg-green-500/20 text-green-400'
-                  }`}
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full ${isOutOfStock ? 'bg-red-500/20 text-red-400' :
+                    isLowStock ? 'bg-orange-500/20 text-orange-400' :
+                      isInfinite ? 'bg-blue-500/20 text-blue-400' :
+                        'bg-green-500/20 text-green-400'
+                    }`}
                 >
-                  {isOutOfStock ? 'Rupture' : isLowStock ? 'Stock faible' : 'OK'}
+                  {isOutOfStock ? 'Rupture' : isLowStock ? 'Stock faible' : isInfinite ? 'Illimité' : 'OK'}
                 </span>
               </div>
 
@@ -291,8 +357,8 @@ export default function ProductsPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-xs" style={{ color: '#94a3b8' }}>Stock</p>
-                  <p className={`font-semibold ${isLowStock ? 'text-orange-400' : 'text-white'}`}>
-                    {product.stock} {product.unit}s
+                  <p className={`font-semibold ${isLowStock && !isInfinite ? 'text-orange-400' : 'text-white'}`}>
+                    {isInfinite ? '∞' : product.stock} {product.unit}s
                   </p>
                 </div>
               </div>
@@ -301,8 +367,8 @@ export default function ProductsPage() {
               {product.characteristics && Object.keys(product.characteristics).length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2 pt-2 border-t" style={{ borderColor: '#334155' }}>
                   {Object.entries(product.characteristics).map(([key, value]) => (
-                    <span 
-                      key={key} 
+                    <span
+                      key={key}
                       className="text-xs px-2 py-0.5 rounded-full"
                       style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#94a3b8' }}
                     >
@@ -312,11 +378,18 @@ export default function ProductsPage() {
                 </div>
               )}
 
+              {/* Fournisseur */}
+              {product.supplierId && (
+                <p className="text-xs mt-1" style={{ color: '#64748b' }}>
+                  Fournisseur: {suppliers.find(s => s.id === product.supplierId)?.name || 'Inconnu'}
+                </p>
+              )}
+
               <div className="flex gap-2 mt-3 pt-3 border-t" style={{ borderColor: '#334155' }}>
                 <button
                   onClick={() => openModal(product)}
                   className="flex-1 py-1.5 rounded text-xs font-medium transition flex items-center justify-center gap-1"
-                  style={{ 
+                  style={{
                     background: 'rgba(51, 65, 85, 0.5)',
                     color: '#94a3b8'
                   }}
@@ -327,7 +400,7 @@ export default function ProductsPage() {
                 <button
                   onClick={() => deleteProduct(product.id)}
                   className="flex-1 py-1.5 rounded text-xs font-medium transition flex items-center justify-center gap-1"
-                  style={{ 
+                  style={{
                     background: 'rgba(239, 68, 68, 0.1)',
                     color: '#f87171'
                   }}
@@ -341,16 +414,16 @@ export default function ProductsPage() {
         })}
       </div>
 
-      {/* MODAL Ajout/Modification */}
+      {/* MODAL D'AJOUT / MODIFICATION */}
       {isModalOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.7)' }}
           onClick={() => setIsModalOpen(false)}
         >
-          <div 
+          <div
             className="w-full max-w-2xl rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
-            style={{ 
+            style={{
               background: '#1e293b',
               border: '1px solid #334155'
             }}
@@ -369,7 +442,7 @@ export default function ProductsPage() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                  style={{ 
+                  style={{
                     background: 'rgba(51, 65, 85, 0.5)',
                     border: '1px solid #334155'
                   }}
@@ -384,7 +457,7 @@ export default function ProductsPage() {
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                  style={{ 
+                  style={{
                     background: 'rgba(51, 65, 85, 0.5)',
                     border: '1px solid #334155'
                   }}
@@ -405,7 +478,7 @@ export default function ProductsPage() {
                     value={formData.subCategory}
                     onChange={(e) => setFormData({ ...formData, subCategory: e.target.value })}
                     className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                    style={{ 
+                    style={{
                       background: 'rgba(51, 65, 85, 0.5)',
                       border: '1px solid #334155'
                     }}
@@ -416,14 +489,13 @@ export default function ProductsPage() {
                 ) : (
                   <input
                     type="text"
-                    value={formData.subCategory}
+                    value="À l'unité"
                     disabled
                     className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition opacity-60"
-                    style={{ 
+                    style={{
                       background: 'rgba(51, 65, 85, 0.5)',
                       border: '1px solid #334155'
                     }}
-                    placeholder="Vente à l'unité (produit non boisson)"
                   />
                 )}
                 {formData.category !== 'boisson' && (
@@ -442,7 +514,7 @@ export default function ProductsPage() {
                     value={formData.pricePerUnit}
                     onChange={(e) => setFormData({ ...formData, pricePerUnit: parseFloat(e.target.value) || 0 })}
                     className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                    style={{ 
+                    style={{
                       background: 'rgba(51, 65, 85, 0.5)',
                       border: '1px solid #334155'
                     }}
@@ -451,7 +523,7 @@ export default function ProductsPage() {
                 </div>
                 <div>
                   <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
-                    {formData.subCategory === 'casier' ? 'Nb unités/casier' : 'Quantité'}
+                    {formData.subCategory === 'casier' ? 'Nb unités/casier' : 'Quantité en stock'}
                   </label>
                   <input
                     type="number"
@@ -467,7 +539,7 @@ export default function ProductsPage() {
                       }
                     }}
                     className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                    style={{ 
+                    style={{
                       background: 'rgba(51, 65, 85, 0.5)',
                       border: '1px solid #334155'
                     }}
@@ -475,7 +547,9 @@ export default function ProductsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nombre de casiers</label>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
+                    {formData.subCategory === 'casier' ? 'Nombre de casiers' : '-'}
+                  </label>
                   <input
                     type="number"
                     min="0"
@@ -489,7 +563,7 @@ export default function ProductsPage() {
                     }}
                     disabled={formData.subCategory !== 'casier'}
                     className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition disabled:opacity-40"
-                    style={{ 
+                    style={{
                       background: 'rgba(51, 65, 85, 0.5)',
                       border: '1px solid #334155'
                     }}
@@ -507,24 +581,24 @@ export default function ProductsPage() {
                 <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Fournisseur</label>
                 <div className="flex gap-2">
                   <select
-                    value={formData.supplierId}
-                    onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
+                    value={formData.supplierId || ''}
+                    onChange={(e) => setFormData({ ...formData, supplierId: e.target.value ? parseInt(e.target.value) : null })}
                     className="flex-1 rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                    style={{ 
+                    style={{
                       background: 'rgba(51, 65, 85, 0.5)',
                       border: '1px solid #334155'
                     }}
                   >
                     <option value="">Aucun</option>
-                    {mockSuppliers.map(s => (
-                      <option key={s.id} value={s.id.toString()}>{s.name}</option>
+                    {suppliers.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
                   <button
                     type="button"
                     onClick={() => setShowNewSupplierInput(!showNewSupplierInput)}
                     className="px-3 py-2.5 rounded-lg text-xs font-medium transition"
-                    style={{ 
+                    style={{
                       background: 'rgba(99, 102, 241, 0.15)',
                       color: '#818cf8'
                     }}
@@ -540,7 +614,7 @@ export default function ProductsPage() {
                       onChange={(e) => setNewSupplierName(e.target.value)}
                       placeholder="Nom du nouveau fournisseur..."
                       className="flex-1 rounded-lg px-4 py-2 text-white text-sm outline-none transition"
-                      style={{ 
+                      style={{
                         background: 'rgba(51, 65, 85, 0.5)',
                         border: '1px solid #334155'
                       }}
@@ -549,7 +623,7 @@ export default function ProductsPage() {
                       type="button"
                       onClick={addNewSupplier}
                       className="px-4 py-2 rounded-lg text-white text-xs font-semibold transition"
-                      style={{ 
+                      style={{
                         background: '#22c55e',
                         boxShadow: '0 10px 25px -5px rgba(34, 197, 94, 0.3)'
                       }}
@@ -560,7 +634,7 @@ export default function ProductsPage() {
                       type="button"
                       onClick={() => setShowNewSupplierInput(false)}
                       className="px-4 py-2 rounded-lg text-xs font-medium transition"
-                      style={{ 
+                      style={{
                         background: 'transparent',
                         border: '1px solid #334155',
                         color: '#94a3b8'
@@ -582,7 +656,7 @@ export default function ProductsPage() {
                     onChange={(e) => setCharKey(e.target.value)}
                     placeholder="Clé (ex: Taux d'alcool)"
                     className="flex-1 rounded-lg px-4 py-2 text-white text-sm outline-none transition"
-                    style={{ 
+                    style={{
                       background: 'rgba(51, 65, 85, 0.5)',
                       border: '1px solid #334155'
                     }}
@@ -593,7 +667,7 @@ export default function ProductsPage() {
                     onChange={(e) => setCharValue(e.target.value)}
                     placeholder="Valeur (ex: 40%)"
                     className="flex-1 rounded-lg px-4 py-2 text-white text-sm outline-none transition"
-                    style={{ 
+                    style={{
                       background: 'rgba(51, 65, 85, 0.5)',
                       border: '1px solid #334155'
                     }}
@@ -602,7 +676,7 @@ export default function ProductsPage() {
                     type="button"
                     onClick={addCharacteristic}
                     className="px-3 py-2 rounded-lg text-xs font-medium transition"
-                    style={{ 
+                    style={{
                       background: 'rgba(99, 102, 241, 0.15)',
                       color: '#818cf8'
                     }}
@@ -610,12 +684,12 @@ export default function ProductsPage() {
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
-                
+
                 {/* Liste des caractéristiques ajoutées */}
                 <div className="flex flex-wrap gap-1">
                   {Object.entries(formData.characteristics).map(([key, value]) => (
-                    <span 
-                      key={key} 
+                    <span
+                      key={key}
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
                       style={{ background: 'rgba(51, 65, 85, 0.5)', color: '#94a3b8' }}
                     >
@@ -641,7 +715,7 @@ export default function ProductsPage() {
                   type="button"
                   onClick={() => setIsModalOpen(false)}
                   className="flex-1 py-2.5 rounded-lg text-sm font-medium transition"
-                  style={{ 
+                  style={{
                     background: 'transparent',
                     border: '1px solid #334155',
                     color: '#94a3b8'
@@ -652,7 +726,7 @@ export default function ProductsPage() {
                 <button
                   type="submit"
                   className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition"
-                  style={{ 
+                  style={{
                     background: '#4f46e5',
                     boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
                   }}

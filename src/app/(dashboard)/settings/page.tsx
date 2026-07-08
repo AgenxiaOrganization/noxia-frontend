@@ -4,7 +4,7 @@ import { useState } from 'react'
 import {
   Settings, Building2, MapPin, Phone, Mail,
   CreditCard, Shield, Bell, Globe, Users,
-  Key, Save, Eye, EyeOff, CheckCircle
+  Key, Save, Eye, EyeOff, CheckCircle, DollarSign
 } from 'lucide-react'
 
 // Données mockées
