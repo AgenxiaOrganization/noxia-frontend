@@ -13,14 +13,14 @@ const menuItems = [
   { id: 'products', label: 'Produits', icon: Package },
   { id: 'stock', label: 'Stock', icon: Box },
   { id: 'pos', label: 'Caisse (POS)', icon: CreditCard },
-  { id: 'employees', label: 'Employes', icon: Users },
+  { id: 'employees', label: 'Employés', icon: Users },
   { id: 'reports', label: 'Rapports', icon: FileBarChart },
   { id: 'finance', label: 'Finances', icon: DollarSign },
   { id: 'fournisseurs', label: 'Fournisseurs', icon: Truck },
   { id: 'alerts', label: 'Alertes', icon: Bell },
   { id: 'messaging', label: 'Messagerie', icon: MessageSquare },
   { id: 'assistant', label: 'Assistant IA', icon: Bot },
-  { id: 'settings', label: 'Parametres', icon: Settings },
+  { id: 'settings', label: 'Paramètres', icon: Settings },
   { id: 'subscription', label: 'Abonnement', icon: Key },
 ]
 
@@ -45,18 +45,22 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           borderColor: '#334155'
         }}
       >
-        {/* Logo */}
+        {/* Logo - Version sans footer utilisateur */}
         <div className="p-4 flex items-center gap-3 border-b" style={{ borderColor: '#334155' }}>
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white font-bold text-sm">
-            N
-          </div>
+         
+<div className="w-8 h-8 rounded-lg flex items-center justify-center">
+  <img 
+    src="/logos/NOXIA_Orbit_Logo.svg" 
+    alt="NOXIA" 
+    className="w-full h-full object-contain"
+  />
+</div>
           <div>
             <span className="font-semibold text-sm text-white">NOXIA</span>
-            <p className="text-xs" style={{ color: '#94a3b8' }}>Administrateur</p>
           </div>
         </div>
         
-        {/* Navigation */}
+        {/* Navigation - prend tout l'espace */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {menuItems.map((item) => {
             const isActive = pathname === `/${item.id}` || pathname.startsWith(`/${item.id}/`)
@@ -79,21 +83,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           })}
         </nav>
         
-        {/* Footer */}
-        <div className="p-3 border-t" style={{ borderColor: '#334155' }}>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center text-xs font-bold text-white">
-              AD
-            </div>
-            <div>
-              <p className="text-sm font-medium text-white">Admin Demo</p>
-              <p className="text-xs" style={{ color: '#94a3b8' }}>Premium</p>
-            </div>
-          </div>
-          <button className="w-full text-left text-xs transition py-1" style={{ color: '#94a3b8' }}>
-            Déconnexion
-          </button>
-        </div>
+        {/* Plus de footer ici - supprimé */}
       </aside>
     </>
   )

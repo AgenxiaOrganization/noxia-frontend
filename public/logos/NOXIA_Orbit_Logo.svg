@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2DD4FF"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Orbit -->
+  <circle cx="256" cy="256" r="190"
+          fill="none"
+          stroke="url(#g)"
+          stroke-width="12"
+          stroke-linecap="round"
+          stroke-dasharray="980 120"/>
+
+  <!-- Orbit nodes -->
+  <circle cx="405" cy="140" r="11" fill="#2DD4FF"/>
+  <circle cx="107" cy="372" r="11" fill="#2DD4FF"/>
+
+  <!-- N -->
+  <path d="M160 340
+           L160 170
+           Q160 150 180 150
+           L205 150
+           L307 285
+           L307 170
+           Q307 150 327 150
+           L352 150
+           Q372 150 372 170
+           L372 340
+           Q372 360 352 360
+           L324 360
+           L225 228
+           L225 340
+           Q225 360 205 360
+           L180 360
+           Q160 360 160 340Z"
+        fill="url(#g)"/>
+</svg>

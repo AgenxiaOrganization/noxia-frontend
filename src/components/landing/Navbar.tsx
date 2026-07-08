@@ -13,9 +13,13 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <a href="/" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white font-bold text-lg">
-              N
-            </div>
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center">
+  <img 
+    src="/logos/NOXIA_Orbit_Logo.svg" 
+    alt="NOXIA" 
+    className="w-full h-full object-contain"
+  />
+</div>
             <span className="text-xl font-bold tracking-tight text-white">
               NOXIA<span className="text-primary-400">.</span>
             </span>
