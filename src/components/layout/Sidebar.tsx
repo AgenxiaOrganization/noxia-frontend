@@ -16,7 +16,7 @@ const menuItems = [
   { id: 'employees', label: 'Employes', icon: Users },
   { id: 'reports', label: 'Rapports', icon: FileBarChart },
   { id: 'finance', label: 'Finances', icon: DollarSign },
-  { id: 'suppliers', label: 'Distributeurs', icon: Truck },
+  { id: 'fournisseurs', label: 'Fournisseurs', icon: Truck },
   { id: 'alerts', label: 'Alertes', icon: Bell },
   { id: 'messaging', label: 'Messagerie', icon: MessageSquare },
   { id: 'assistant', label: 'Assistant IA', icon: Bot },
