@@ -4,24 +4,24 @@ import { useState } from 'react'
 import {
   MessageSquare, Send, Smartphone, Users,
   Key, Copy, Check, RefreshCw, Power,
-  Bot, Radio, Phone, Menu, X
+  Bot, Radio, Phone, Menu, X, Play, Video
 } from 'lucide-react'
 
-// Données mockées
+// --- Données Mockées ---
 const mockEmployees = [
-  { id: 1, name: 'Jean M.', role: 'caissier', phone: '+241 77 00 00 01', active: true, whatsappId: 'SB-XK9M2P' },
-  { id: 2, name: 'Marie K.', role: 'serveur', phone: '+241 77 00 00 02', active: true, whatsappId: 'SB-QR7N8L' },
-  { id: 3, name: 'Pierre O.', role: 'magasinier', phone: '+241 77 00 00 03', active: true, whatsappId: 'SB-ABR92L5' },
-  { id: 4, name: 'Sophie N.', role: 'caissier', phone: '+241 77 00 00 04', active: true, whatsappId: 'SB-ZK3X9W' },
-  { id: 5, name: 'David L.', role: 'serveur', phone: '+241 77 00 00 05', active: false, whatsappId: null },
+  { id: 1, name: 'Jean M.', role: 'caissier', phone: '+241 77 00 00 01', active: true, employeeId: 'EMP-001' },
+  { id: 2, name: 'Marie K.', role: 'serveur', phone: '+241 77 00 00 02', active: true, employeeId: 'EMP-002' },
+  { id: 3, name: 'Pierre O.', role: 'magasinier', phone: '+241 77 00 00 03', active: true, employeeId: 'EMP-003' },
+  { id: 4, name: 'Sophie N.', role: 'caissier', phone: '+241 77 00 00 04', active: true, employeeId: 'EMP-004' },
+  { id: 5, name: 'David L.', role: 'serveur', phone: '+241 77 00 00 05', active: false, employeeId: 'EMP-005' },
 ]
 
 const mockMessages = [
-  { id: 1, sender: 'bot', message: 'Bienvenue sur NOXIA ! Compte actif. ID: SB-ABR92L5', time: '10:00' },
-  { id: 2, sender: 'user', message: 'Combien reste-t-il de bières Castel ?', time: '10:05' },
-  { id: 3, sender: 'bot', message: 'Il reste 48 bières Castel (4 casiers). Seuil d\'alerte à 20 unités.', time: '10:05' },
-  { id: 4, sender: 'user', message: 'Quelle est la recette d\'hier ?', time: '10:10' },
-  { id: 5, sender: 'bot', message: 'Recette du 28/06/2026 : 450 000 FCFA. Meilleure vente : Whisky Jack Daniel\'s (87 ventes).', time: '10:10' },
+  { id: 1, sender: 'bot', message: 'Bienvenue sur NOXIA ! Veuillez activer votre session.', time: '10:00' },
+  { id: 2, sender: 'user', message: 'NOX-1234567890', time: '10:01' },
+  { id: 3, sender: 'bot', message: '✅ Entreprise vérifiée : Bar Le Premium. Veuillez entrer votre ID employé.', time: '10:01' },
+  { id: 4, sender: 'user', message: 'EMP-001', time: '10:02' },
+  { id: 5, sender: 'bot', message: '✅ Session activée ! Bienvenue Jean M. (Caissier).\n\nCommandes disponibles : stock, recette, alertes, meilleur, employes, aide', time: '10:02' },
 ]
 
 const availableCommands = [
@@ -39,11 +39,17 @@ export default function MessagingPage() {
   const [messages, setMessages] = useState(mockMessages)
   const [isWhatsAppActive, setIsWhatsAppActive] = useState(true)
   const [isTelegramActive, setIsTelegramActive] = useState(false)
+  const [showVideo, setShowVideo] = useState(false)
+
+  // Infos de l'entreprise (mockées)
+  const companyId = 'NOX-1234567890'
+  const userId = 'EMP-001'
+  const botNumber = '+241 66 00 00 10'
+  const telegramLink = `https://t.me/NOXIABot?start=${companyId}_${userId}`
 
   const sendMessage = () => {
     if (!message.trim()) return
     
-    // Ajouter le message utilisateur
     setMessages([...messages, {
       id: messages.length + 1,
       sender: 'user',
@@ -51,7 +57,6 @@ export default function MessagingPage() {
       time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
     }])
     
-    // Simuler la réponse du bot après un délai
     setTimeout(() => {
       const botReply = getBotReply(message)
       setMessages(prev => [...prev, {
@@ -68,38 +73,33 @@ export default function MessagingPage() {
   const getBotReply = (msg: string) => {
     const lower = msg.toLowerCase()
     if (lower.includes('stock') || lower.includes('reste')) {
-      return 'Stock actuel :\n• Bière Castel: 48 unités\n• Bière Guinness: 12 unités ⚠️\n• Whisky Jack: 8 unités\n• Coca-Cola: 120 unités'
+      return '📦 Stock actuel :\n• Bière Castel: 48 unités\n• Bière Guinness: 12 unités ⚠️\n• Whisky Jack: 8 unités\n• Coca-Cola: 120 unités'
     }
     if (lower.includes('recette') || lower.includes('ca') || lower.includes('chiffre')) {
-      return 'CA du jour : 450 000 FCFA\nTransactions : 127\nMeilleure vente : Whisky Jack Daniel\'s (87 ventes)'
+      return '💰 CA du jour : 450 000 FCFA\n📊 Transactions : 127\n🏆 Meilleure vente : Whisky Jack Daniel\'s (87 ventes)'
     }
     if (lower.includes('alerte')) {
       return '⚠️ Produits en alerte :\n• Bière Guinness: 12/15 unités\n• Jus d\'Orange: 0/15 unités (rupture)'
     }
     if (lower.includes('meilleur') || lower.includes('top')) {
-      return 'Top produits :\n1. Whisky Jack: 87 ventes\n2. Bière Castel: 63 ventes\n3. Cocktail Mojito: 42 ventes'
+      return '🏆 Top produits :\n1. Whisky Jack: 87 ventes\n2. Bière Castel: 63 ventes\n3. Cocktail Mojito: 42 ventes'
     }
     if (lower.includes('employe')) {
-      return 'Employés actifs :\n• Jean M. (Caissier)\n• Marie K. (Serveur)\n• Pierre O. (Magasinier)\n• Sophie N. (Caissier)'
+      return '👥 Employés actifs :\n• Jean M. (Caissier)\n• Marie K. (Serveur)\n• Pierre O. (Magasinier)\n• Sophie N. (Caissier)'
     }
     if (lower.includes('aide') || lower.includes('help')) {
-      return 'Commandes disponibles :\n• stock [nom] - Consulter le stock\n• recette - CA du jour\n• alertes - Produits critiques\n• meilleur - Top ventes\n• employes - Liste employés\n• aide - Cette aide'
+      return '📋 Commandes disponibles :\n• stock [nom] - Consulter le stock\n• recette - CA du jour\n• alertes - Produits critiques\n• meilleur - Top ventes\n• employes - Liste employés\n• aide - Cette aide'
     }
-    return `Je n'ai pas compris votre demande. Tapez "aide" pour voir les commandes disponibles.`
-  }
-
-  const generateWhatsAppId = () => {
-    return 'SB-' + Math.random().toString(36).substring(2, 8).toUpperCase()
+    return `🤖 Je n'ai pas compris votre demande. Tapez "aide" pour voir les commandes disponibles.`
   }
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-    // TODO: Ajouter un toast de confirmation
   }
 
   return (
     <div className="p-4 space-y-4">
-      {/* Header */}
+      {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-white">Messagerie</h1>
@@ -137,7 +137,7 @@ export default function MessagingPage() {
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* TABS */}
       <div className="flex gap-2 overflow-x-auto pb-2">
         {[
           { id: 'chat', label: 'Chat avec le bot', icon: MessageSquare },
@@ -166,7 +166,7 @@ export default function MessagingPage() {
         })}
       </div>
 
-      {/* Chat */}
+      {/* CHAT AVEC LE BOT */}
       {activeTab === 'chat' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2">
@@ -178,13 +178,75 @@ export default function MessagingPage() {
               }}
             >
               {/* Chat header */}
-              <div className="p-4 border-b" style={{ borderColor: '#334155' }}>
+              <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: '#334155' }}>
                 <div className="flex items-center gap-2">
                   <Bot className="w-5 h-5" style={{ color: '#818cf8' }} />
                   <span className="font-semibold text-white">Assistant NOXIA</span>
                   <span className="text-xs" style={{ color: '#22c55e' }}>● En ligne</span>
                 </div>
+                <button
+                  onClick={() => setShowVideo(!showVideo)}
+                  className="px-3 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1"
+                  style={{ 
+                    background: 'rgba(99, 102, 241, 0.15)',
+                    color: '#818cf8'
+                  }}
+                >
+                  <Play className="w-3 h-3" />
+                  {showVideo ? 'Masquer la démo' : 'Voir la démo'}
+                </button>
               </div>
+              
+              {/* Vidéo de simulation */}
+              {showVideo && (
+                <div 
+                  className="p-4 border-b" 
+                  style={{ borderColor: '#334155', background: 'rgba(0,0,0,0.3)' }}
+                >
+                  <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
+                    <div className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(99, 102, 241, 0.2)' }}>
+                      <Video className="w-6 h-6" style={{ color: '#818cf8' }} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-white">Simulation d'interaction avec le bot</p>
+                      <div className="flex items-center gap-2 mt-1 text-xs" style={{ color: '#94a3b8' }}>
+                        <span>1. Envoyer l'ID Entreprise</span>
+                        <span className="text-primary-400">→</span>
+                        <span>2. Envoyer l'ID Employé</span>
+                        <span className="text-primary-400">→</span>
+                        <span>3. Conversation active</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                      <span className="text-xs" style={{ color: '#22c55e' }}>Simulation en cours</span>
+                    </div>
+                  </div>
+                  {/* Messages de démonstration */}
+                  <div className="mt-3 space-y-2 text-xs">
+                    <div className="flex justify-end">
+                      <div className="max-w-[80%] px-3 py-1.5 rounded-xl rounded-br-sm" style={{ background: '#4f46e5', color: '#fff' }}>
+                        NOX-1234567890
+                      </div>
+                    </div>
+                    <div className="flex justify-start">
+                      <div className="max-w-[80%] px-3 py-1.5 rounded-xl rounded-bl-sm" style={{ background: 'rgba(51,65,85,0.5)', color: '#f1f5f9' }}>
+                        ✅ Entreprise vérifiée : Bar Le Premium. Veuillez entrer votre ID employé.
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <div className="max-w-[80%] px-3 py-1.5 rounded-xl rounded-br-sm" style={{ background: '#4f46e5', color: '#fff' }}>
+                        EMP-001
+                      </div>
+                    </div>
+                    <div className="flex justify-start">
+                      <div className="max-w-[80%] px-3 py-1.5 rounded-xl rounded-bl-sm" style={{ background: 'rgba(51,65,85,0.5)', color: '#f1f5f9' }}>
+                        ✅ Session activée ! Bienvenue Jean M. (Caissier). Commandes disponibles : stock, recette...
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -286,7 +348,7 @@ export default function MessagingPage() {
         </div>
       )}
 
-      {/* Activation */}
+      {/* ACTIVATION */}
       {activeTab === 'activation' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* WhatsApp */}
@@ -315,19 +377,35 @@ export default function MessagingPage() {
                 style={{ background: 'rgba(51, 65, 85, 0.3)' }}
               >
                 <p className="text-xs" style={{ color: '#94a3b8' }}>Numéro du bot</p>
-                <p className="font-semibold text-white">+241 66 00 00 10</p>
+                <p className="font-semibold text-white">{botNumber}</p>
               </div>
+              
               <div 
                 className="rounded-lg p-3"
                 style={{ background: 'rgba(51, 65, 85, 0.3)' }}
               >
-                <p className="text-xs" style={{ color: '#94a3b8' }}>Votre ID unique</p>
+                <p className="text-xs" style={{ color: '#94a3b8' }}>ID Entreprise</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <code className="font-mono text-sm bg-dark-700 px-3 py-1 rounded" style={{ color: '#818cf8' }}>
-                    SB-ABR92L5
-                  </code>
+                  <code className="font-mono text-sm" style={{ color: '#818cf8' }}>{companyId}</code>
                   <button
-                    onClick={() => copyToClipboard('SB-ABR92L5')}
+                    onClick={() => copyToClipboard(companyId)}
+                    className="p-1 rounded hover:bg-white/10 transition"
+                    style={{ color: '#94a3b8' }}
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div 
+                className="rounded-lg p-3"
+                style={{ background: 'rgba(51, 65, 85, 0.3)' }}
+              >
+                <p className="text-xs" style={{ color: '#94a3b8' }}>Votre ID Employé</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <code className="font-mono text-sm" style={{ color: '#818cf8' }}>{userId}</code>
+                  <button
+                    onClick={() => copyToClipboard(userId)}
                     className="p-1 rounded hover:bg-white/10 transition"
                     style={{ color: '#94a3b8' }}
                   >
@@ -339,10 +417,11 @@ export default function MessagingPage() {
               <div className="space-y-1 text-xs" style={{ color: '#94a3b8' }}>
                 <p className="font-medium text-white">Procédure d'activation :</p>
                 <ol className="list-decimal list-inside space-y-1 ml-2">
-                  <li>Contactez le numéro sur WhatsApp</li>
-                  <li>Envoyez votre ID : <span className="font-mono text-primary-400">SB-ABR92L5</span></li>
+                  <li>Contactez le numéro <span className="text-white">{botNumber}</span> sur WhatsApp</li>
+                  <li>Envoyez l'ID Entreprise : <span className="font-mono text-primary-400">{companyId}</span></li>
+                  <li>Envoyez votre ID Employé : <span className="font-mono text-primary-400">{userId}</span></li>
                   <li>Le bot vérifie et active votre session</li>
-                  <li>Vous recevez une confirmation</li>
+                  <li>Vous recevez une confirmation et pouvez converser</li>
                 </ol>
               </div>
 
@@ -395,17 +474,18 @@ export default function MessagingPage() {
                 <p className="text-xs" style={{ color: '#94a3b8' }}>Nom du bot</p>
                 <p className="font-semibold text-white">@NOXIABot</p>
               </div>
+              
               <div 
                 className="rounded-lg p-3"
                 style={{ background: 'rgba(51, 65, 85, 0.3)' }}
               >
                 <p className="text-xs" style={{ color: '#94a3b8' }}>Lien d'invitation</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <code className="text-sm bg-dark-700 px-3 py-1 rounded truncate" style={{ color: '#3b82f6' }}>
-                    t.me/NOXIABot?start=SB-ABR92L5
+                  <code className="text-sm font-mono truncate" style={{ color: '#3b82f6' }}>
+                    {telegramLink}
                   </code>
                   <button
-                    onClick={() => copyToClipboard('t.me/NOXIABot?start=SB-ABR92L5')}
+                    onClick={() => copyToClipboard(telegramLink)}
                     className="p-1 rounded hover:bg-white/10 transition"
                     style={{ color: '#94a3b8' }}
                   >
@@ -417,9 +497,10 @@ export default function MessagingPage() {
               <div className="space-y-1 text-xs" style={{ color: '#94a3b8' }}>
                 <p className="font-medium text-white">Procédure d'activation :</p>
                 <ol className="list-decimal list-inside space-y-1 ml-2">
-                  <li>Ouvrez le lien Telegram</li>
+                  <li>Ouvrez le lien <span className="text-white">@NOXIABot</span> sur Telegram</li>
                   <li>Envoyez <span className="font-mono text-primary-400">/start</span></li>
-                  <li>Le bot active automatiquement votre session</li>
+                  <li>Le lien contient déjà vos IDs, activation automatique</li>
+                  <li>Vous recevez une confirmation</li>
                 </ol>
               </div>
 
@@ -446,7 +527,7 @@ export default function MessagingPage() {
         </div>
       )}
 
-      {/* Liaison employés */}
+      {/* LIAISON EMPLOYÉS */}
       {activeTab === 'employees' && (
         <div 
           className="rounded-xl border p-4"
@@ -475,7 +556,7 @@ export default function MessagingPage() {
                 <tr className="border-b" style={{ borderColor: '#334155' }}>
                   <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Employé</th>
                   <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Rôle</th>
-                  <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>WhatsApp ID</th>
+                  <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>ID Employé</th>
                   <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Statut</th>
                   <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Action</th>
                 </tr>
@@ -496,13 +577,13 @@ export default function MessagingPage() {
                       </span>
                     </td>
                     <td className="px-3 py-2">
-                      {emp.whatsappId ? (
+                      {emp.employeeId ? (
                         <div className="flex items-center gap-2">
                           <code className="text-xs font-mono" style={{ color: '#818cf8' }}>
-                            {emp.whatsappId}
+                            {emp.employeeId}
                           </code>
                           <button
-                            onClick={() => copyToClipboard(emp.whatsappId!)}
+                            onClick={() => copyToClipboard(emp.employeeId!)}
                             className="p-0.5 rounded hover:bg-white/10 transition"
                             style={{ color: '#94a3b8' }}
                           >
@@ -548,7 +629,7 @@ export default function MessagingPage() {
         </div>
       )}
 
-      {/* Commandes */}
+      {/* COMMANDES */}
       {activeTab === 'commands' && (
         <div 
           className="rounded-xl border p-4"
