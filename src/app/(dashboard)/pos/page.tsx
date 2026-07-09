@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { 
   Plus, Minus, X, CreditCard, Smartphone, Banknote, 
   Coffee, Utensils, Sparkles, ShoppingCart, Trash2, 
-  Search, Wallet, Receipt
+  Search, Wallet, Receipt, User
 } from 'lucide-react'
 
 // --- Types ---
@@ -41,6 +41,15 @@ const mockProducts: Product[] = [
   { id: 13, name: 'Entree VIP', category: 'service', price: 15000, stock: -1, unit: 'ticket', subCategory: 'unite' },
 ]
 
+// --- Employés mockés ---
+const mockEmployees = [
+  { id: 1, name: 'Jean M.', role: 'Caissier' },
+  { id: 2, name: 'Marie K.', role: 'Serveur' },
+  { id: 3, name: 'Chloé R.', role: 'Serveur' },
+  { id: 4, name: 'Sophie N.', role: 'Caissier' },
+  { id: 5, name: 'François T.', role: 'Gérant' },
+]
+
 const categoryIcons = {
   boisson: Coffee,
   nourriture: Utensils,
@@ -60,6 +69,7 @@ export default function POSPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [paymentModal, setPaymentModal] = useState(false)
   const [customPaymentMethod, setCustomPaymentMethod] = useState('')
+  const [selectedEmployee, setSelectedEmployee] = useState<string>(mockEmployees[0].name)
 
   const categories = ['all', ...new Set(products.map(p => p.category))]
 
@@ -76,7 +86,6 @@ export default function POSPage() {
     const product = getProduct(productId)
     if (!product) return
 
-    // Vérifier le stock
     if (product.stock >= 0) {
       const existing = cart.find(item => item.productId === productId)
       const currentQty = existing ? existing.qty : 0
@@ -145,8 +154,8 @@ export default function POSPage() {
     setPaymentModal(false)
     setCustomPaymentMethod('')
 
-    // Notification de confirmation
-    alert(`✅ Encaissement effectué avec succès !\n\nTotal : ${total.toLocaleString()} FCFA\nMoyen de paiement : ${paymentMethod}\nArticles : ${totalItems}`)
+    // Notification de confirmation avec le nom de l'employé
+    alert(`✅ Encaissement effectué avec succès !\n\n👤 Employé : ${selectedEmployee}\n💰 Total : ${total.toLocaleString()} FCFA\n💳 Moyen de paiement : ${paymentMethod}\n📦 Articles : ${totalItems}`)
   }
 
   return (
@@ -156,6 +165,25 @@ export default function POSPage() {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <h1 className="text-xl font-bold text-white">Caisse (POS)</h1>
+            {/* Sélecteur employé */}
+            <div className="flex items-center gap-2">
+              <User className="w-4 h-4" style={{ color: '#94a3b8' }} />
+              <select
+                value={selectedEmployee}
+                onChange={(e) => setSelectedEmployee(e.target.value)}
+                className="rounded-lg px-3 py-1.5 text-sm text-white outline-none transition"
+                style={{
+                  background: 'rgba(51, 65, 85, 0.5)',
+                  border: '1px solid #334155'
+                }}
+              >
+                {mockEmployees.map((emp) => (
+                  <option key={emp.id} value={emp.name}>
+                    {emp.name} ({emp.role})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Barre de recherche */}
@@ -361,6 +389,12 @@ export default function POSPage() {
             <p className="text-center text-sm mb-4" style={{ color: '#94a3b8' }}>
               {totalItems} article{totalItems > 1 ? 's' : ''}
             </p>
+
+            {/* Affichage de l'employé */}
+            <div className="flex items-center justify-center gap-2 mb-4 p-2 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
+              <User className="w-4 h-4" style={{ color: '#818cf8' }} />
+              <span className="text-sm text-white">{selectedEmployee}</span>
+            </div>
 
             <div className="space-y-3">
               <p className="text-xs" style={{ color: '#94a3b8' }}>Moyen de paiement</p>

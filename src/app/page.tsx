@@ -8,6 +8,7 @@ import { Testimonials } from '@/components/landing/Testimonials'
 import { CTA } from '@/components/landing/CTA'
 import { FAQ } from '@/components/landing/FAQ'
 import { Footer } from '@/components/landing/Footer'
+import { AssistantButton } from '@/components/landing/AssistantButton'
 
 export default function Home() {
   return (
@@ -22,6 +23,7 @@ export default function Home() {
       <CTA />
       <FAQ />
       <Footer />
+      <AssistantButton />
     </>
   )
 }

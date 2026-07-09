@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Check, X, Star, Gift } from 'lucide-react'
 
 const plans = [
@@ -116,7 +117,19 @@ const plans = [
   },
 ]
 
+// ✅ Fonction de formatage simple pour éviter l'hydratation
+const formatPrice = (price: number): string => {
+  // Utiliser un formatage simple qui ne change pas entre serveur et client
+  return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+}
+
 export function Pricing() {
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   return (
     <section 
       id="pricing" 
@@ -135,87 +148,90 @@ export function Pricing() {
           </p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-          {plans.map((plan, index) => (
-            <div 
-              key={plan.id}
-              className={`rounded-2xl p-6 relative transition-all duration-500 hover:scale-105 ${
-                plan.featured ? 'lg:-translate-y-2' : ''
-              }`}
-              style={{
-                background: plan.featured 
-                  ? 'linear-gradient(to bottom, rgba(99, 102, 241, 0.2), rgba(49, 46, 129, 0.2))'
-                  : 'rgba(255,255,255,0.05)',
-                backdropFilter: 'blur(10px)',
-                border: plan.featured 
-                  ? '2px solid #6366f1'
-                  : '1px solid rgba(255,255,255,0.1)',
-                animation: `fadeIn 0.6s ease-out ${index * 0.1}s both`
-              }}
-            >
-              {plan.featured && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-white text-xs font-bold animate-pulse"
-                  style={{ background: '#6366f1' }}
-                >
-                  <Star className="w-3 h-3 inline mr-1" />
-                  Recommandé
-                </div>
-              )}
-              {plan.isFree && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-white text-xs font-bold"
-                  style={{ background: '#22c55e' }}
-                >
-                  <Gift className="w-3 h-3 inline mr-1" />
-                  Essai 30 jours
-                </div>
-              )}
-              <h3 className="text-xl font-bold text-white mt-2">{plan.name}</h3>
-              <p className="text-sm" style={{ color: '#94a3b8' }}>{plan.description}</p>
-              <div className="my-4">
-                <span className={`text-3xl font-bold ${plan.isFree ? 'text-green-400' : 'text-white'}`}>
-                  {plan.price === 0 ? 'Gratuit' : plan.price.toLocaleString() + ' FCFA'}
-                </span>
-                {plan.period && plan.price > 0 && (
-                  <span className="text-sm" style={{ color: '#94a3b8' }}>/{plan.period}</span>
+          {plans.map((plan, index) => {
+            const formattedPrice = isMounted ? formatPrice(plan.price) : plan.price.toString()
+            return (
+              <div 
+                key={plan.id}
+                className={`rounded-2xl p-6 relative transition-all duration-500 hover:scale-105 ${
+                  plan.featured ? 'lg:-translate-y-2' : ''
+                }`}
+                style={{
+                  background: plan.featured 
+                    ? 'linear-gradient(to bottom, rgba(99, 102, 241, 0.2), rgba(49, 46, 129, 0.2))'
+                    : 'rgba(255,255,255,0.05)',
+                  backdropFilter: 'blur(10px)',
+                  border: plan.featured 
+                    ? '2px solid #6366f1'
+                    : '1px solid rgba(255,255,255,0.1)',
+                  animation: `fadeIn 0.6s ease-out ${index * 0.1}s both`
+                }}
+              >
+                {plan.featured && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-white text-xs font-bold animate-pulse"
+                    style={{ background: '#6366f1' }}
+                  >
+                    <Star className="w-3 h-3 inline mr-1" />
+                    Recommandé
+                  </div>
                 )}
                 {plan.isFree && (
-                  <p className="text-xs mt-1" style={{ color: '#22c55e' }}>30 jours d'essai complet</p>
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-white text-xs font-bold"
+                    style={{ background: '#22c55e' }}
+                  >
+                    <Gift className="w-3 h-3 inline mr-1" />
+                    Essai 30 jours
+                  </div>
                 )}
+                <h3 className="text-xl font-bold text-white mt-2">{plan.name}</h3>
+                <p className="text-sm" style={{ color: '#94a3b8' }}>{plan.description}</p>
+                <div className="my-4">
+                  <span className={`text-3xl font-bold ${plan.isFree ? 'text-green-400' : 'text-white'}`}>
+                    {plan.price === 0 ? 'Gratuit' : formattedPrice + ' FCFA'}
+                  </span>
+                  {plan.period && plan.price > 0 && (
+                    <span className="text-sm" style={{ color: '#94a3b8' }}>/{plan.period}</span>
+                  )}
+                  {plan.isFree && (
+                    <p className="text-xs mt-1" style={{ color: '#22c55e' }}>30 jours d'essai complet</p>
+                  )}
+                </div>
+
+                <ul className="space-y-2 mb-6 text-sm">
+                  {plan.features.slice(0, 5).map((feature, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      <Check className="w-4 h-4 shrink-0" style={{ color: '#22c55e' }} />
+                      <span style={{ color: '#cbd5e1' }}>{feature}</span>
+                    </li>
+                  ))}
+                  {plan.features.length > 5 && (
+                    <li className="text-xs" style={{ color: '#64748b' }}>
+                      +{plan.features.length - 5} autres fonctionnalités
+                    </li>
+                  )}
+                  {plan.notIncluded && plan.notIncluded.slice(0, 3).map((feature, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                      <X className="w-4 h-4 shrink-0" style={{ color: '#475569' }} />
+                      <span style={{ color: '#475569' }}>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <a 
+                  href={plan.href}
+                  className={`block text-center py-2.5 rounded-xl text-white font-semibold text-sm transition-all duration-300 ${
+                    plan.featured 
+                      ? 'bg-primary-600 hover:bg-primary-500 shadow-lg shadow-primary-600/25 hover:shadow-xl hover:scale-105' 
+                      : plan.isFree
+                      ? 'bg-green-600 hover:bg-green-500 shadow-lg shadow-green-600/25 hover:shadow-xl hover:scale-105'
+                      : 'border border-dark-600 hover:border-primary-500 hover:bg-primary-500/10'
+                  }`}
+                >
+                  {plan.cta}
+                </a>
               </div>
-
-              <ul className="space-y-2 mb-6 text-sm">
-                {plan.features.slice(0, 5).map((feature, i) => (
-                  <li key={i} className="flex items-center gap-2">
-                    <Check className="w-4 h-4 shrink-0" style={{ color: '#22c55e' }} />
-                    <span style={{ color: '#cbd5e1' }}>{feature}</span>
-                  </li>
-                ))}
-                {plan.features.length > 5 && (
-                  <li className="text-xs" style={{ color: '#64748b' }}>
-                    +{plan.features.length - 5} autres fonctionnalités
-                  </li>
-                )}
-                {plan.notIncluded && plan.notIncluded.slice(0, 3).map((feature, i) => (
-                  <li key={i} className="flex items-center gap-2">
-                    <X className="w-4 h-4 shrink-0" style={{ color: '#475569' }} />
-                    <span style={{ color: '#475569' }}>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <a 
-                href={plan.href}
-                className={`block text-center py-2.5 rounded-xl text-white font-semibold text-sm transition-all duration-300 ${
-                  plan.featured 
-                    ? 'bg-primary-600 hover:bg-primary-500 shadow-lg shadow-primary-600/25 hover:shadow-xl hover:scale-105' 
-                    : plan.isFree
-                    ? 'bg-green-600 hover:bg-green-500 shadow-lg shadow-green-600/25 hover:shadow-xl hover:scale-105'
-                    : 'border border-dark-600 hover:border-primary-500 hover:bg-primary-500/10'
-                }`}
-              >
-                {plan.cta}
-              </a>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </section>
