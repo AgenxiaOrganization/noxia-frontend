@@ -35,34 +35,34 @@ const faqs = [
 export function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
-  // Fonction pour ouvrir le chatbot (la bulle)
-  const openChatbot = () => {
-    // Trouver et cliquer sur le bouton du chatbot
+  // Fonction pour ouvrir le chatbot et envoyer la question
+  const handleFAQClick = (question: string, trigger: string) => {
+    // 1. Ouvrir la bulle du chatbot
     const chatbotButton = document.querySelector('.chatbot-trigger') as HTMLElement
     if (chatbotButton) {
       chatbotButton.click()
-    } else {
-      // Fallback: alerter l'utilisateur
-      alert('🤖 Ouvrez le chatbot en cliquant sur la bulle en bas à droite.')
     }
-  }
 
-  const handleFAQClick = (question: string, trigger: string) => {
-    // Ouvrir le chatbot
-    openChatbot()
-    
-    // Simuler l'envoi de la question au bot
+    // 2. Attendre que le chat s'ouvre, puis envoyer la question
     setTimeout(() => {
-      // Trouver l'input du chatbot et y mettre la question
+      // Trouver l'input du chatbot
       const input = document.querySelector('.chatbot-input') as HTMLInputElement
       if (input) {
+        // Mettre la question dans l'input
         input.value = trigger
+        // Déclencher l'événement input pour mettre à jour l'état
         input.dispatchEvent(new Event('input', { bubbles: true }))
-        // Simuler l'envoi
+        
+        // 3. Simuler l'envoi après un court délai
         setTimeout(() => {
           const sendButton = document.querySelector('.chatbot-send') as HTMLElement
-          if (sendButton) sendButton.click()
+          if (sendButton) {
+            sendButton.click()
+          }
         }, 300)
+      } else {
+        // Fallback: si l'input n'est pas trouvé, ouvrir le chat et alert
+        alert(`🤖 Question envoyée au chatbot : "${question}"`)
       }
     }, 500)
   }
@@ -87,7 +87,7 @@ export function FAQ() {
             Questions fréquentes
           </h2>
           <p className="text-lg" style={{ color: '#94a3b8' }}>
-            Cliquez sur une question pour poser la question directement à notre assistant
+            Cliquez sur une question pour la poser directement à notre assistant
           </p>
         </motion.div>
 
@@ -99,7 +99,7 @@ export function FAQ() {
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.4, delay: index * 0.1 }}
               viewport={{ once: true }}
-              className="rounded-xl p-4 sm:p-5 cursor-pointer transition-all hover:border-primary-500"
+              className="rounded-xl p-4 sm:p-5 cursor-pointer transition-all hover:border-primary-500 group"
               style={{
                 background: 'rgba(255,255,255,0.05)',
                 backdropFilter: 'blur(10px)',
@@ -107,15 +107,19 @@ export function FAQ() {
               }}
               onClick={() => {
                 setOpenIndex(openIndex === index ? null : index)
-                if (openIndex !== index) {
-                  handleFAQClick(faq.question, faq.trigger)
-                }
+                // Envoyer la question au chatbot
+                handleFAQClick(faq.question, faq.trigger)
               }}
             >
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-white">{faq.question}</span>
+                <span className="font-semibold text-white group-hover:text-primary-400 transition">
+                  {faq.question}
+                </span>
                 <div className="flex items-center gap-2">
-                  <Bot className="w-4 h-4" style={{ color: '#818cf8' }} />
+                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
+                    <Bot className="w-3 h-3 inline mr-1" />
+                    Poser au bot
+                  </span>
                   <ChevronDown 
                     className={`w-5 h-5 transition-transform duration-200 ${openIndex === index ? 'rotate-180' : ''}`}
                     style={{ color: '#94a3b8' }}
@@ -125,8 +129,8 @@ export function FAQ() {
               {openIndex === index && (
                 <div className="mt-3 p-3 rounded-lg" style={{ background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.1)' }}>
                   <p className="text-sm" style={{ color: '#94a3b8' }}>{faq.answer}</p>
-                  <p className="text-xs mt-2" style={{ color: '#818cf8' }}>
-                    💡 La question a été envoyée à l&apos;assistant
+                  <p className="text-xs mt-2" style={{ color: '#22c55e' }}>
+                    ✅ Question envoyée à l&apos;assistant
                   </p>
                 </div>
               )}

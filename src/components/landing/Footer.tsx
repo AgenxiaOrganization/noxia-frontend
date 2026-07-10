@@ -63,7 +63,7 @@ export function Footer() {
             &copy; 2026 NOXIA. Tous droits réservés.
           </p>
           <p className="text-sm" style={{ color: '#64748b' }}>
-            Made with ❤️ by <span className="text-primary-400">Agenxia</span>
+            Made by <span className="text-primary-400">Agenxia</span>
           </p>
         </div>
       </div>

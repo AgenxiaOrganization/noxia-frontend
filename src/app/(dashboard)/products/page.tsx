@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import {
-  Plus, Search, Edit, Trash2, Package, Coffee, Utensils, Sparkles,
-  X, Save, AlertCircle, Check, PlusCircle, MinusCircle
+import { 
+  Plus, Search, Edit, Trash2, Package, Coffee, Utensils, Sparkles, 
+  X, Save, AlertCircle, Check, PlusCircle, MinusCircle 
 } from 'lucide-react'
 
 // --- Types ---
@@ -17,6 +17,7 @@ interface Product {
   stock: number
   unit: string
   supplierId: number | null
+  minStock: number
   characteristics: Record<string, string>
 }
 
@@ -33,70 +34,63 @@ const mockSuppliers: Supplier[] = [
   { id: 4, name: 'Coca-Cola Gabon' },
 ]
 
+// Caractéristiques prédéfinies par catégorie/sous-catégorie
+const predefinedCharacteristics: Record<string, Record<string, string>> = {
+  'biere': { 'Type': 'Lager', 'Contenance': '65cl', 'Taux d\'alcool': '5%' },
+  'whisky': { 'Taux d\'alcool': '40%', 'Volume': '70cl', 'Origine': 'Écosse' },
+  'vodka': { 'Taux d\'alcool': '37.5%', 'Volume': '70cl', 'Origine': 'France' },
+  'champagne': { 'Type': 'Brut', 'Volume': '75cl', 'Région': 'Champagne' },
+  'cola': { 'Type': 'Cola', 'Contenance': '33cl', 'Sucré': 'Oui' },
+  'jus': { 'Type': 'Jus', 'Contenance': '33cl', 'Naturel': 'Oui' },
+  'cocktail': { 'Type': 'Cocktail', 'Volume': 'Verre', 'Alcool': 'Oui' },
+  'plats': { 'Type': 'Plat', 'Poids': '200g', 'Végétarien': 'Non' },
+  'snacks': { 'Type': 'Snack', 'Poids': '150g', 'Végétarien': 'Oui' },
+  'chicha': { 'Durée': '1h', 'Parfums': 'Multiples' },
+  'default': { 'Type': 'Standard' }
+}
+
 const mockProducts: Product[] = [
-  {
-    id: 1,
-    name: 'Bière Castel 65cl',
-    category: 'boisson',
-    subCategory: 'casier',
-    pricePerUnit: 1500,
-    unitsPerPackage: 24,
-    stock: 48,
+  { 
+    id: 1, 
+    name: 'Bière Castel 65cl', 
+    category: 'boisson', 
+    subCategory: 'casier', 
+    pricePerUnit: 1500, 
+    unitsPerPackage: 24, 
+    stock: 48, 
     unit: 'unité',
     supplierId: 1,
-    characteristics: { 'Type': 'Lager', 'Contenance': '65cl' }
+    minStock: 20,
+    characteristics: { 'Type': 'Lager', 'Contenance': '65cl' } 
   },
-  {
-    id: 2,
-    name: 'Whisky Jack Daniel\'s',
-    category: 'boisson',
-    subCategory: 'unite',
-    pricePerUnit: 25000,
-    unitsPerPackage: 1,
-    stock: 8,
+  { 
+    id: 2, 
+    name: 'Whisky Jack Daniel\'s', 
+    category: 'boisson', 
+    subCategory: 'unite', 
+    pricePerUnit: 25000, 
+    unitsPerPackage: 1, 
+    stock: 8, 
     unit: 'bouteille',
     supplierId: 2,
-    characteristics: { 'Taux d\'alcool': '40%', 'Volume': '70cl' }
+    minStock: 5,
+    characteristics: { 'Taux d\'alcool': '40%', 'Volume': '70cl' } 
   },
-  {
-    id: 3,
-    name: 'Coca-Cola 33cl',
-    category: 'boisson',
-    subCategory: 'casier',
-    pricePerUnit: 1000,
-    unitsPerPackage: 12,
-    stock: 120,
+  { 
+    id: 3, 
+    name: 'Coca-Cola 33cl', 
+    category: 'boisson', 
+    subCategory: 'casier', 
+    pricePerUnit: 1000, 
+    unitsPerPackage: 12, 
+    stock: 120, 
     unit: 'unité',
     supplierId: 4,
-    characteristics: { 'Type': 'Cola', 'Contenance': '33cl' }
-  },
-  {
-    id: 4,
-    name: 'Brochettes Poulet',
-    category: 'nourriture',
-    subCategory: 'unite',
-    pricePerUnit: 3500,
-    unitsPerPackage: 1,
-    stock: 45,
-    unit: 'unité',
-    supplierId: 3,
-    characteristics: { 'Type': 'Poulet', 'Poids': '100g' }
-  },
-  {
-    id: 5,
-    name: 'Chicha Session',
-    category: 'service',
-    subCategory: 'unite',
-    pricePerUnit: 10000,
-    unitsPerPackage: 1,
-    stock: -1,
-    unit: 'session',
-    supplierId: null,
-    characteristics: { 'Durée': '1h', 'Parfums': 'Multiples' }
+    minStock: 30,
+    characteristics: { 'Type': 'Cola', 'Contenance': '33cl' } 
   },
 ]
 
-// --- Composant Principal ---
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>(mockProducts)
   const [searchTerm, setSearchTerm] = useState('')
@@ -104,7 +98,7 @@ export default function ProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
 
-  // État du formulaire (SANS l'ID)
+  // État du formulaire
   const [formData, setFormData] = useState<Omit<Product, 'id'>>({
     name: '',
     category: 'boisson',
@@ -114,25 +108,73 @@ export default function ProductsPage() {
     stock: 0,
     unit: 'unité',
     supplierId: null,
+    minStock: 10,
     characteristics: {},
   })
 
-  // États pour les champs flexibles (Caractéristiques)
+  // États pour les champs flexibles
   const [charKey, setCharKey] = useState('')
   const [charValue, setCharValue] = useState('')
   const [newSupplierName, setNewSupplierName] = useState('')
   const [showNewSupplierInput, setShowNewSupplierInput] = useState(false)
   const [suppliers, setSuppliers] = useState<Supplier[]>(mockSuppliers)
 
-  // Calcul des catégories uniques pour les filtres
   const categories = ['all', ...new Set(products.map(p => p.category))]
 
-  // Filtrer les produits
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory
     return matchesSearch && matchesCategory
   })
+
+  // Déterminer les caractéristiques prédéfinies en fonction du nom du produit
+  const getPredefinedCharacteristics = (name: string, category: string): Record<string, string> => {
+    const lowerName = name.toLowerCase()
+    
+    if (lowerName.includes('biere') || lowerName.includes('castel') || lowerName.includes('guinness')) {
+      return { ...predefinedCharacteristics['biere'] }
+    }
+    if (lowerName.includes('whisky') || lowerName.includes('jack')) {
+      return { ...predefinedCharacteristics['whisky'] }
+    }
+    if (lowerName.includes('vodka') || lowerName.includes('absolut')) {
+      return { ...predefinedCharacteristics['vodka'] }
+    }
+    if (lowerName.includes('champagne') || lowerName.includes('moet')) {
+      return { ...predefinedCharacteristics['champagne'] }
+    }
+    if (lowerName.includes('coca') || lowerName.includes('cola')) {
+      return { ...predefinedCharacteristics['cola'] }
+    }
+    if (lowerName.includes('jus') || lowerName.includes('orange')) {
+      return { ...predefinedCharacteristics['jus'] }
+    }
+    if (lowerName.includes('cocktail') || lowerName.includes('mojito') || lowerName.includes('pina')) {
+      return { ...predefinedCharacteristics['cocktail'] }
+    }
+    if (lowerName.includes('brochette') || lowerName.includes('poulet')) {
+      return { ...predefinedCharacteristics['plats'] }
+    }
+    if (lowerName.includes('burger') || lowerName.includes('snack')) {
+      return { ...predefinedCharacteristics['snacks'] }
+    }
+    if (lowerName.includes('chicha')) {
+      return { ...predefinedCharacteristics['chicha'] }
+    }
+    
+    return { ...predefinedCharacteristics['default'] }
+  }
+
+  // Mettre à jour les caractéristiques quand le nom change
+  useEffect(() => {
+    if (formData.name.trim()) {
+      const newChars = getPredefinedCharacteristics(formData.name, formData.category)
+      setFormData(prev => ({
+        ...prev,
+        characteristics: { ...newChars }
+      }))
+    }
+  }, [formData.name, formData.category])
 
   // --- Logique du formulaire ---
   const openModal = (product: Product | null = null) => {
@@ -146,11 +188,11 @@ export default function ProductsPage() {
         stock: product.stock,
         unit: product.unit,
         supplierId: product.supplierId,
+        minStock: product.minStock || 10,
         characteristics: product.characteristics || {},
       })
       setEditingProduct(product)
     } else {
-      // Reset pour un nouveau produit
       setFormData({
         name: '',
         category: 'boisson',
@@ -160,6 +202,7 @@ export default function ProductsPage() {
         stock: 0,
         unit: 'unité',
         supplierId: null,
+        minStock: 10,
         characteristics: {},
       })
       setEditingProduct(null)
@@ -197,12 +240,10 @@ export default function ProductsPage() {
   // Mise à jour du champ "Sous-catégorie" quand la catégorie change
   useEffect(() => {
     if (formData.category === 'boisson') {
-      // Si c'est une boisson, on propose casier/unite
       if (!['casier', 'unite'].includes(formData.subCategory)) {
         setFormData(prev => ({ ...prev, subCategory: 'casier' }))
       }
     } else {
-      // Si c'est nourriture ou service, on force "unite"
       setFormData(prev => ({ ...prev, subCategory: 'unite' }))
     }
   }, [formData.category])
@@ -218,11 +259,10 @@ export default function ProductsPage() {
     }
   }
 
-  // Sauvegarder le produit (Création ou Mise à jour)
+  // Sauvegarder le produit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Calcul du stock total (si casier)
     let totalStock = formData.stock
     if (formData.subCategory === 'casier') {
       totalStock = formData.unitsPerPackage * formData.stock
@@ -238,6 +278,7 @@ export default function ProductsPage() {
       stock: totalStock,
       unit: formData.subCategory === 'casier' ? 'unité' : 'pièce',
       supplierId: formData.supplierId,
+      minStock: formData.minStock,
       characteristics: formData.characteristics,
     }
 
@@ -265,7 +306,7 @@ export default function ProductsPage() {
         <div>
           <h1 className="text-xl font-bold text-white">Produits</h1>
           <p className="text-sm" style={{ color: '#94a3b8' }}>
-            {products.length} produits • {products.filter(p => p.stock <= 10 && p.stock >= 0).length} alertes stock
+            {products.length} produits • {products.filter(p => p.stock <= p.minStock && p.stock >= 0).length} alertes stock
           </p>
         </div>
         <button
@@ -319,7 +360,7 @@ export default function ProductsPage() {
       {/* LISTE DES PRODUITS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {filteredProducts.map((product) => {
-          const isLowStock = product.stock >= 0 && product.stock <= 10
+          const isLowStock = product.stock >= 0 && product.stock <= product.minStock
           const isOutOfStock = product.stock === 0
           const isInfinite = product.stock < 0
 
@@ -363,6 +404,13 @@ export default function ProductsPage() {
                 </div>
               </div>
 
+              {/* Seuil d'alerte */}
+              {!isInfinite && (
+                <p className="text-xs" style={{ color: '#64748b' }}>
+                  Seuil alerte: {product.minStock} {product.unit}s
+                </p>
+              )}
+
               {/* Caractéristiques */}
               {product.characteristics && Object.keys(product.characteristics).length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2 pt-2 border-t" style={{ borderColor: '#334155' }}>
@@ -376,13 +424,6 @@ export default function ProductsPage() {
                     </span>
                   ))}
                 </div>
-              )}
-
-              {/* Fournisseur */}
-              {product.supplierId && (
-                <p className="text-xs mt-1" style={{ color: '#64748b' }}>
-                  Fournisseur: {suppliers.find(s => s.id === product.supplierId)?.name || 'Inconnu'}
-                </p>
               )}
 
               <div className="flex gap-2 mt-3 pt-3 border-t" style={{ borderColor: '#334155' }}>
@@ -448,6 +489,9 @@ export default function ProductsPage() {
                   }}
                   required
                 />
+                <p className="text-xs mt-1" style={{ color: '#64748b' }}>
+                  💡 Les caractéristiques seront automatiquement suggérées en fonction du nom
+                </p>
               </div>
 
               {/* Catégorie */}
@@ -468,7 +512,7 @@ export default function ProductsPage() {
                 </select>
               </div>
 
-              {/* Sous-catégorie (Dynamique) */}
+              {/* Sous-catégorie */}
               <div>
                 <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
                   Type de vente *
@@ -498,13 +542,10 @@ export default function ProductsPage() {
                     }}
                   />
                 )}
-                {formData.category !== 'boisson' && (
-                  <p className="text-xs mt-1" style={{ color: '#64748b' }}>Les produits non-boissons sont vendus à l'unité.</p>
-                )}
               </div>
 
-              {/* Prix, Quantité, Stock */}
-              <div className="grid grid-cols-3 gap-3">
+              {/* Prix, Quantité, Stock, Seuil */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Prix unitaire (F) *</label>
                   <input
@@ -523,7 +564,7 @@ export default function ProductsPage() {
                 </div>
                 <div>
                   <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
-                    {formData.subCategory === 'casier' ? 'Nb unités/casier' : 'Quantité en stock'}
+                    {formData.subCategory === 'casier' ? 'Nb unités/casier' : 'Quantité'}
                   </label>
                   <input
                     type="number"
@@ -568,15 +609,31 @@ export default function ProductsPage() {
                       border: '1px solid #334155'
                     }}
                   />
-                  {formData.subCategory === 'casier' && (
-                    <p className="text-xs mt-1" style={{ color: '#22c55e' }}>
-                      Total en stock : {formData.unitsPerPackage * formData.stock} unités
-                    </p>
-                  )}
+                </div>
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Seuil alerte</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formData.minStock}
+                    onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value) || 0 })}
+                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                    style={{
+                      background: 'rgba(51, 65, 85, 0.5)',
+                      border: '1px solid #334155'
+                    }}
+                  />
                 </div>
               </div>
 
-              {/* Fournisseur (Select + Ajout rapide) */}
+              {formData.subCategory === 'casier' && (
+                <p className="text-xs" style={{ color: '#22c55e' }}>
+                  Total en stock : {formData.unitsPerPackage * formData.stock} unités
+                </p>
+              )}
+
+              {/* Fournisseur */}
               <div>
                 <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Fournisseur</label>
                 <div className="flex gap-2">
@@ -646,7 +703,7 @@ export default function ProductsPage() {
                 )}
               </div>
 
-              {/* Champs flexibles (Caractéristiques) */}
+              {/* Caractéristiques avec pré-remplissage */}
               <div>
                 <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Caractéristiques</label>
                 <div className="flex gap-2 mb-2">
@@ -685,7 +742,6 @@ export default function ProductsPage() {
                   </button>
                 </div>
 
-                {/* Liste des caractéristiques ajoutées */}
                 <div className="flex flex-wrap gap-1">
                   {Object.entries(formData.characteristics).map(([key, value]) => (
                     <span
@@ -709,7 +765,6 @@ export default function ProductsPage() {
                 )}
               </div>
 
-              {/* Boutons de validation */}
               <div className="flex gap-3 pt-4 border-t" style={{ borderColor: '#334155' }}>
                 <button
                   type="button"

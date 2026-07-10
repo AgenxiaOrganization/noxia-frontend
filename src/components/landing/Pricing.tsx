@@ -92,7 +92,7 @@ const plans = [
   {
     id: 'business',
     name: 'Business',
-    price: 14000,
+    price: 14900,
     period: 'mois',
     description: 'Pour les groupes et franchises',
     featured: false,

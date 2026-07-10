@@ -98,8 +98,7 @@ export function AssistantButton() {
       {/* Bouton flottant */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center hover:scale-110"
-        style={{
+className="chatbot-trigger fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center hover:scale-110"        style={{
           background: 'linear-gradient(135deg, #4f46e5, #818cf8)',
           boxShadow: '0 10px 40px rgba(99, 102, 241, 0.4)'
         }}
@@ -192,7 +191,7 @@ export function AssistantButton() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyPress}
                 placeholder="Posez votre question..."
-                className="flex-1 rounded-lg px-3 py-2 text-white text-sm outline-none transition"
+                className="chatbot-input flex-1 rounded-lg px-3 py-2 text-white text-sm outline-none transition"
                 style={{ 
                   background: 'rgba(51, 65, 85, 0.5)',
                   border: '1px solid #334155'
@@ -201,8 +200,7 @@ export function AssistantButton() {
               <button
                 onClick={sendMessage}
                 disabled={isLoading || !input.trim()}
-                className="px-3 py-2 rounded-lg text-white text-sm font-semibold transition disabled:opacity-50"
-                style={{ 
+className="chatbot-send px-3 py-2 rounded-lg text-white text-sm font-semibold transition disabled:opacity-50"                style={{ 
                   background: '#4f46e5',
                   boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
                 }}

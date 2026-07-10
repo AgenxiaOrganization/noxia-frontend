@@ -18,12 +18,14 @@ const featureCategories = [
   { id: 'support', label: 'Support & Assistance', icon: Headphones },
 ]
 
+// ✅ Mise à jour : Essai et Business ont TOUTES les fonctionnalités
 const features = {
+  // Base
   'Tableau de bord complet': { category: 'base', plans: ['essai', 'premium', 'business'] },
-  'Tableau de bord': { category: 'base', plans: ['starter'] },
+  'Tableau de bord': { category: 'base', plans: ['starter','essai','business'] },
   'Gestion des ventes (POS)': { category: 'base', plans: ['essai', 'starter', 'premium', 'business'] },
   'Gestion des stocks': { category: 'base', plans: ['essai', 'starter', 'premium', 'business'] },
-  'Rapports basiques': { category: 'base', plans: ['starter'] },
+  'Rapports basiques': { category: 'base', plans: ['starter','essai','business'] },
   'Rapports avancés': { category: 'advanced', plans: ['essai', 'premium', 'business'] },
   'Multi-utilisateurs': { category: 'advanced', plans: ['essai', 'premium', 'business'] },
   'Multi-caisses': { category: 'advanced', plans: ['essai', 'premium', 'business'] },
@@ -32,11 +34,12 @@ const features = {
   'API publique': { category: 'integration', plans: ['essai', 'premium', 'business'] },
   'WhatsApp & Telegram': { category: 'integration', plans: ['essai', 'starter', 'premium', 'business'] },
   'Alertes automatiques': { category: 'integration', plans: ['essai', 'starter', 'premium', 'business'] },
+  // Support - Essai et Business ont tout
   'Support prioritaire 24/7': { category: 'support', plans: ['essai', 'business'] },
-  'Formation équipe': { category: 'support', plans: ['business'] },
-  'Déploiement personnalisé': { category: 'support', plans: ['business'] },
-  'Intégrations sur mesure': { category: 'integration', plans: ['business'] },
-  'SLA garanti': { category: 'support', plans: ['business'] },
+  'Formation équipe': { category: 'support', plans: ['essai', 'business'] },
+  'Déploiement personnalisé': { category: 'support', plans: ['essai', 'business'] },
+  'Intégrations sur mesure': { category: 'integration', plans: ['essai', 'business'] },
+  'SLA garanti': { category: 'support', plans: ['essai', 'business'] },
 }
 
 export function FeatureComparison() {
