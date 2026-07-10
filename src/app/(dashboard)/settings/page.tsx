@@ -26,7 +26,7 @@ const mockDocuments = [
   {
     id: 1,
     name: 'Registre de commerce',
-    type: 'pdf',
+    type: 'registre_commerce',
     status: 'en_attente',
     uploadDate: '2026-07-08',
     fileName: 'registre_commerce.pdf',
@@ -35,7 +35,7 @@ const mockDocuments = [
   {
     id: 2,
     name: 'Attestation fiscale',
-    type: 'pdf',
+    type: 'attestation_fiscale',
     status: 'verifie',
     uploadDate: '2026-07-05',
     fileName: 'attestation_fiscale.pdf',
@@ -44,7 +44,7 @@ const mockDocuments = [
   {
     id: 3,
     name: 'Licence d\'exploitation',
-    type: 'pdf',
+    type: 'licence_exploitation',
     status: 'rejete',
     uploadDate: '2026-07-01',
     fileName: 'licence_exploitation.pdf',
@@ -54,12 +54,22 @@ const mockDocuments = [
   {
     id: 4,
     name: 'Pièce d\'identité du gérant',
-    type: 'pdf',
+    type: 'piece_identite',
     status: 'a_verifier',
     uploadDate: '2026-07-08',
     fileName: 'cni_gerant.pdf',
     size: '1.2 MB'
   },
+]
+
+const documentTypes = [
+  { value: 'registre_commerce', label: 'Registre de commerce' },
+  { value: 'attestation_fiscale', label: 'Attestation fiscale' },
+  { value: 'licence_exploitation', label: "Licence d'exploitation" },
+  { value: 'piece_identite', label: "Pièce d'identité du gérant" },
+  { value: 'nif', label: 'NIF (Numéro d\'Identification Fiscale)' },
+  { value: 'statuts', label: 'Statuts de l\'entreprise' },
+  { value: 'autre', label: 'Autre' },
 ]
 
 const statusConfig = {
@@ -97,21 +107,22 @@ export default function SettingsPage() {
   const [documents, setDocuments] = useState(mockDocuments)
   const [isUploading, setIsUploading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [documentName, setDocumentName] = useState('')
+  const [documentType, setDocumentType] = useState('registre_commerce')
 
   // --- Gestion des documents ---
   const handleFileUpload = () => {
-    if (!selectedFile || !documentName.trim()) {
-      alert('Veuillez sélectionner un fichier et donner un nom au document.')
+    if (!selectedFile) {
+      alert('Veuillez sélectionner un fichier.')
       return
     }
 
     setIsUploading(true)
     setTimeout(() => {
+      const typeLabel = documentTypes.find(t => t.value === documentType)?.label || documentType
       const newDoc = {
         id: Date.now(),
-        name: documentName.trim(),
-        type: selectedFile.name.split('.').pop() || 'pdf',
+        name: typeLabel,
+        type: documentType,
         status: 'en_attente',
         uploadDate: new Date().toISOString().split('T')[0],
         fileName: selectedFile.name,
@@ -119,7 +130,7 @@ export default function SettingsPage() {
       }
       setDocuments([...documents, newDoc])
       setSelectedFile(null)
-      setDocumentName('')
+      setDocumentType('registre_commerce')
       setIsUploading(false)
       alert('📄 Document soumis avec succès ! Il sera vérifié par notre équipe.')
     }, 1500)
@@ -386,21 +397,27 @@ export default function SettingsPage() {
             </p>
 
             <div className="space-y-3">
+              {/* Type de document - SELECT */}
               <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nom du document</label>
-                <input
-                  type="text"
-                  value={documentName}
-                  onChange={(e) => setDocumentName(e.target.value)}
-                  placeholder="Ex: Registre de commerce"
+                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Type de document</label>
+                <select
+                  value={documentType}
+                  onChange={(e) => setDocumentType(e.target.value)}
                   className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
                   style={{ 
                     background: 'rgba(51, 65, 85, 0.5)',
                     border: '1px solid #334155'
                   }}
-                />
+                >
+                  {documentTypes.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
               </div>
 
+              {/* Upload de fichier */}
               <div 
                 className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition hover:border-primary-500"
                 style={{ borderColor: '#334155' }}
@@ -428,7 +445,7 @@ export default function SettingsPage() {
 
               <button
                 onClick={handleFileUpload}
-                disabled={isUploading || !selectedFile || !documentName.trim()}
+                disabled={isUploading || !selectedFile}
                 className="w-full py-2.5 rounded-lg text-white text-sm font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2"
                 style={{ 
                   background: '#4f46e5',
@@ -466,6 +483,7 @@ export default function SettingsPage() {
               {documents.map((doc) => {
                 const status = statusConfig[doc.status as keyof typeof statusConfig]
                 const StatusIcon = status?.icon || FileText
+                const typeLabel = documentTypes.find(t => t.value === doc.type)?.label || doc.type
                 
                 return (
                   <div 
@@ -491,6 +509,9 @@ export default function SettingsPage() {
                           </span>
                           <span className="text-xs" style={{ color: '#64748b' }}>
                             {doc.uploadDate}
+                          </span>
+                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(51,65,85,0.3)', color: '#94a3b8' }}>
+                            {typeLabel}
                           </span>
                         </div>
                         {doc.status === 'rejete' && doc.rejectionReason && (

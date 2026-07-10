@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { 
   Plus, Search, Edit, Trash2, User, UserCheck, UserX,
   Phone, Mail, DollarSign, Award, Key, Copy, Check,
-  Eye, EyeOff, Send, GripVertical, X
+  Eye, EyeOff, Send, GripVertical, X,
+  RefreshCw
 } from 'lucide-react'
 
 // --- Types ---
@@ -351,6 +352,21 @@ const [showEmployeeId, setShowEmployeeId] = useState<number | null>(null)
                         >
                           <Edit className="w-4 h-4" />
                         </button>
+
+                         <button
+  onClick={() => {
+    const newId = 'EMP-' + Math.random().toString(36).substring(2, 6).toUpperCase()
+    setEmployees(employees.map(e => 
+      e.id === employee.id ? { ...e, employeeId: newId } : e
+    ))
+  }}
+  className="p-1.5 rounded transition hover:bg-yellow-500/20"
+  style={{ color: '#f59e0b' }}
+  title="Régénérer l'ID"
+>
+  <RefreshCw className="w-4 h-4" />
+</button>
+                        
                         <button
                           onClick={() => {
                             const updated = employees.map(e => 
@@ -364,6 +380,7 @@ const [showEmployeeId, setShowEmployeeId] = useState<number | null>(null)
                         >
                           {employee.active ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                         </button>
+                       
                       </div>
                     </td>
                   </tr>

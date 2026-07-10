@@ -2,22 +2,20 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Mail, Lock, Eye, EyeOff, Building2, Key } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Key, User } from 'lucide-react'
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [companyId, setCompanyId] = useState('')
-  const [loginMethod, setLoginMethod] = useState<'classic' | 'company'>('classic')
+  const [employeeId, setEmployeeId] = useState('')
+  const [loginMethod, setLoginMethod] = useState<'classic' | 'employee'>('employee')
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     
-    // Simulation de connexion
-    console.log('Login:', { email, password, companyId, method: loginMethod })
+    console.log('Login:', { email, employeeId, method: loginMethod })
     
     setTimeout(() => {
       setIsLoading(false)
@@ -26,7 +24,6 @@ export default function LoginPage() {
   }
 
   const handleGoogleLogin = () => {
-    // Simulation de connexion Google
     alert('🔐 Redirection vers Google...\n\n(SIMULATION) Connexion avec Google réussie !')
     setTimeout(() => {
       window.location.href = '/dashboard'
@@ -42,8 +39,12 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8 animate-slide-up">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4">
-            N
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center mx-auto mb-4">
+            <img 
+              src="/logos/NOXIA_Orbit_Logo.svg" 
+              alt="NOXIA" 
+              className="w-10 h-10"
+            />
           </div>
           <h1 className="text-2xl font-bold text-white">NOXIA</h1>
           <p className="text-sm" style={{ color: '#94a3b8' }}>OS Intelligent pour Bars & Restaurants</p>
@@ -61,6 +62,20 @@ export default function LoginPage() {
           {/* Méthode de connexion */}
           <div className="flex gap-2 mb-4">
             <button
+              onClick={() => setLoginMethod('employee')}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                loginMethod === 'employee' ? 'border' : 'border-transparent'
+              }`}
+              style={{
+                background: loginMethod === 'employee' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(51, 65, 85, 0.3)',
+                borderColor: loginMethod === 'employee' ? '#6366f1' : 'transparent',
+                color: loginMethod === 'employee' ? '#818cf8' : '#94a3b8'
+              }}
+            >
+              <Key className="w-4 h-4 inline mr-1" />
+              ID Employé
+            </button>
+            <button
               onClick={() => setLoginMethod('classic')}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
                 loginMethod === 'classic' ? 'border' : 'border-transparent'
@@ -74,24 +89,50 @@ export default function LoginPage() {
               <Mail className="w-4 h-4 inline mr-1" />
               Email
             </button>
-            <button
-              onClick={() => setLoginMethod('company')}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
-                loginMethod === 'company' ? 'border' : 'border-transparent'
-              }`}
-              style={{
-                background: loginMethod === 'company' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(51, 65, 85, 0.3)',
-                borderColor: loginMethod === 'company' ? '#6366f1' : 'transparent',
-                color: loginMethod === 'company' ? '#818cf8' : '#94a3b8'
-              }}
-            >
-              <Building2 className="w-4 h-4 inline mr-1" />
-              Entreprise
-            </button>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
-            {loginMethod === 'classic' ? (
+            {loginMethod === 'employee' ? (
+              <>
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="contact@monbar.com"
+                      className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
+                      style={{ 
+                        background: 'rgba(51, 65, 85, 0.5)',
+                        border: '1px solid #334155'
+                      }}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>ID Employé</label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
+                    <input
+                      type="text"
+                      value={employeeId}
+                      onChange={(e) => setEmployeeId(e.target.value)}
+                      placeholder="EMP-001"
+                      className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
+                      style={{ 
+                        background: 'rgba(51, 65, 85, 0.5)',
+                        border: '1px solid #334155'
+                      }}
+                      required
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
               <>
                 <div>
                   <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Email</label>
@@ -118,8 +159,8 @@ export default function LoginPage() {
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
                     <input
                       type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      value={employeeId}
+                      onChange={(e) => setEmployeeId(e.target.value)}
                       placeholder="••••••••"
                       className="w-full rounded-lg px-4 py-2.5 pl-10 pr-10 text-white text-sm outline-none transition"
                       style={{ 
@@ -136,46 +177,6 @@ export default function LoginPage() {
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Email</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="contact@monbar.com"
-                      className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
-                      style={{ 
-                        background: 'rgba(51, 65, 85, 0.5)',
-                        border: '1px solid #334155'
-                      }}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>ID Unique Entreprise</label>
-                  <div className="relative">
-                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
-                    <input
-                      type="text"
-                      value={companyId}
-                      onChange={(e) => setCompanyId(e.target.value)}
-                      placeholder="NOX-XXXXXXXXXX"
-                      className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
-                      style={{ 
-                        background: 'rgba(51, 65, 85, 0.5)',
-                        border: '1px solid #334155'
-                      }}
-                      required
-                    />
                   </div>
                 </div>
               </>
@@ -221,7 +222,7 @@ export default function LoginPage() {
           </button>
 
           <p className="text-center text-xs mt-4" style={{ color: '#64748b' }}>
-            Demo : admin@stockbot.io / admin123
+            Demo : contact@monbar.com / EMP-001
           </p>
         </div>
 

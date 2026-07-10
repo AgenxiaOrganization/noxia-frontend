@@ -67,7 +67,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
 
       {/* Droite */}
       <div className="flex items-center gap-4">
-        {/* Code entreprise avec copier */}
+        {/* ID Entreprise avec Copier */}
         <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
           <span className="text-xs" style={{ color: '#94a3b8' }}>ID:</span>
           <code className="text-xs font-mono" style={{ color: '#818cf8' }}>{mockUser.companyId}</code>
@@ -80,7 +80,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
           </button>
         </div>
 
-        {/* Date */}
+        {/* Date/Heure */}
         <span className="text-xs hidden sm:block" style={{ color: '#94a3b8' }}>{time}</span>
 
         {/* Notifications */}
@@ -105,10 +105,6 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
               style={{ background: '#4f46e5' }}
             >
               {mockUser.avatar}
-            </div>
-            <div className="hidden sm:block text-left">
-              <p className="text-sm font-medium text-white leading-tight">{mockUser.name}</p>
-              <p className="text-[10px]" style={{ color: '#94a3b8' }}>{mockUser.role}</p>
             </div>
             <ChevronDown className="w-4 h-4" style={{ color: '#94a3b8' }} />
           </button>
