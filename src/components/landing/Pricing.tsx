@@ -24,7 +24,11 @@ const plans = [
       'API publique',
       'WhatsApp & Telegram',
       'Alertes automatiques',
-      'Support prioritaire 24/7'
+      'Support prioritaire 24/7',
+      'Formation équipe',
+      'Déploiement personnalisé',
+      'Intégrations sur mesure',
+      'SLA garanti'
     ],
     notIncluded: [],
     cta: 'Commencer l\'essai',
@@ -105,21 +109,21 @@ const plans = [
       'API publique',
       'WhatsApp & Telegram',
       'Alertes automatiques',
-      'Support prioritaire 24/7',
+      'Support prioritaire 24/7'
+    ],
+    notIncluded: [
       'Formation équipe',
       'Déploiement personnalisé',
       'Intégrations sur mesure',
       'SLA garanti'
     ],
-    notIncluded: [],
     cta: 'Choisir Business',
     href: '/register'
   },
 ]
 
-// ✅ Fonction de formatage simple pour éviter l'hydratation
+// Fonction de formatage simple
 const formatPrice = (price: number): string => {
-  // Utiliser un formatage simple qui ne change pas entre serveur et client
   return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
 }
 

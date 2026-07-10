@@ -11,8 +11,12 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white font-bold text-lg">
-                N
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
+                <img 
+                  src="/logos/NOXIA_Orbit_Logo.svg" 
+                  alt="NOXIA" 
+                  className="w-6 h-6"
+                />
               </div>
               <span className="text-xl font-bold text-white">
                 NOXIA<span className="text-primary-400">.</span>
@@ -29,7 +33,7 @@ export function Footer() {
               <li><a href="#features" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Fonctionnalités</a></li>
               <li><a href="#pricing" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Tarifs</a></li>
               <li><a href="#demo" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Démo</a></li>
-              <li><a href="#" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Documentation</a></li>
+              <li><a href="/documentation" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Documentation</a></li>
             </ul>
           </div>
 

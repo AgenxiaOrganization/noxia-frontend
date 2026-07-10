@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Menu, Bell, User, LogOut, Settings, Building2, FileText, CreditCard, ChevronDown } from 'lucide-react'
+import { Menu, Bell, User, LogOut, Settings, Building2, FileText, CreditCard, ChevronDown, Copy, Check } from 'lucide-react'
 import Link from 'next/link'
 
 // Données mockées
@@ -18,6 +18,7 @@ const mockUser = {
 export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const [time, setTime] = useState('')
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     const updateTime = () => {
@@ -35,6 +36,12 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
     const interval = setInterval(updateTime, 30000)
     return () => clearInterval(interval)
   }, [])
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(mockUser.companyId)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <header 
@@ -60,11 +67,21 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
 
       {/* Droite */}
       <div className="flex items-center gap-4">
-        {/* Code entreprise */}
+        {/* Code entreprise avec copier */}
         <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
           <span className="text-xs" style={{ color: '#94a3b8' }}>ID:</span>
           <code className="text-xs font-mono" style={{ color: '#818cf8' }}>{mockUser.companyId}</code>
+          <button
+            onClick={copyCode}
+            className="p-0.5 rounded hover:bg-white/10 transition"
+            style={{ color: '#94a3b8' }}
+          >
+            {copied ? <Check className="w-3 h-3" style={{ color: '#22c55e' }} /> : <Copy className="w-3 h-3" />}
+          </button>
         </div>
+
+        {/* Date */}
+        <span className="text-xs hidden sm:block" style={{ color: '#94a3b8' }}>{time}</span>
 
         {/* Notifications */}
         <div className="relative cursor-pointer">
@@ -179,7 +196,6 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
                     style={{ color: '#f87171' }}
                     onClick={() => {
                       setIsProfileOpen(false)
-                      // TODO: Logout
                       window.location.href = '/login'
                     }}
                   >
@@ -191,8 +207,6 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
             </>
           )}
         </div>
-
-        <span className="text-xs hidden sm:block" style={{ color: '#94a3b8' }}>{time}</span>
       </div>
     </header>
   )

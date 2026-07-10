@@ -6,6 +6,7 @@ import { Pricing } from '@/components/landing/Pricing'
 import { FeatureComparison } from '@/components/landing/FeatureComparison'
 import { Testimonials } from '@/components/landing/Testimonials'
 import { CTA } from '@/components/landing/CTA'
+import { ContactSection } from '@/components/landing/ContactSection'
 import { FAQ } from '@/components/landing/FAQ'
 import { Footer } from '@/components/landing/Footer'
 import { AssistantButton } from '@/components/landing/AssistantButton'
@@ -21,6 +22,7 @@ export default function Home() {
       <FeatureComparison />
       <Testimonials />
       <CTA />
+      <ContactSection />
       <FAQ />
       <Footer />
       <AssistantButton />

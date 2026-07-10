@@ -1,25 +1,39 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Menu, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-white/5 backdrop-blur-[10px] border-b border-white/10">
+    <nav 
+      className={cn(
+        'fixed top-0 w-full z-50 transition-all duration-300',
+        isScrolled ? 'bg-dark-900/95 backdrop-blur-[10px] border-b border-dark-700' : 'bg-transparent'
+      )}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <a href="/" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center">
-  <img 
-    src="/logos/NOXIA_Orbit_Logo.svg" 
-    alt="NOXIA" 
-    className="w-full h-full object-contain"
-  />
-</div>
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white font-bold text-lg">
+              <img 
+                src="/logos/NOXIA_Orbit_Logo.svg" 
+                alt="NOXIA" 
+                className="w-6 h-6"
+              />
+            </div>
             <span className="text-xl font-bold tracking-tight text-white">
               NOXIA<span className="text-primary-400">.</span>
             </span>
@@ -31,7 +45,7 @@ export function Navbar() {
             <a href="#pricing" className="hover:text-white transition">Tarifs</a>
             <a href="#demo" className="hover:text-white transition">Démo</a>
             <a href="#faq" className="hover:text-white transition">FAQ</a>
-            <a href="#" className="hover:text-white transition">Documentation</a>
+            <a href="/documentation" className="hover:text-white transition">Documentation</a>
             <a href="#contact" className="hover:text-white transition">Contact</a>
           </div>
 
@@ -68,7 +82,7 @@ export function Navbar() {
           <a href="#pricing" className="block text-dark-300 hover:text-white py-2" onClick={() => setIsOpen(false)}>Tarifs</a>
           <a href="#demo" className="block text-dark-300 hover:text-white py-2" onClick={() => setIsOpen(false)}>Démo</a>
           <a href="#faq" className="block text-dark-300 hover:text-white py-2" onClick={() => setIsOpen(false)}>FAQ</a>
-          <a href="#" className="block text-dark-300 hover:text-white py-2" onClick={() => setIsOpen(false)}>Documentation</a>
+          <a href="/documentation" className="block text-dark-300 hover:text-white py-2" onClick={() => setIsOpen(false)}>Documentation</a>
           <a href="#contact" className="block text-dark-300 hover:text-white py-2" onClick={() => setIsOpen(false)}>Contact</a>
           <div className="pt-4 border-t border-dark-700 space-y-2">
             <a href="/login" className="block text-sm font-medium text-dark-300 hover:text-white">Connexion</a>
