@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 
-export function SalesChart() {
+export function SalesChart({ data = [], period = 'day' }: { data: any[], period: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -12,17 +12,16 @@ export function SalesChart() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // Données simulées
-    const data = [200000, 250000, 180000, 300000, 280000, 400000, 350000]
-    const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-    
     const w = canvas.width
     const h = canvas.height
     const padding = 40
     const chartW = w - padding * 2
     const chartH = h - padding * 2
-    const max = Math.max(...data) * 1.2
-    const barW = chartW / data.length - 8
+
+    const values = data.map(d => Number(d.value))
+    const labels = data.map(d => d.label)
+    const max = data.length > 0 ? Math.max(...values, 1000) * 1.2 : 1000
+    const barW = data.length > 0 ? chartW / values.length - 8 : 0
 
     // Fond
     ctx.fillStyle = '#1e293b'
@@ -39,39 +38,48 @@ export function SalesChart() {
       ctx.stroke()
     }
 
-    // Bars
-    data.forEach((value, i) => {
-      const x = padding + (chartW / data.length) * i + 4
-      const barH = (value / max) * chartH
-      const y = padding + chartH - barH
+    if (data.length > 0) {
+      // Bars
+      values.forEach((value, i) => {
+        const x = padding + (chartW / values.length) * i + 4
+        const barH = (value / max) * chartH
+        const y = padding + chartH - barH
 
-      const gradient = ctx.createLinearGradient(x, y, x, padding + chartH)
-      gradient.addColorStop(0, '#818cf8')
-      gradient.addColorStop(1, '#4f46e5')
-      
-      ctx.fillStyle = gradient
-      ctx.beginPath()
-      ctx.roundRect(x, y, barW, barH, 4)
-      ctx.fill()
+        const gradient = ctx.createLinearGradient(x, y, x, padding + chartH)
+        gradient.addColorStop(0, '#818cf8')
+        gradient.addColorStop(1, '#4f46e5')
+        
+        ctx.fillStyle = gradient
+        ctx.beginPath()
+        ctx.roundRect(x, y, barW, barH, 4)
+        ctx.fill()
 
-      // Labels des jours
-      ctx.fillStyle = '#94a3b8'
-      ctx.font = '10px sans-serif'
+        // Labels des jours
+        ctx.fillStyle = '#94a3b8'
+        ctx.font = '10px sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(labels[i], x + barW / 2, padding + chartH + 20)
+      })
+    } else {
+      // Empty state text
+      ctx.fillStyle = '#64748b'
+      ctx.font = '12px sans-serif'
       ctx.textAlign = 'center'
-      ctx.fillText(days[i], x + barW / 2, padding + chartH + 20)
-    })
+      ctx.fillText('Aucune donnée disponible', w / 2, h / 2)
+    }
 
     // Titre
     ctx.fillStyle = '#94a3b8'
     ctx.font = '12px sans-serif'
     ctx.textAlign = 'left'
-    ctx.fillText('Ventes de la semaine', padding, 20)
+    const title = period === 'day' ? 'Ventes par heure' : period === 'week' ? 'Ventes de la semaine' : period === 'month' ? 'Ventes du mois' : 'Ventes de l\'année'
+    ctx.fillText(title, padding, 20)
 
-  }, [])
+  }, [data, period])
 
   return (
     <div 
-      className="p-4 rounded-xl border"
+      className="p-4 rounded-xl border h-full"
       style={{ 
         background: '#1e293b',
         borderColor: '#334155'

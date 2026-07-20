@@ -1,13 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Settings, Building2, MapPin, Phone, Mail,
   CreditCard, Shield, Bell, Globe, Users,
   Key, Save, Eye, EyeOff, CheckCircle, DollarSign,
   FileText, Upload, Check, X, Clock, AlertCircle,
-  FileCheck, FileX, FileClock, Download
+  FileCheck, FileX, FileClock, Download, User
 } from 'lucide-react'
+import { getUser, getCompany, getMembership, saveSession } from '@/lib/auth'
+import { getMe, updateMe } from '@/lib/api'
+import { updateCompanyMe } from '@/lib/api/companies'
+import { toast } from 'sonner'
+import { countriesData, timezonesList, splitPhoneNumber } from '@/lib/countriesData'
 
 // --- Données Mockées ---
 const mockCompany = {
@@ -100,14 +105,150 @@ const statusConfig = {
 }
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('general')
-  const [company, setCompany] = useState(mockCompany)
+  const [activeTab, setActiveTab] = useState('profile')
+  const [company, setCompany] = useState({
+    id: 0,
+    name: '',
+    type: 'bar',
+    address: '',
+    phone: '',
+    currency: 'XAF',
+    email: '',
+    country: 'Gabon',
+    timezone: 'Africa/Libreville',
+    tva: 18,
+  })
   const [isSaving, setIsSaving] = useState(false)
   const [showSaveSuccess, setShowSaveSuccess] = useState(false)
   const [documents, setDocuments] = useState(mockDocuments)
   const [isUploading, setIsUploading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [documentType, setDocumentType] = useState('registre_commerce')
+
+  const [profile, setProfile] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    role: '',
+    employeeId: '',
+    company: '',
+    companyId: '',
+  })
+  const [userPermissions, setUserPermissions] = useState<string[]>([])
+
+  // States pour les indicatifs pays et numéros séparés
+  const [companyPhonePrefix, setCompanyPhonePrefix] = useState('+241')
+  const [companyPhoneNumber, setCompanyPhoneNumber] = useState('')
+  const [profilePhonePrefix, setProfilePhonePrefix] = useState('+241')
+  const [profilePhoneNumber, setProfilePhoneNumber] = useState('')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const tab = params.get('tab')
+      if (tab) {
+        setActiveTab(tab)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const fresh = await getMe()
+        setProfile({
+          first_name: fresh.user.first_name || '',
+          last_name: fresh.user.last_name || '',
+          email: fresh.user.email || '',
+          phone: fresh.user.phone || '',
+          role: fresh.membership?.role || 'Employé',
+          employeeId: fresh.membership?.activation_code || '---',
+          company: fresh.company?.name || '---',
+          companyId: fresh.company?.messaging_code || '---',
+        })
+        
+        const pPhone = splitPhoneNumber(fresh.user.phone || '')
+        setProfilePhonePrefix(pPhone.prefix)
+        setProfilePhoneNumber(pPhone.number)
+
+        if (fresh.company) {
+          setCompany({
+            id: fresh.company.id,
+            name: fresh.company.name || '',
+            type: fresh.company.type || 'bar',
+            address: fresh.company.address || '',
+            phone: fresh.company.phone || '',
+            currency: fresh.company.currency || 'XAF',
+            email: fresh.user.email,
+            country: fresh.company.country || 'Gabon',
+            timezone: fresh.company.timezone || 'Africa/Libreville',
+            tva: fresh.company.tva || 18,
+          })
+          
+          const cPhone = splitPhoneNumber(fresh.company.phone || '')
+          setCompanyPhonePrefix(cPhone.prefix)
+          setCompanyPhoneNumber(cPhone.number)
+        }
+        
+        if (fresh.membership) {
+          const role = fresh.membership.role
+          const comp = fresh.company
+          let perms: string[] = []
+          
+          const defaultPerms: Record<string, string[]> = {
+            administrateur: ['ventes', 'stock', 'rapports', 'parametres', 'employes'],
+            responsable: ['ventes', 'stock', 'rapports', 'parametres'],
+            gerant: ['ventes', 'stock', 'rapports'],
+            caissier: ['ventes'],
+            serveur: ['ventes'],
+            magasinier: ['stock'],
+            comptable: ['rapports']
+          }
+          
+          if (comp && comp.role_permissions && comp.role_permissions[role]) {
+            perms = comp.role_permissions[role]
+          } else {
+            perms = defaultPerms[role] || []
+          }
+          setUserPermissions(perms)
+        }
+      } catch (err) {
+        console.error(err)
+      }
+    }
+    fetchData()
+  }, [])
+
+  const handleSaveProfile = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsSaving(true)
+    try {
+      const fullPhone = `${profilePhonePrefix} ${profilePhoneNumber}`.trim()
+      const fresh = await updateMe({
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        phone: fullPhone,
+      })
+      
+      const accessToken = localStorage.getItem('noxia_access') || ''
+      const refreshToken = localStorage.getItem('noxia_refresh') || ''
+      saveSession({
+        status: 'authenticated',
+        access: accessToken,
+        refresh: refreshToken,
+        user: fresh.user,
+        company: fresh.company,
+        membership: fresh.membership,
+      })
+      
+      toast.success("✅ Profil mis à jour avec succès !")
+    } catch (err: any) {
+      toast.error(err.message || "Erreur de mise à jour")
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   // --- Gestion des documents ---
   const handleFileUpload = () => {
@@ -152,13 +293,48 @@ export default function SettingsPage() {
   }
 
   // --- Gestion générale ---
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true)
-    setTimeout(() => {
-      setIsSaving(false)
+    try {
+      const fullPhone = `${companyPhonePrefix} ${companyPhoneNumber}`.trim()
+      const updatedComp = await updateCompanyMe({
+        name: company.name,
+        type: company.type,
+        address: company.address,
+        phone: fullPhone,
+        currency: company.currency,
+        country: company.country,
+        timezone: company.timezone,
+      })
+      
+      setCompany(prev => ({
+        ...prev,
+        ...updatedComp
+      }))
+      
+      const currentUser = getUser()
+      const currentMembership = getMembership()
+      if (currentUser) {
+        const accessToken = localStorage.getItem('noxia_access') || ''
+        const refreshToken = localStorage.getItem('noxia_refresh') || ''
+        saveSession({
+          status: 'authenticated',
+          access: accessToken,
+          refresh: refreshToken,
+          user: currentUser,
+          company: updatedComp,
+          membership: currentMembership,
+        })
+      }
+
+      toast.success("✅ Établissement mis à jour avec succès !")
       setShowSaveSuccess(true)
       setTimeout(() => setShowSaveSuccess(false), 3000)
-    }, 1000)
+    } catch (err: any) {
+      toast.error(err.message || "Erreur lors de la sauvegarde")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -210,6 +386,7 @@ export default function SettingsPage() {
       {/* TABS */}
       <div className="flex gap-2 overflow-x-auto pb-2">
         {[
+          { id: 'profile', label: 'Mon Profil', icon: User },
           { id: 'general', label: 'Général', icon: Building2 },
           { id: 'documents', label: 'Documents', icon: FileText },
           { id: 'finance', label: 'Finances', icon: CreditCard },
@@ -249,6 +426,196 @@ export default function SettingsPage() {
       </div>
 
       {/* CONTENU DES ONGLETS */}
+
+      {/* ===== MON PROFIL ===== */}
+      {activeTab === 'profile' && (
+        <div className="space-y-4 animate-fade-in">
+          <div 
+            className="rounded-xl border p-4"
+            style={{ 
+              background: '#1e293b',
+              borderColor: '#334155'
+            }}
+          >
+            <h3 className="font-semibold text-sm text-white mb-4">Informations personnelles</h3>
+            
+            <form onSubmit={handleSaveProfile} className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Prénom</label>
+                  <input
+                    type="text"
+                    value={profile.first_name}
+                    onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
+                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                    style={{ 
+                      background: 'rgba(51, 65, 85, 0.5)',
+                      border: '1px solid #334155'
+                    }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nom de famille</label>
+                  <input
+                    type="text"
+                    value={profile.last_name}
+                    onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
+                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                    style={{ 
+                      background: 'rgba(51, 65, 85, 0.5)',
+                      border: '1px solid #334155'
+                    }}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Adresse email (non modifiable)</label>
+                  <input
+                    type="email"
+                    value={profile.email}
+                    disabled
+                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none opacity-50 cursor-not-allowed"
+                    style={{ 
+                      background: 'rgba(51, 65, 85, 0.3)',
+                      border: '1px solid #334155'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Téléphone</label>
+                  <div className="flex gap-2">
+                    <select
+                      value={profilePhonePrefix}
+                      onChange={(e) => setProfilePhonePrefix(e.target.value)}
+                      className="rounded-lg px-2 py-2.5 text-white text-sm outline-none transition shrink-0"
+                      style={{ 
+                        background: 'rgba(51, 65, 85, 0.5)',
+                        border: '1px solid #334155',
+                        width: '90px'
+                      }}
+                    >
+                      {countriesData.map((c, index) => (
+                        <option key={`${c.code}-${c.prefix}-${index}`} value={c.prefix}>
+                          {c.code} ({c.prefix})
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={profilePhoneNumber}
+                      onChange={(e) => setProfilePhoneNumber(e.target.value)}
+                      placeholder="Ex: 77000000"
+                      className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                      style={{ 
+                        background: 'rgba(51, 65, 85, 0.5)',
+                        border: '1px solid #334155'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded-lg text-white text-sm font-semibold transition flex items-center gap-2 disabled:opacity-50"
+                  style={{ 
+                    background: '#4f46e5',
+                    boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
+                  }}
+                >
+                  <Save className="w-4 h-4" />
+                  {isSaving ? 'Enregistrement...' : 'Mettre à jour le profil'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Rôle & Établissement */}
+            <div 
+              className="rounded-xl border p-4 space-y-3"
+              style={{ 
+                background: '#1e293b',
+                borderColor: '#334155'
+              }}
+            >
+              <h3 className="font-semibold text-sm text-white mb-2">Rôle & Établissement</h3>
+              
+              <div className="space-y-2 text-sm text-slate-300">
+                <div className="flex justify-between py-1.5 border-b" style={{ borderColor: '#334155' }}>
+                  <span style={{ color: '#94a3b8' }}>Rôle actuel</span>
+                  <span className="font-semibold capitalize text-indigo-400">{profile.role}</span>
+                </div>
+                <div className="flex justify-between py-1.5 border-b" style={{ borderColor: '#334155' }}>
+                  <span style={{ color: '#94a3b8' }}>Établissement</span>
+                  <span className="text-white font-medium">{profile.company}</span>
+                </div>
+                <div className="flex justify-between py-1.5 border-b" style={{ borderColor: '#334155' }}>
+                  <span style={{ color: '#94a3b8' }}>ID Établissement</span>
+                  <code className="font-mono text-xs text-indigo-300">{profile.companyId}</code>
+                </div>
+                {profile.role !== 'administrateur' && (
+                  <div className="flex justify-between py-1.5 border-b" style={{ borderColor: '#334155' }}>
+                    <span style={{ color: '#94a3b8' }}>ID Employé</span>
+                    <code className="font-mono text-xs text-indigo-300">{profile.employeeId}</code>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Mes Permissions */}
+            <div 
+              className="rounded-xl border p-4"
+              style={{ 
+                background: '#1e293b',
+                borderColor: '#334155'
+              }}
+            >
+              <h3 className="font-semibold text-sm text-white mb-3">Mes Habilitations & Permissions</h3>
+              
+              <div className="space-y-2">
+                {[
+                  { id: 'ventes', label: 'Ventes', desc: 'Accès à la caisse (POS) et encaissement' },
+                  { id: 'stock', label: 'Stock', desc: "Consultation et ajustement de l'inventaire" },
+                  { id: 'rapports', label: 'Rapports', desc: 'Accès aux statistiques financières et rapports' },
+                  { id: 'parametres', label: 'Paramètres', desc: "Configuration générale et documents d'établissement" },
+                  { id: 'employes', label: 'Employés', desc: "Gestion des employés et de leurs habilitations" },
+                ].map(perm => {
+                  const hasPerm = userPermissions.includes(perm.id) || profile.role === 'administrateur'
+                  return (
+                    <div 
+                      key={perm.id} 
+                      className="flex items-center justify-between p-2.5 rounded-lg border text-xs"
+                      style={{ 
+                        borderColor: '#334155',
+                        background: hasPerm ? 'rgba(34, 197, 94, 0.03)' : 'rgba(239, 68, 68, 0.02)'
+                      }}
+                    >
+                      <div className="space-y-0.5">
+                        <span className="font-semibold block text-white">{perm.label}</span>
+                        <span className="block text-[10px]" style={{ color: '#64748b' }}>{perm.desc}</span>
+                      </div>
+                      <span 
+                        className={`px-2.5 py-0.5 rounded-full font-semibold ${
+                          hasPerm ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                        }`}
+                      >
+                        {hasPerm ? 'Autorisé' : 'Refusé'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ===== GÉNÉRAL ===== */}
       {activeTab === 'general' && (
@@ -299,18 +666,37 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Téléphone</label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
-                  <input
-                    type="text"
-                    value={company.phone}
-                    onChange={(e) => setCompany({ ...company, phone: e.target.value })}
-                    className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
+                <div className="flex gap-2">
+                  <select
+                    value={companyPhonePrefix}
+                    onChange={(e) => setCompanyPhonePrefix(e.target.value)}
+                    className="rounded-lg px-2 py-2.5 text-white text-sm outline-none transition shrink-0"
                     style={{ 
                       background: 'rgba(51, 65, 85, 0.5)',
-                      border: '1px solid #334155'
+                      border: '1px solid #334155',
+                      width: '90px'
                     }}
-                  />
+                  >
+                    {countriesData.map((c, index) => (
+                      <option key={`${c.code}-${c.prefix}-${index}`} value={c.prefix}>
+                        {c.code} ({c.prefix})
+                      </option>
+                    ))}
+                  </select>
+                  <div className="relative w-full">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
+                    <input
+                      type="text"
+                      value={companyPhoneNumber}
+                      onChange={(e) => setCompanyPhoneNumber(e.target.value)}
+                      placeholder="Ex: 77000000"
+                      className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
+                      style={{ 
+                        background: 'rgba(51, 65, 85, 0.5)',
+                        border: '1px solid #334155'
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
               <div>
@@ -338,17 +724,26 @@ export default function SettingsPage() {
                   <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
                   <select
                     value={company.country}
-                    onChange={(e) => setCompany({ ...company, country: e.target.value })}
+                    onChange={(e) => {
+                      const newCountry = e.target.value
+                      const match = countriesData.find(c => c.name === newCountry)
+                      setCompany({
+                        ...company,
+                        country: newCountry,
+                        timezone: match ? match.timezone : company.timezone
+                      })
+                    }}
                     className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
                     style={{ 
                       background: 'rgba(51, 65, 85, 0.5)',
                       border: '1px solid #334155'
                     }}
                   >
-                    <option value="Gabon">Gabon</option>
-                    <option value="Cameroun">Cameroun</option>
-                    <option value="Côte d'Ivoire">Côte d'Ivoire</option>
-                    <option value="Sénégal">Sénégal</option>
+                    {countriesData.map((c, index) => (
+                      <option key={`${c.code}-${index}`} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -365,10 +760,11 @@ export default function SettingsPage() {
                       border: '1px solid #334155'
                     }}
                   >
-                    <option value="Africa/Libreville">Africa/Libreville</option>
-                    <option value="Africa/Douala">Africa/Douala</option>
-                    <option value="Africa/Abidjan">Africa/Abidjan</option>
-                    <option value="Africa/Dakar">Africa/Dakar</option>
+                    {timezonesList.map(tz => (
+                      <option key={tz} value={tz}>
+                        {tz}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

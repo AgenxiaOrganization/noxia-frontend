@@ -1,11 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   MessageSquare, Send, Smartphone, Users,
   Key, Copy, Check, RefreshCw, Power,
-  Bot, Radio, Phone, Menu, X, Play, Video
+  Bot, Radio, Phone, Menu, X, Play, Video,
+  Mail
 } from 'lucide-react'
+import { getMe } from '@/lib/api'
+import { getEmployees, regenerateEmployeeCode, sendEmployeeCode, updateCompanyMe, deleteBotSession } from '@/lib/api/companies'
+import { toast } from 'sonner'
 
 // --- Données Mockées ---
 const mockEmployees = [
@@ -24,14 +28,7 @@ const mockMessages = [
   { id: 5, sender: 'bot', message: '✅ Session activée ! Bienvenue Jean M. (Caissier).\n\nCommandes disponibles : stock, recette, alertes, meilleur, employes, aide', time: '10:02' },
 ]
 
-const availableCommands = [
-  { command: 'stock [nom]', description: 'Consulter le stock d\'un produit' },
-  { command: 'recette', description: 'CA du jour' },
-  { command: 'alertes', description: 'Produits en stock critique' },
-  { command: 'meilleur', description: 'Top ventes du jour' },
-  { command: 'employes', description: 'Liste des employés actifs' },
-  { command: 'aide', description: 'Afficher toutes les commandes' },
-]
+
 
 export default function MessagingPage() {
   const [message, setMessage] = useState('')
@@ -41,11 +38,150 @@ export default function MessagingPage() {
   const [isTelegramActive, setIsTelegramActive] = useState(false)
   const [showVideo, setShowVideo] = useState(false)
 
-  // Infos de l'entreprise (mockées)
-  const companyId = 'NOX-1234567890'
-  const userId = 'EMP-001'
-  const botNumber = '+241 66 00 00 10'
-  const telegramLink = `https://t.me/NOXIABot?start=${companyId}_${userId}`
+  // États dynamiques
+  const [companyId, setCompanyId] = useState('---')
+  const [userId, setUserId] = useState('---')
+  const [demoPlatform, setDemoPlatform] = useState<'whatsapp' | 'telegram'>('whatsapp')
+  const [employees, setEmployees] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  const botNumber = '+1 (XXX) XXX-XXXX'
+  const telegramLink = `https://t.me/noxia_user_bot?start=${companyId}_${userId}`
+
+  const loadData = async (silent = false) => {
+    try {
+      if (!silent) setIsLoading(true)
+      const [freshMe, apiEmployees] = await Promise.all([
+        getMe(),
+        getEmployees()
+      ])
+
+      if (freshMe.company) {
+        setCompanyId(freshMe.company.messaging_code || '---')
+        setIsWhatsAppActive(freshMe.company.whatsapp_bot_active ?? true)
+        setIsTelegramActive(freshMe.company.telegram_bot_active ?? false)
+      }
+      if (freshMe.membership) {
+        setUserId(freshMe.membership.activation_code || '---')
+      }
+
+      setEmployees((apiEmployees || []).map((emp: any) => ({
+        id: emp.id,
+        name: `${emp.user?.first_name || ''} ${emp.user?.last_name || ''}`.trim() || emp.user?.email || 'Nom inconnu',
+        role: emp.role,
+        phone: emp.user?.phone || '',
+        email: emp.user?.email || '',
+        active: emp.is_active,
+        employeeId: emp.activation_code || '',
+        activation_code_expires_at: emp.activation_code_expires_at,
+        is_activation_code_expired: emp.is_activation_code_expired,
+        botSessions: emp.bot_sessions || [],
+        isBotLinked: emp.bot_sessions && emp.bot_sessions.length > 0
+      })))
+    } catch (err) {
+      console.error(err)
+      toast.error("Erreur lors de la récupération des données de messagerie")
+    } finally {
+      if (!silent) setIsLoading(false)
+    }
+  }
+
+  const toggleWhatsAppBot = async (active: boolean) => {
+    try {
+      await updateCompanyMe({ whatsapp_bot_active: active })
+      setIsWhatsAppActive(active)
+      toast.success(active ? '✅ Bot WhatsApp activé avec succès ! 🎉' : '⚠️ Bot WhatsApp désactivé.')
+    } catch (err) {
+      console.error(err)
+      toast.error("Impossible de modifier le statut de WhatsApp au serveur.")
+    }
+  }
+
+  const toggleTelegramBot = async (active: boolean) => {
+    try {
+      await updateCompanyMe({ telegram_bot_active: active })
+      setIsTelegramActive(active)
+      toast.success(active ? '✅ Bot Telegram activé avec succès ! 🎉' : '⚠️ Bot Telegram désactivé.')
+    } catch (err) {
+      console.error(err)
+      toast.error("Impossible de modifier le statut de Telegram au serveur.")
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const handleRegenerateId = async (employee: any) => {
+    try {
+      const promise = regenerateEmployeeCode(employee.id, 720)
+      toast.promise(promise, {
+        loading: `Régénération de l'ID pour ${employee.name}...`,
+        success: `✅ Nouvel ID généré pour ${employee.name} !`,
+        error: "❌ Erreur lors de la régénération de l'ID."
+      })
+      await promise
+      await loadData(true)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleSendId = async (employee: any) => {
+    if (!employee.employeeId) {
+      toast.error("Cet employé n'a pas d'ID valide. Veuillez d'abord en générer un.")
+      return
+    }
+    try {
+      const promise = sendEmployeeCode(employee.id)
+      toast.promise(promise, {
+        loading: `Envoi de l'e-mail de connexion à ${employee.name}...`,
+        success: `✅ E-mail de connexion envoyé à ${employee.name} !`,
+        error: "❌ Erreur lors de l'envoi de l'e-mail."
+      })
+      await promise
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleUnlinkSession = async (sessionId: number, employeeName: string, platformLabel: string) => {
+    try {
+      const promise = deleteBotSession(sessionId)
+      toast.promise(promise, {
+        loading: `Déliaison du compte ${platformLabel} de ${employeeName}...`,
+        success: `✅ Compte ${platformLabel} délié avec succès !`,
+        error: "❌ Impossible de délier ce compte."
+      })
+      await promise
+      await loadData(true)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleGenerateAllIds = async () => {
+    const toRegenerate = employees.filter(emp => !emp.employeeId)
+    if (toRegenerate.length === 0) {
+      toast.info("Tous les employés ont déjà un ID généré.")
+      return
+    }
+    
+    try {
+      const promises = toRegenerate.map(emp => regenerateEmployeeCode(emp.id, 720))
+      toast.promise(Promise.all(promises), {
+        loading: "Génération des IDs pour tous les employés...",
+        success: "✅ Tous les IDs ont été générés avec succès !",
+        error: "❌ Erreur lors de la génération de certains IDs."
+      })
+      await Promise.all(promises)
+      await loadData(true)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+
 
   const sendMessage = () => {
     if (!message.trim()) return
@@ -93,8 +229,9 @@ export default function MessagingPage() {
     return `🤖 Je n'ai pas compris votre demande. Tapez "aide" pour voir les commandes disponibles.`
   }
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string, label = "Contenu") => {
     navigator.clipboard.writeText(text)
+    toast.success(`✅ ${label} copié dans le presse-papiers !`)
   }
 
   return (
@@ -109,7 +246,7 @@ export default function MessagingPage() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => setIsWhatsAppActive(!isWhatsAppActive)}
+            onClick={() => toggleWhatsAppBot(!isWhatsAppActive)}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 ${
               isWhatsAppActive ? 'text-white' : 'text-dark-300'
             }`}
@@ -122,7 +259,7 @@ export default function MessagingPage() {
             WhatsApp {isWhatsAppActive ? '✓ Actif' : 'Inactif'}
           </button>
           <button
-            onClick={() => setIsTelegramActive(!isTelegramActive)}
+            onClick={() => toggleTelegramBot(!isTelegramActive)}
             className={`px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 ${
               isTelegramActive ? 'text-white' : 'text-dark-300'
             }`}
@@ -140,10 +277,9 @@ export default function MessagingPage() {
       {/* TABS */}
       <div className="flex gap-2 overflow-x-auto pb-2">
         {[
-          { id: 'chat', label: 'Chat avec le bot', icon: MessageSquare },
+          { id: 'chat', label: 'Simulation d\'activation', icon: MessageSquare },
           { id: 'activation', label: 'Activation', icon: Power },
           { id: 'employees', label: 'Liaison employés', icon: Users },
-          { id: 'commands', label: 'Commandes', icon: Menu },
         ].map(tab => {
           const Icon = tab.icon
           return (
@@ -166,184 +302,59 @@ export default function MessagingPage() {
         })}
       </div>
 
-      {/* CHAT AVEC LE BOT */}
+      {/* SIMULATION D'ACTIVATION (GIFS) */}
       {activeTab === 'chat' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2">
-            <div 
-              className="rounded-xl border flex flex-col h-[500px]"
-              style={{ 
-                background: '#1e293b',
-                borderColor: '#334155'
-              }}
-            >
-              {/* Chat header */}
-              <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: '#334155' }}>
-                <div className="flex items-center gap-2">
-                  <Bot className="w-5 h-5" style={{ color: '#818cf8' }} />
-                  <span className="font-semibold text-white">Assistant NOXIA</span>
-                  <span className="text-xs" style={{ color: '#22c55e' }}>● En ligne</span>
-                </div>
-                <button
-                  onClick={() => setShowVideo(!showVideo)}
-                  className="px-3 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1"
-                  style={{ 
-                    background: 'rgba(99, 102, 241, 0.15)',
-                    color: '#818cf8'
-                  }}
-                >
-                  <Play className="w-3 h-3" />
-                  {showVideo ? 'Masquer la démo' : 'Voir la démo'}
-                </button>
-              </div>
-              
-              {/* Vidéo de simulation */}
-              {showVideo && (
-                <div 
-                  className="p-4 border-b" 
-                  style={{ borderColor: '#334155', background: 'rgba(0,0,0,0.3)' }}
-                >
-                  <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                    <div className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(99, 102, 241, 0.2)' }}>
-                      <Video className="w-6 h-6" style={{ color: '#818cf8' }} />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-white">Simulation d'interaction avec le bot</p>
-                      <div className="flex items-center gap-2 mt-1 text-xs" style={{ color: '#94a3b8' }}>
-                        <span>1. Envoyer l'ID Entreprise</span>
-                        <span className="text-primary-400">→</span>
-                        <span>2. Envoyer l'ID Employé</span>
-                        <span className="text-primary-400">→</span>
-                        <span>3. Conversation active</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                      <span className="text-xs" style={{ color: '#22c55e' }}>Simulation en cours</span>
-                    </div>
-                  </div>
-                  {/* Messages de démonstration */}
-                  <div className="mt-3 space-y-2 text-xs">
-                    <div className="flex justify-end">
-                      <div className="max-w-[80%] px-3 py-1.5 rounded-xl rounded-br-sm" style={{ background: '#4f46e5', color: '#fff' }}>
-                        NOX-1234567890
-                      </div>
-                    </div>
-                    <div className="flex justify-start">
-                      <div className="max-w-[80%] px-3 py-1.5 rounded-xl rounded-bl-sm" style={{ background: 'rgba(51,65,85,0.5)', color: '#f1f5f9' }}>
-                        ✅ Entreprise vérifiée : Bar Le Premium. Veuillez entrer votre ID employé.
-                      </div>
-                    </div>
-                    <div className="flex justify-end">
-                      <div className="max-w-[80%] px-3 py-1.5 rounded-xl rounded-br-sm" style={{ background: '#4f46e5', color: '#fff' }}>
-                        EMP-001
-                      </div>
-                    </div>
-                    <div className="flex justify-start">
-                      <div className="max-w-[80%] px-3 py-1.5 rounded-xl rounded-bl-sm" style={{ background: 'rgba(51,65,85,0.5)', color: '#f1f5f9' }}>
-                        ✅ Session activée ! Bienvenue Jean M. (Caissier). Commandes disponibles : stock, recette...
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                {messages.map((msg) => (
-                  <div 
-                    key={msg.id} 
-                    className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div 
-                      className={`max-w-[80%] px-4 py-2 rounded-xl ${
-                        msg.sender === 'user' 
-                          ? 'rounded-br-sm' 
-                          : 'rounded-bl-sm'
-                      }`}
-                      style={{
-                        background: msg.sender === 'user' 
-                          ? '#4f46e5' 
-                          : 'rgba(51, 65, 85, 0.5)',
-                        color: msg.sender === 'user' ? '#ffffff' : '#f1f5f9'
-                      }}
-                    >
-                      <p className="text-sm whitespace-pre-line">{msg.message}</p>
-                      <p className="text-[10px] mt-1" style={{ 
-                        color: msg.sender === 'user' ? 'rgba(255,255,255,0.6)' : '#64748b'
-                      }}>
-                        {msg.time}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Input */}
-              <div className="p-4 border-t" style={{ borderColor: '#334155' }}>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                    placeholder="Votre message..."
-                    className="flex-1 rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                    style={{ 
-                      background: 'rgba(51, 65, 85, 0.5)',
-                      border: '1px solid #334155'
-                    }}
-                  />
-                  <button
-                    onClick={sendMessage}
-                    className="px-4 py-2.5 rounded-lg text-white text-sm font-semibold transition"
-                    style={{ 
-                      background: '#4f46e5',
-                      boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
-                    }}
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Sidebar - Commandes rapides */}
+        <div className="w-full flex justify-center">
           <div 
-            className="rounded-xl border p-4"
+            className="rounded-xl border p-6 flex flex-col items-center gap-4 w-full max-w-[600px]"
             style={{ 
               background: '#1e293b',
               borderColor: '#334155'
             }}
           >
-            <h3 className="font-semibold text-sm text-white mb-3">Commandes rapides</h3>
-            <div className="space-y-2">
-              {availableCommands.slice(0, 5).map((cmd, i) => (
+            <div className="flex flex-col sm:flex-row w-full gap-3 items-start sm:items-center justify-between border-b pb-4" style={{ borderColor: '#334155' }}>
+              <div className="flex items-center gap-2">
+                <Bot className="w-5 h-5 text-indigo-400" />
+                <span className="font-semibold text-white">Simulation de liaison bot</span>
+              </div>
+              <div className="flex gap-2 w-full sm:w-auto justify-start sm:justify-end">
                 <button
-                  key={i}
-                  onClick={() => {
-                    setMessage(cmd.command)
-                    setTimeout(() => sendMessage(), 100)
-                  }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm transition"
+                  onClick={() => setDemoPlatform('whatsapp')}
+                  className="text-xs px-3 py-1.5 rounded-lg transition font-semibold flex-1 sm:flex-initial text-center"
                   style={{ 
-                    background: 'rgba(51, 65, 85, 0.3)',
-                    color: '#94a3b8'
+                    background: demoPlatform === 'whatsapp' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(51, 65, 85, 0.3)',
+                    color: demoPlatform === 'whatsapp' ? '#22c55e' : '#94a3b8',
+                    border: demoPlatform === 'whatsapp' ? '1px solid #22c55e' : '1px solid #334155'
                   }}
                 >
-                  <span className="font-medium text-white">{cmd.command}</span>
-                  <span className="ml-2 text-xs" style={{ color: '#64748b' }}>
-                    {cmd.description}
-                  </span>
+                  WhatsApp
                 </button>
-              ))}
+                <button
+                  onClick={() => setDemoPlatform('telegram')}
+                  className="text-xs px-3 py-1.5 rounded-lg transition font-semibold flex-1 sm:flex-initial text-center"
+                  style={{ 
+                    background: demoPlatform === 'telegram' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(51, 65, 85, 0.3)',
+                    color: demoPlatform === 'telegram' ? '#3b82f6' : '#94a3b8',
+                    border: demoPlatform === 'telegram' ? '1px solid #3b82f6' : '1px solid #334155'
+                  }}
+                >
+                  Telegram
+                </button>
+              </div>
             </div>
-            <div className="mt-3 pt-3 border-t" style={{ borderColor: '#334155' }}>
-              <p className="text-xs" style={{ color: '#64748b' }}>
-                💡 Tapez <span className="text-white">"aide"</span> pour voir toutes les commandes
-              </p>
+            
+            {/* Conteneur GIF Premium Agrandi et Adaptatif */}
+            <div className="w-full flex justify-center border border-slate-700/50 rounded-xl overflow-hidden shadow-2xl bg-black/20 p-2 max-w-[480px]">
+              <img 
+                src={demoPlatform === 'whatsapp' ? "/logos/simulation_liaison_whatsapp.gif" : "/logos/simulation_liaison_telegram.gif"} 
+                alt="Simulation de liaison"
+                className="rounded-lg shadow-inner w-full h-auto max-h-[600px] object-contain"
+              />
             </div>
+            
+            <p className="text-xs text-center mt-2" style={{ color: '#64748b' }}>
+              Cette animation montre comment l'employé lie sa messagerie {demoPlatform === 'whatsapp' ? 'WhatsApp' : 'Telegram'} personnelle à l'établissement.
+            </p>
           </div>
         </div>
       )}
@@ -388,7 +399,7 @@ export default function MessagingPage() {
                 <div className="flex items-center gap-2 mt-1">
                   <code className="font-mono text-sm" style={{ color: '#818cf8' }}>{companyId}</code>
                   <button
-                    onClick={() => copyToClipboard(companyId)}
+                    onClick={() => copyToClipboard(companyId, "ID Entreprise")}
                     className="p-1 rounded hover:bg-white/10 transition"
                     style={{ color: '#94a3b8' }}
                   >
@@ -405,7 +416,7 @@ export default function MessagingPage() {
                 <div className="flex items-center gap-2 mt-1">
                   <code className="font-mono text-sm" style={{ color: '#818cf8' }}>{userId}</code>
                   <button
-                    onClick={() => copyToClipboard(userId)}
+                    onClick={() => copyToClipboard(userId, "ID Employé")}
                     className="p-1 rounded hover:bg-white/10 transition"
                     style={{ color: '#94a3b8' }}
                   >
@@ -432,14 +443,7 @@ export default function MessagingPage() {
                   border: isWhatsAppActive ? '1px solid #22c55e' : 'none',
                   color: isWhatsAppActive ? '#22c55e' : '#ffffff'
                 }}
-                onClick={() => {
-                  if (!isWhatsAppActive) {
-                    setIsWhatsAppActive(true)
-                    alert('WhatsApp activé avec succès ! 🎉')
-                  } else {
-                    alert('WhatsApp est déjà actif.')
-                  }
-                }}
+                onClick={() => toggleWhatsAppBot(!isWhatsAppActive)}
               >
                 {isWhatsAppActive ? '✓ WhatsApp actif' : 'Activer WhatsApp'}
               </button>
@@ -472,7 +476,7 @@ export default function MessagingPage() {
                 style={{ background: 'rgba(51, 65, 85, 0.3)' }}
               >
                 <p className="text-xs" style={{ color: '#94a3b8' }}>Nom du bot</p>
-                <p className="font-semibold text-white">@NOXIABot</p>
+                <p className="font-semibold text-white">@noxia_user_bot</p>
               </div>
               
               <div 
@@ -485,7 +489,7 @@ export default function MessagingPage() {
                     {telegramLink}
                   </code>
                   <button
-                    onClick={() => copyToClipboard(telegramLink)}
+                    onClick={() => copyToClipboard(telegramLink, "Lien d'invitation")}
                     className="p-1 rounded hover:bg-white/10 transition"
                     style={{ color: '#94a3b8' }}
                   >
@@ -497,7 +501,7 @@ export default function MessagingPage() {
               <div className="space-y-1 text-xs" style={{ color: '#94a3b8' }}>
                 <p className="font-medium text-white">Procédure d'activation :</p>
                 <ol className="list-decimal list-inside space-y-1 ml-2">
-                  <li>Ouvrez le lien <span className="text-white">@NOXIABot</span> sur Telegram</li>
+                  <li>Ouvrez le lien <span className="text-white">@noxia_user_bot</span> sur Telegram</li>
                   <li>Envoyez <span className="font-mono text-primary-400">/start</span></li>
                   <li>Le lien contient déjà vos IDs, activation automatique</li>
                   <li>Vous recevez une confirmation</li>
@@ -511,14 +515,7 @@ export default function MessagingPage() {
                   border: isTelegramActive ? '1px solid #3b82f6' : 'none',
                   color: isTelegramActive ? '#3b82f6' : '#ffffff'
                 }}
-                onClick={() => {
-                  if (!isTelegramActive) {
-                    setIsTelegramActive(true)
-                    alert('Telegram activé avec succès ! 🎉')
-                  } else {
-                    alert('Telegram est déjà actif.')
-                  }
-                }}
+                onClick={() => toggleTelegramBot(!isTelegramActive)}
               >
                 {isTelegramActive ? '✓ Telegram actif' : 'Activer Telegram'}
               </button>
@@ -537,17 +534,12 @@ export default function MessagingPage() {
           }}
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-white">Liaison des employés</h3>
-            <button
-              className="px-4 py-2 rounded-lg text-white text-sm font-semibold transition flex items-center gap-2"
-              style={{ 
-                background: '#4f46e5',
-                boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
-              }}
-            >
-              <RefreshCw className="w-4 h-4" />
-              Générer tous les IDs
-            </button>
+            <div>
+              <h3 className="font-semibold text-white">Liaison des employés</h3>
+              <p className="text-xs mt-0.5" style={{ color: '#64748b' }}>
+                Liste des employés ayant connecté leur bot WhatsApp ou Telegram.
+              </p>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -556,66 +548,110 @@ export default function MessagingPage() {
                 <tr className="border-b" style={{ borderColor: '#334155' }}>
                   <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Employé</th>
                   <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Rôle</th>
-                  <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>ID Employé</th>
+                  <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Sessions connectées</th>
                   <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Statut</th>
                   <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {mockEmployees.map((emp) => (
-                  <tr key={emp.id} className="border-b" style={{ borderColor: '#334155' }}>
-                    <td className="px-3 py-2 text-white">{emp.name}</td>
-                    <td className="px-3 py-2">
-                      <span 
-                        className="text-xs px-2 py-0.5 rounded-full"
-                        style={{ 
-                          background: 'rgba(99, 102, 241, 0.15)',
-                          color: '#818cf8'
-                        }}
-                      >
-                        {emp.role}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2">
-                      {emp.employeeId ? (
-                        <div className="flex items-center gap-2">
-                          <code className="text-xs font-mono" style={{ color: '#818cf8' }}>
-                            {emp.employeeId}
-                          </code>
-                          <button
-                            onClick={() => copyToClipboard(emp.employeeId!)}
-                            className="p-0.5 rounded hover:bg-white/10 transition"
-                            style={{ color: '#94a3b8' }}
-                          >
-                            <Copy className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-xs" style={{ color: '#64748b' }}>Non généré</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      <span 
-                        className={`text-xs px-2 py-0.5 rounded-full ${
-                          emp.active 
-                            ? 'bg-green-500/20 text-green-400' 
-                            : 'bg-red-500/20 text-red-400'
-                        }`}
-                      >
-                        {emp.active ? '✓ Actif' : '✗ Inactif'}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2">
-                      <button
-                        className={`text-xs px-2 py-1 rounded transition ${
-                          emp.active ? 'bg-green-500/20 text-green-400' : 'bg-primary-500/20 text-primary-400'
-                        }`}
-                      >
-                        {emp.active ? 'Régénérer' : 'Générer'}
-                      </button>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-8 text-center text-sm" style={{ color: '#64748b' }}>
+                      <RefreshCw className="w-5 h-5 animate-spin inline mr-2 text-primary-400" />
+                      Chargement des liaisons...
                     </td>
                   </tr>
-                ))}
+                ) : employees.filter(emp => emp.isBotLinked).length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-8 text-center text-sm" style={{ color: '#64748b' }}>
+                      Aucun employé n'a encore lié son bot.
+                    </td>
+                  </tr>
+                ) : (
+                  employees.filter(emp => emp.isBotLinked).map((emp) => (
+                    <tr key={emp.id} className="border-b" style={{ borderColor: '#334155' }}>
+                      <td className="px-3 py-2 text-white">
+                        <div>
+                          <p className="font-medium text-white">{emp.name}</p>
+                          <p className="text-xs" style={{ color: '#64748b' }}>{emp.email}</p>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span 
+                          className="text-xs px-2 py-0.5 rounded-full"
+                          style={{ 
+                            background: 'rgba(99, 102, 241, 0.15)',
+                            color: '#818cf8'
+                          }}
+                        >
+                          {emp.role}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-col gap-2">
+                          {emp.botSessions.map((session: any) => (
+                            <div key={session.id} className="flex items-center gap-2 text-xs">
+                              <span 
+                                className="px-2 py-0.5 rounded font-medium"
+                                style={{ 
+                                  background: session.platform === 'whatsapp' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                                  color: session.platform === 'whatsapp' ? '#22c55e' : '#3b82f6'
+                                }}
+                              >
+                                {session.platform_display}
+                              </span>
+                              <code className="font-mono text-white bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700">
+                                {session.external_id}
+                              </code>
+                              <button
+                                onClick={() => handleUnlinkSession(session.id, emp.name, session.platform_display)}
+                                className="text-red-400 hover:text-red-300 transition-colors p-0.5 hover:bg-red-500/10 rounded"
+                                title="Délier ce compte"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <span 
+                          className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400"
+                        >
+                          ✓ Lié & Actif
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleRegenerateId(emp)}
+                            className="text-xs px-2.5 py-1 rounded transition hover:opacity-90 font-medium"
+                            style={{ 
+                              background: 'rgba(99, 102, 241, 0.15)',
+                              color: '#818cf8',
+                              border: '1px solid rgba(99, 102, 241, 0.3)'
+                            }}
+                          >
+                            Régénérer ID
+                          </button>
+                          <button
+                            onClick={() => handleSendId(emp)}
+                            className="text-xs px-2.5 py-1 rounded transition flex items-center gap-1 hover:bg-white/10"
+                            style={{ 
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              color: '#94a3b8',
+                              border: '1px solid #334155'
+                            }}
+                            title="Renvoyer les accès de connexion par e-mail"
+                          >
+                            <Mail className="w-3 h-3" />
+                            Renvoyer
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -623,61 +659,12 @@ export default function MessagingPage() {
           <div className="mt-4 p-3 rounded-lg" style={{ background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.1)' }}>
             <p className="text-sm" style={{ color: '#94a3b8' }}>
               <Key className="w-4 h-4 inline mr-2" style={{ color: '#818cf8' }} />
-              Les IDs sont valables 24h. L'employé doit envoyer son ID au bot pour activer sa session.
+              Les IDs sont valables 1 mois. L'employé doit envoyer son ID au bot pour activer sa session.
             </p>
           </div>
         </div>
       )}
 
-      {/* COMMANDES */}
-      {activeTab === 'commands' && (
-        <div 
-          className="rounded-xl border p-4"
-          style={{ 
-            background: '#1e293b',
-            borderColor: '#334155'
-          }}
-        >
-          <h3 className="font-semibold text-sm text-white mb-3">Commandes disponibles</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {availableCommands.map((cmd, i) => (
-              <div 
-                key={i}
-                className="flex items-center justify-between p-3 rounded-lg"
-                style={{ 
-                  background: 'rgba(51, 65, 85, 0.3)',
-                  border: '1px solid #334155'
-                }}
-              >
-                <div>
-                  <code className="text-sm font-mono text-white">{cmd.command}</code>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>{cmd.description}</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setActiveTab('chat')
-                    setMessage(cmd.command.split(' ')[0])
-                    setTimeout(() => {
-                      const chatInput = document.querySelector('input[placeholder="Votre message..."]') as HTMLInputElement
-                      if (chatInput) {
-                        chatInput.value = cmd.command.split(' ')[0]
-                        sendMessage()
-                      }
-                    }, 300)
-                  }}
-                  className="px-2 py-1 rounded text-xs transition"
-                  style={{ 
-                    background: 'rgba(99, 102, 241, 0.15)',
-                    color: '#818cf8'
-                  }}
-                >
-                  Utiliser
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

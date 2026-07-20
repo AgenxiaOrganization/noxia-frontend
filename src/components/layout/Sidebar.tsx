@@ -4,8 +4,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { 
   LayoutDashboard, Package, Box, CreditCard, Users, 
-  FileBarChart, DollarSign, Truck, Bell, MessageSquare, 
-  Bot, Settings, Key 
+  FileBarChart, DollarSign, Truck, Bell, MessageSquare, MessageCircle,
+  Settings, Key 
 } from 'lucide-react'
 
 const menuItems = [
@@ -18,8 +18,8 @@ const menuItems = [
   { id: 'finance', label: 'Finances', icon: DollarSign },
   { id: 'fournisseurs', label: 'Fournisseurs', icon: Truck },
   { id: 'alerts', label: 'Alertes', icon: Bell },
+  { id: 'notifications', label: 'Notifications', icon: MessageCircle },
   { id: 'messaging', label: 'Messagerie', icon: MessageSquare },
-  { id: 'assistant', label: 'Assistant IA', icon: Bot },
   { id: 'settings', label: 'Paramètres', icon: Settings },
   { id: 'subscription', label: 'Abonnement', icon: Key },
 ]
@@ -65,6 +65,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           {menuItems.map((item) => {
             const isActive = pathname === `/${item.id}` || pathname.startsWith(`/${item.id}/`)
             const Icon = item.icon
+            
+
+
             return (
               <Link
                 key={item.id}
