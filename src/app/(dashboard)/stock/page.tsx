@@ -1,10 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Search, Plus, Minus, Package, TrendingUp, TrendingDown,
   X, Check, AlertTriangle
 } from 'lucide-react'
+import { getProducts, createCategory, createProduct, createCategoryCharacteristic, getCategories } from '../../../lib/api/catalog'
+import { getStockItems, getStockMovements, createStockMovement } from '../../../lib/api/inventory'
+import Loader from '@/components/ui/Loader'
+import { toast } from 'sonner'
 
 // --- Types ---
 interface Product {
@@ -19,99 +23,16 @@ interface Product {
   cost: number
   supplier: string | null
   unitsPerPackage: number // Pour les casiers
+  packagings?: any[]
+  stockItemId?: number | null
 }
 
-// --- Données Mockées ---
-const mockProducts: Product[] = [
-  {
-    id: 1,
-    name: 'Bière Castel 65cl',
-    category: 'boisson',
-    subCategory: 'casier',
-    stock: 48,
-    minStock: 20,
-    maxStock: 100,
-    unit: 'unité',
-    cost: 900,
-    supplier: 'Brasserie du Gabon',
-    unitsPerPackage: 24,
-  },
-  {
-    id: 2,
-    name: 'Bière Guinness 65cl',
-    category: 'boisson',
-    subCategory: 'casier',
-    stock: 12,
-    minStock: 15,
-    maxStock: 100,
-    unit: 'unité',
-    cost: 1200,
-    supplier: 'Brasserie du Gabon',
-    unitsPerPackage: 24,
-  },
-  {
-    id: 3,
-    name: 'Whisky Jack Daniel\'s',
-    category: 'boisson',
-    subCategory: 'unite',
-    stock: 8,
-    minStock: 5,
-    maxStock: 50,
-    unit: 'bouteille',
-    cost: 15000,
-    supplier: 'Distriboissons SA',
-    unitsPerPackage: 1,
-  },
-  {
-    id: 4,
-    name: 'Coca-Cola 33cl',
-    category: 'boisson',
-    subCategory: 'casier',
-    stock: 120,
-    minStock: 30,
-    maxStock: 200,
-    unit: 'unité',
-    cost: 500,
-    supplier: 'Coca-Cola Gabon',
-    unitsPerPackage: 12,
-  },
-  {
-    id: 5,
-    name: 'Cocktail Mojito',
-    category: 'boisson',
-    subCategory: 'unite',
-    stock: -1,
-    minStock: 0,
-    maxStock: 0,
-    unit: 'verre',
-    cost: 1500,
-    supplier: null,
-    unitsPerPackage: 1,
-  },
-  {
-    id: 6,
-    name: 'Brochettes Poulet',
-    category: 'nourriture',
-    subCategory: 'unite',
-    stock: 45,
-    minStock: 10,
-    maxStock: 100,
-    unit: 'unité',
-    cost: 1200,
-    supplier: 'FoodPro Gabon',
-    unitsPerPackage: 1,
-  },
-]
 
-const mockMovements = [
-  { id: 1, product: 'Bière Castel 65cl', type: 'entree', qty: 24, date: '2026-07-08 10:00', user: 'Admin', note: 'Approvisionnement' },
-  { id: 2, product: 'Bière Guinness 65cl', type: 'sortie', qty: 3, date: '2026-07-08 09:30', user: 'Jean M.', note: 'Vente' },
-  { id: 3, product: 'Whisky Jack Daniel\'s', type: 'entree', qty: 6, date: '2026-07-07 16:00', user: 'Admin', note: 'Commande fournisseur' },
-]
 
 export default function StockPage() {
-  const [products, setProducts] = useState<Product[]>(mockProducts)
-  const [movements, setMovements] = useState(mockMovements)
+  const [products, setProducts] = useState<Product[]>([])
+  const [movements, setMovements] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -120,8 +41,169 @@ export default function StockPage() {
   const [adjustmentQty, setAdjustmentQty] = useState(1)
   const [adjustmentTypeQty, setAdjustmentTypeQty] = useState<'unit' | 'package'>('unit')
   const [adjustmentNote, setAdjustmentNote] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const [categoriesList, setCategoriesList] = useState<string[]>([])
+  const [unitsPerPackageInput, setUnitsPerPackageInput] = useState<number>(12)
 
-  const categories = ['all', ...new Set(products.map(p => p.category))]
+
+  const loadData = async (silent = false) => {
+    try {
+      if (!silent) setIsLoading(true)
+      
+      let [apiProducts, apiStockItems, apiMovements, apiCategories] = await Promise.all([
+        getProducts(),
+        getStockItems(),
+        getStockMovements(),
+        getCategories()
+      ])
+
+      if (!apiProducts || apiProducts.length === 0) {
+        if (!apiCategories || apiCategories.length === 0) {
+          const catBoissons = await createCategory({ name: 'Boissons', type: 'boisson' })
+          const catNourriture = await createCategory({ name: 'Nourriture', type: 'nourriture' })
+          const catServices = await createCategory({ name: 'Services', type: 'service' })
+          apiCategories = [catBoissons, catNourriture, catServices]
+        }
+
+        const catBoisson = apiCategories.find(c => c.type === 'boisson')
+        const catNourriture = apiCategories.find(c => c.type === 'nourriture')
+        const catService = apiCategories.find(c => c.type === 'service')
+
+        // Créer des modèles de caractéristiques s'il n'y en a pas encore
+        if (catBoisson && (!catBoisson.characteristics || catBoisson.characteristics.length === 0)) {
+          await createCategoryCharacteristic(catBoisson.id, {
+            name: 'Bière',
+            attributes: { "alcool": "5%", "volume": "65cl" }
+          })
+          await createCategoryCharacteristic(catBoisson.id, {
+            name: 'Whisky',
+            attributes: { "origine": "Écosse", "âge": "12 ans" }
+          })
+        }
+
+        if (catNourriture && (!catNourriture.characteristics || catNourriture.characteristics.length === 0)) {
+          await createCategoryCharacteristic(catNourriture.id, {
+            name: 'Plat Chaud',
+            attributes: { "accompagnement": "Frites", "option": "Salade" }
+          })
+        }
+
+        const defaultProducts = [
+          {
+            category: catBoisson?.id || null,
+            name: 'Bière Castel 65cl',
+            unit: 'unite' as const,
+            price: '1500',
+            initial_stock: 48,
+            initial_min_stock: 10,
+            units_per_package: 12
+          },
+          {
+            category: catBoisson?.id || null,
+            name: 'Bière Guinness 65cl',
+            unit: 'unite' as const,
+            price: '2000',
+            initial_stock: 12,
+            initial_min_stock: 10,
+            units_per_package: 12
+          },
+          {
+            category: catBoisson?.id || null,
+            name: 'Whisky Jack Daniel\'s',
+            unit: 'bouteille' as const,
+            price: '25000',
+            initial_stock: 8,
+            initial_min_stock: 2
+          },
+          {
+            category: catNourriture?.id || null,
+            name: 'Burger Classic',
+            unit: 'plat' as const,
+            price: '4000',
+            initial_stock: 30,
+            initial_min_stock: 5
+          },
+          {
+            category: catService?.id || null,
+            name: 'Chicha Session',
+            unit: 'service' as const,
+            price: '10000',
+            initial_stock: 0,
+            initial_min_stock: 0
+          }
+        ]
+
+        for (const p of defaultProducts) {
+          await createProduct(p)
+        }
+
+        const [freshProducts, freshStockItems, freshMovements] = await Promise.all([
+          getProducts(),
+          getStockItems(),
+          getStockMovements()
+        ])
+        apiProducts = freshProducts
+        apiStockItems = freshStockItems
+        apiMovements = freshMovements
+      }
+
+      const stockItemsMap = new Map(apiStockItems.map(item => [item.product, item]))
+
+      const mappedProducts: Product[] = apiProducts.map((p: any) => {
+        const isCasier = p.packagings && p.packagings.length > 0 && p.packagings[0].name === 'Casier';
+        const stockItem = stockItemsMap.get(p.id);
+
+        return {
+          id: p.id,
+          name: p.name,
+          category: p.category_name || 'boisson',
+          subCategory: isCasier ? 'casier' : 'unite',
+          stock: stockItem ? parseFloat(stockItem.quantity_on_hand as string) : (p.stock !== undefined ? p.stock : 0),
+          minStock: stockItem ? parseFloat(stockItem.alert_threshold as string) : (p.min_stock !== undefined ? p.min_stock : 10),
+          maxStock: stockItem ? parseFloat(stockItem.alert_threshold as string) * 5 : 100,
+          unit: p.unit || 'unité',
+          cost: parseFloat(p.price),
+          supplier: p.supplier_name || null,
+          unitsPerPackage: isCasier ? p.packagings[0].units_per_package : 1,
+          packagings: p.packagings || [],
+          stockItemId: stockItem ? stockItem.id : null
+        }
+      })
+
+      setProducts(mappedProducts)
+
+      setMovements(apiMovements.map((m: any) => ({
+        id: m.id,
+        product: m.product_name || 'Produit inconnu',
+        type: m.movement_type === 'entry' ? 'entree' : 'sortie',
+        qty: parseFloat(m.quantity as string),
+        date: m.created_at ? new Date(m.created_at).toLocaleString('fr-FR', { 
+          day: '2-digit', 
+          month: '2-digit', 
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }) : '',
+        user: m.created_by_name || 'Admin',
+        note: m.reason || ''
+      })))
+
+      // Enregistrer la liste de toutes les catégories existantes
+      const catNames = (apiCategories || []).map((c: any) => c.name)
+      setCategoriesList(Array.from(new Set(catNames)))
+
+    } catch (e) {
+      console.error('Erreur chargement des stocks', e)
+    } finally {
+      if (!silent) setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const categories = ['all', ...categoriesList]
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -143,64 +225,68 @@ export default function StockPage() {
     setAdjustmentType(type)
     setAdjustmentQty(1)
     setAdjustmentTypeQty('unit')
+    setUnitsPerPackageInput(product.unitsPerPackage || 12)
     setAdjustmentNote(type === 'add' ? 'Approvisionnement' : 'Sortie manuelle')
     setIsModalOpen(true)
   }
 
   // --- Appliquer l'ajustement ---
-  const applyAdjustment = () => {
-    if (!selectedProduct) return
+  const applyAdjustment = async () => {
+    if (!selectedProduct || !selectedProduct.stockItemId) {
+      toast.error("Erreur : Aucun ID de stock associé à ce produit.")
+      return
+    }
 
     let qtyToAdjust = adjustmentQty
     let unitLabel = ''
+    let packagingId: number | null = null
 
     // Si c'est un produit en casier et qu'on ajuste en "casiers"
     if (selectedProduct.subCategory === 'casier' && adjustmentTypeQty === 'package') {
-      qtyToAdjust = adjustmentQty * selectedProduct.unitsPerPackage
-      unitLabel = ` (${adjustmentQty} casier${adjustmentQty > 1 ? 's' : ''} = ${qtyToAdjust} unités)`
+      const casierPkg = selectedProduct.packagings?.find(pkg => pkg.name === 'Casier')
+      if (casierPkg) {
+        packagingId = casierPkg.id
+        qtyToAdjust = adjustmentQty * unitsPerPackageInput
+        unitLabel = ` (${adjustmentQty} casier${adjustmentQty > 1 ? 's' : ''} × ${unitsPerPackageInput} unités = ${qtyToAdjust} unités)`
+      }
     }
 
-    // Appliquer la modification
-    const updatedProducts = products.map(p => {
-      if (p.id === selectedProduct.id) {
-        let newStock = p.stock
-        if (adjustmentType === 'add') {
-          newStock = p.stock >= 0 ? p.stock + qtyToAdjust : p.stock
-        } else {
-          newStock = p.stock >= 0 ? Math.max(0, p.stock - qtyToAdjust) : p.stock
+    try {
+      setIsSaving(true)
+      const adjustPromise = createStockMovement({
+        stock_item: selectedProduct.stockItemId,
+        movement_type: adjustmentType === 'add' ? 'entry' : 'exit',
+        quantity: packagingId ? undefined : qtyToAdjust,
+        packaging: packagingId || undefined,
+        packaging_quantity: packagingId ? adjustmentQty : undefined,
+        reason: adjustmentNote + unitLabel
+      })
+
+      toast.promise(adjustPromise, {
+        loading: "Enregistrement de l'ajustement...",
+        success: "✅ Ajustement de stock enregistré !",
+        error: (err) => {
+          const errMsg = err?.response?.data?.non_field_errors?.[0] || err?.message || "Erreur lors de la validation."
+          return `❌ Erreur : ${errMsg}`
         }
-        return { ...p, stock: newStock }
-      }
-      return p
-    })
+      })
 
-    setProducts(updatedProducts)
-
-    // Ajouter au mouvement
-    setMovements([
-      {
-        id: Date.now(),
-        product: selectedProduct.name,
-        type: adjustmentType === 'add' ? 'entree' : 'sortie',
-        qty: qtyToAdjust,
-        date: new Date().toLocaleString('fr-FR', { 
-          day: '2-digit', 
-          month: '2-digit', 
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
-        user: 'Admin',
-        note: adjustmentNote + unitLabel,
-      },
-      ...movements,
-    ])
-
-    setIsModalOpen(false)
-    setSelectedProduct(null)
+      await adjustPromise
+      setIsModalOpen(false)
+      setSelectedProduct(null)
+      await loadData(true)
+    } catch (err: any) {
+      console.error("Erreur lors de l'ajustement", err)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   // --- Rendu ---
+  if (isLoading) {
+    return <Loader />
+  }
+
   return (
     <div className="p-4 space-y-4">
       {/* HEADER */}
@@ -346,24 +432,28 @@ export default function StockPage() {
                       {product.stock >= 0 ? `${(product.stock * product.cost).toLocaleString()} F` : '-'}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => openAdjustmentModal(product, 'add')}
-                          className="p-1.5 rounded transition hover:bg-green-500/20"
-                          style={{ color: '#22c55e' }}
-                          title="Ajouter du stock"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => openAdjustmentModal(product, 'remove')}
-                          className="p-1.5 rounded transition hover:bg-red-500/20"
-                          style={{ color: '#ef4444' }}
-                          title="Retirer du stock"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {!isInfinite && product.stockItemId ? (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => openAdjustmentModal(product, 'add')}
+                            className="p-1.5 rounded transition hover:bg-green-500/20"
+                            style={{ color: '#22c55e' }}
+                            title="Ajouter du stock"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => openAdjustmentModal(product, 'remove')}
+                            className="p-1.5 rounded transition hover:bg-red-500/20"
+                            style={{ color: '#ef4444' }}
+                            title="Retirer du stock"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-500 italic">-</span>
+                      )}
                     </td>
                   </tr>
                 )
@@ -502,25 +592,61 @@ export default function StockPage() {
 
               {/* Quantité */}
               <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
-                  Quantité à {adjustmentType === 'add' ? 'ajouter' : 'retirer'}
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={adjustmentQty}
-                  onChange={(e) => setAdjustmentQty(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                  style={{
-                    background: 'rgba(51, 65, 85, 0.5)',
-                    border: '1px solid #334155'
-                  }}
-                />
-                {selectedProduct.subCategory === 'casier' && adjustmentTypeQty === 'package' && (
-                  <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>
-                    = {adjustmentQty * selectedProduct.unitsPerPackage} unités
-                  </p>
+                {selectedProduct.subCategory === 'casier' && adjustmentTypeQty === 'package' ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
+                          Nbr de casiers
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={adjustmentQty}
+                          onChange={(e) => setAdjustmentQty(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition bg-slate-900 border border-slate-700 focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
+                          Unités par casier
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={unitsPerPackageInput}
+                          onChange={(e) => setUnitsPerPackageInput(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition bg-slate-900 border border-slate-700 focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-lg border border-indigo-500/20 text-center" style={{ background: 'rgba(99, 102, 241, 0.05)' }}>
+                      <p className="text-xs text-slate-300">Total à {adjustmentType === 'add' ? 'ajouter' : 'retirer'} :</p>
+                      <p className="text-lg font-bold text-indigo-400 mt-0.5">
+                        {adjustmentQty} casier{adjustmentQty > 1 ? 's' : ''} × {unitsPerPackageInput} = {adjustmentQty * unitsPerPackageInput} unités
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
+                      Quantité (en unités)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={adjustmentQty}
+                      onChange={(e) => setAdjustmentQty(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                      style={{
+                        background: 'rgba(51, 65, 85, 0.5)',
+                        border: '1px solid #334155'
+                      }}
+                    />
+                  </div>
                 )}
               </div>
 
@@ -545,7 +671,7 @@ export default function StockPage() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-medium transition"
+                  className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-[1.02] hover:bg-slate-700/50 active:scale-[0.98]"
                   style={{
                     background: 'transparent',
                     border: '1px solid #334155',
@@ -557,7 +683,8 @@ export default function StockPage() {
                 <button
                   type="button"
                   onClick={applyAdjustment}
-                  className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition"
+                  disabled={isSaving}
+                  className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-2"
                   style={{
                     background: adjustmentType === 'add' ? '#22c55e' : '#ef4444',
                     boxShadow: adjustmentType === 'add'
@@ -565,7 +692,14 @@ export default function StockPage() {
                       : '0 10px 25px -5px rgba(239, 68, 68, 0.3)'
                   }}
                 >
-                  Valider
+                  {isSaving ? (
+                    <>
+                      <img src="/logos/NOXIA_Orbit_Logo.svg" alt="NOXIA" className="w-4 h-4 animate-spin" />
+                      Validation...
+                    </>
+                  ) : (
+                    'Valider'
+                  )}
                 </button>
               </div>
             </div>

@@ -5,12 +5,18 @@ import {
   Plus, Search, Edit, Trash2, Package, Coffee, Utensils, Sparkles, 
   X, Save, AlertCircle, Check, PlusCircle, MinusCircle 
 } from 'lucide-react'
+import { getProducts, createProduct, updateProduct, deleteProduct as deleteProductApi, getCategories, createCategory, createCategoryCharacteristic } from '../../../lib/api/catalog'
+import { getSuppliers, createSupplier, Supplier } from '../../../lib/api/inventory'
+import { useWebSockets } from '../../../lib/hooks/useWebSockets'
+import Loader from '@/components/ui/Loader'
+import { toast } from 'sonner'
 
 // --- Types ---
 interface Product {
   id: number
   name: string
   category: string
+  categoryId?: number
   subCategory: string
   pricePerUnit: number
   unitsPerPackage: number
@@ -21,87 +27,172 @@ interface Product {
   characteristics: Record<string, string>
 }
 
-interface Supplier {
-  id: number
-  name: string
-}
 
-// --- Données Mockées ---
-const mockSuppliers: Supplier[] = [
-  { id: 1, name: 'Brasserie du Gabon' },
-  { id: 2, name: 'Distriboissons SA' },
-  { id: 3, name: 'FoodPro Gabon' },
-  { id: 4, name: 'Coca-Cola Gabon' },
-]
-
-// Caractéristiques prédéfinies par catégorie/sous-catégorie
-const predefinedCharacteristics: Record<string, Record<string, string>> = {
-  'biere': { 'Type': 'Lager', 'Contenance': '65cl', 'Taux d\'alcool': '5%' },
-  'whisky': { 'Taux d\'alcool': '40%', 'Volume': '70cl', 'Origine': 'Écosse' },
-  'vodka': { 'Taux d\'alcool': '37.5%', 'Volume': '70cl', 'Origine': 'France' },
-  'champagne': { 'Type': 'Brut', 'Volume': '75cl', 'Région': 'Champagne' },
-  'cola': { 'Type': 'Cola', 'Contenance': '33cl', 'Sucré': 'Oui' },
-  'jus': { 'Type': 'Jus', 'Contenance': '33cl', 'Naturel': 'Oui' },
-  'cocktail': { 'Type': 'Cocktail', 'Volume': 'Verre', 'Alcool': 'Oui' },
-  'plats': { 'Type': 'Plat', 'Poids': '200g', 'Végétarien': 'Non' },
-  'snacks': { 'Type': 'Snack', 'Poids': '150g', 'Végétarien': 'Oui' },
-  'chicha': { 'Durée': '1h', 'Parfums': 'Multiples' },
-  'default': { 'Type': 'Standard' }
-}
-
-const mockProducts: Product[] = [
-  { 
-    id: 1, 
-    name: 'Bière Castel 65cl', 
-    category: 'boisson', 
-    subCategory: 'casier', 
-    pricePerUnit: 1500, 
-    unitsPerPackage: 24, 
-    stock: 48, 
-    unit: 'unité',
-    supplierId: 1,
-    minStock: 20,
-    characteristics: { 'Type': 'Lager', 'Contenance': '65cl' } 
-  },
-  { 
-    id: 2, 
-    name: 'Whisky Jack Daniel\'s', 
-    category: 'boisson', 
-    subCategory: 'unite', 
-    pricePerUnit: 25000, 
-    unitsPerPackage: 1, 
-    stock: 8, 
-    unit: 'bouteille',
-    supplierId: 2,
-    minStock: 5,
-    characteristics: { 'Taux d\'alcool': '40%', 'Volume': '70cl' } 
-  },
-  { 
-    id: 3, 
-    name: 'Coca-Cola 33cl', 
-    category: 'boisson', 
-    subCategory: 'casier', 
-    pricePerUnit: 1000, 
-    unitsPerPackage: 12, 
-    stock: 120, 
-    unit: 'unité',
-    supplierId: 4,
-    minStock: 30,
-    characteristics: { 'Type': 'Cola', 'Contenance': '33cl' } 
-  },
-]
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>(mockProducts)
+  const [products, setProducts] = useState<Product[]>([])
+  const [categoriesData, setCategoriesData] = useState<any[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isCharacteristicsModalOpen, setIsCharacteristicsModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [isSaving, setIsSaving] = useState(false)
+
+  const seedDefaultData = async () => {
+    try {
+      let apiCategories = await getCategories()
+      if (!apiCategories || apiCategories.length === 0) {
+        const catBoissons = await createCategory({ name: 'Boissons', type: 'boisson' })
+        const catNourriture = await createCategory({ name: 'Nourriture', type: 'nourriture' })
+        const catServices = await createCategory({ name: 'Services', type: 'service' })
+        apiCategories = [catBoissons, catNourriture, catServices]
+      }
+
+      const catBoisson = apiCategories.find(c => c.type === 'boisson')
+      const catNourriture = apiCategories.find(c => c.type === 'nourriture')
+      const catService = apiCategories.find(c => c.type === 'service')
+
+      // Créer des modèles de caractéristiques s'il n'y en a pas encore
+      if (catBoisson && (!catBoisson.characteristics || catBoisson.characteristics.length === 0)) {
+        await createCategoryCharacteristic(catBoisson.id, {
+          name: 'Bière',
+          attributes: { "alcool": "5%", "volume": "65cl" }
+        })
+        await createCategoryCharacteristic(catBoisson.id, {
+          name: 'Whisky',
+          attributes: { "origine": "Écosse", "âge": "12 ans" }
+        })
+      }
+
+      if (catNourriture && (!catNourriture.characteristics || catNourriture.characteristics.length === 0)) {
+        await createCategoryCharacteristic(catNourriture.id, {
+          name: 'Plat Chaud',
+          attributes: { "accompagnement": "Frites", "option": "Salade" }
+        })
+      }
+
+      const defaultProducts = [
+        {
+          category: catBoisson?.id || null,
+          name: 'Bière Castel 65cl',
+          unit: 'unite' as const,
+          price: '1500',
+          initial_stock: 48,
+          initial_min_stock: 10,
+          units_per_package: 12
+        },
+        {
+          category: catBoisson?.id || null,
+          name: 'Bière Guinness 65cl',
+          unit: 'unite' as const,
+          price: '2000',
+          initial_stock: 12,
+          initial_min_stock: 10,
+          units_per_package: 12
+        },
+        {
+          category: catBoisson?.id || null,
+          name: 'Whisky Jack Daniel\'s',
+          unit: 'bouteille' as const,
+          price: '25000',
+          initial_stock: 8,
+          initial_min_stock: 2
+        },
+        {
+          category: catNourriture?.id || null,
+          name: 'Burger Classic',
+          unit: 'plat' as const,
+          price: '4000',
+          initial_stock: 30,
+          initial_min_stock: 5
+        },
+        {
+          category: catService?.id || null,
+          name: 'Chicha Session',
+          unit: 'service' as const,
+          price: '10000',
+          initial_stock: 0,
+          initial_min_stock: 0
+        }
+      ]
+
+      for (const p of defaultProducts) {
+        await createProduct(p)
+      }
+    } catch (err) {
+      console.error('Erreur lors du peuplement automatique de la base de données', err)
+    }
+  }
+
+  const loadData = async (silent = false) => {
+    try {
+      if (!silent) setIsLoading(true)
+      let [apiCategories, apiSuppliers, apiProducts] = await Promise.all([
+        getCategories(),
+        getSuppliers(),
+        getProducts()
+      ])
+
+      if ((!apiCategories || apiCategories.length === 0) || (!apiProducts || apiProducts.length === 0)) {
+        await seedDefaultData()
+        const [freshCats, freshSuppliers, freshProds] = await Promise.all([
+          getCategories(),
+          getSuppliers(),
+          getProducts()
+        ])
+        apiCategories = freshCats
+        apiSuppliers = freshSuppliers
+        apiProducts = freshProds
+      }
+
+      setCategoriesData(apiCategories || [])
+      setSuppliers(apiSuppliers || [])
+
+      if (apiProducts && apiProducts.length > 0) {
+        setProducts(apiProducts.map((p: any) => {
+          const isCasier = p.packagings && p.packagings.length > 0 && p.packagings[0].name === 'Casier';
+          return {
+            id: p.id,
+            name: p.name,
+            category: p.category_name || 'boisson',
+            categoryId: p.category,
+            subCategory: isCasier ? 'casier' : 'unite',
+            pricePerUnit: parseFloat(p.price),
+            unitsPerPackage: isCasier ? p.packagings[0].units_per_package : 1,
+            stock: p.stock !== undefined ? p.stock : 0,
+            unit: p.unit,
+            supplierId: p.supplier || null,
+            minStock: p.min_stock !== undefined ? p.min_stock : 10,
+            characteristics: p.attributes || {}
+          }
+        }))
+      } else {
+        setProducts([])
+      }
+    } catch (e) {
+      console.error('Erreur chargement catalogue', e)
+    } finally {
+      if (!silent) setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  useWebSockets('/ws/prices/', (data) => {
+    console.log("Mise à jour du catalogue reçue via WebSockets", data)
+    loadData()
+  })
 
   // État du formulaire
   const [formData, setFormData] = useState<Omit<Product, 'id'>>({
     name: '',
     category: 'boisson',
+    categoryId: categoriesData.length > 0 ? categoriesData[0].id : undefined,
     subCategory: 'casier',
     pricePerUnit: 0,
     unitsPerPackage: 1,
@@ -115,11 +206,13 @@ export default function ProductsPage() {
   // États pour les champs flexibles
   const [charKey, setCharKey] = useState('')
   const [charValue, setCharValue] = useState('')
-  const [newSupplierName, setNewSupplierName] = useState('')
-  const [showNewSupplierInput, setShowNewSupplierInput] = useState(false)
-  const [suppliers, setSuppliers] = useState<Supplier[]>(mockSuppliers)
+  const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState(false)
+  const [templateSearchTerm, setTemplateSearchTerm] = useState('')
 
-  const categories = ['all', ...new Set(products.map(p => p.category))]
+  const currentCategory = categoriesData.find(c => Number(c.id) === Number(formData.categoryId))
+  const currentCategoryCharacteristics = currentCategory?.characteristics || []
+
+  const categories = ['all', ...categoriesData.map(c => c.name)]
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -127,54 +220,7 @@ export default function ProductsPage() {
     return matchesSearch && matchesCategory
   })
 
-  // Déterminer les caractéristiques prédéfinies en fonction du nom du produit
-  const getPredefinedCharacteristics = (name: string, category: string): Record<string, string> => {
-    const lowerName = name.toLowerCase()
-    
-    if (lowerName.includes('biere') || lowerName.includes('castel') || lowerName.includes('guinness')) {
-      return { ...predefinedCharacteristics['biere'] }
-    }
-    if (lowerName.includes('whisky') || lowerName.includes('jack')) {
-      return { ...predefinedCharacteristics['whisky'] }
-    }
-    if (lowerName.includes('vodka') || lowerName.includes('absolut')) {
-      return { ...predefinedCharacteristics['vodka'] }
-    }
-    if (lowerName.includes('champagne') || lowerName.includes('moet')) {
-      return { ...predefinedCharacteristics['champagne'] }
-    }
-    if (lowerName.includes('coca') || lowerName.includes('cola')) {
-      return { ...predefinedCharacteristics['cola'] }
-    }
-    if (lowerName.includes('jus') || lowerName.includes('orange')) {
-      return { ...predefinedCharacteristics['jus'] }
-    }
-    if (lowerName.includes('cocktail') || lowerName.includes('mojito') || lowerName.includes('pina')) {
-      return { ...predefinedCharacteristics['cocktail'] }
-    }
-    if (lowerName.includes('brochette') || lowerName.includes('poulet')) {
-      return { ...predefinedCharacteristics['plats'] }
-    }
-    if (lowerName.includes('burger') || lowerName.includes('snack')) {
-      return { ...predefinedCharacteristics['snacks'] }
-    }
-    if (lowerName.includes('chicha')) {
-      return { ...predefinedCharacteristics['chicha'] }
-    }
-    
-    return { ...predefinedCharacteristics['default'] }
-  }
-
-  // Mettre à jour les caractéristiques quand le nom change
-  useEffect(() => {
-    if (formData.name.trim()) {
-      const newChars = getPredefinedCharacteristics(formData.name, formData.category)
-      setFormData(prev => ({
-        ...prev,
-        characteristics: { ...newChars }
-      }))
-    }
-  }, [formData.name, formData.category])
+  // La sélection d'un modèle (article) de caractéristique se fait manuellement dans le formulaire
 
   // --- Logique du formulaire ---
   const openModal = (product: Product | null = null) => {
@@ -182,10 +228,13 @@ export default function ProductsPage() {
       setFormData({
         name: product.name,
         category: product.category,
+        categoryId: product.categoryId,
         subCategory: product.subCategory || 'casier',
         pricePerUnit: product.pricePerUnit,
         unitsPerPackage: product.unitsPerPackage || 1,
-        stock: product.stock,
+        stock: product.subCategory === 'casier'
+          ? Math.floor(product.stock / (product.unitsPerPackage || 1))
+          : product.stock,
         unit: product.unit,
         supplierId: product.supplierId,
         minStock: product.minStock || 10,
@@ -195,7 +244,8 @@ export default function ProductsPage() {
     } else {
       setFormData({
         name: '',
-        category: 'boisson',
+        category: categoriesData.length > 0 ? categoriesData[0].name : 'boisson',
+        categoryId: categoriesData.length > 0 ? categoriesData[0].id : undefined,
         subCategory: 'casier',
         pricePerUnit: 0,
         unitsPerPackage: 1,
@@ -209,6 +259,8 @@ export default function ProductsPage() {
       setCharKey('')
       setCharValue('')
     }
+    setIsTemplateDropdownOpen(false)
+    setTemplateSearchTerm('')
     setIsModalOpen(true)
   }
 
@@ -239,66 +291,87 @@ export default function ProductsPage() {
 
   // Mise à jour du champ "Sous-catégorie" quand la catégorie change
   useEffect(() => {
-    if (formData.category === 'boisson') {
+    const isBoisson = categoriesData.find(c => c.id === formData.categoryId)?.type === 'boisson' || formData.category?.toLowerCase().includes('boisson');
+    if (isBoisson) {
       if (!['casier', 'unite'].includes(formData.subCategory)) {
         setFormData(prev => ({ ...prev, subCategory: 'casier' }))
       }
     } else {
       setFormData(prev => ({ ...prev, subCategory: 'unite' }))
     }
-  }, [formData.category])
-
-  // Ajouter un fournisseur à la volée
-  const addNewSupplier = () => {
-    if (newSupplierName.trim()) {
-      const newSupplier: Supplier = { id: Date.now(), name: newSupplierName.trim() }
-      setSuppliers([...suppliers, newSupplier])
-      setFormData({ ...formData, supplierId: newSupplier.id })
-      setNewSupplierName('')
-      setShowNewSupplierInput(false)
-    }
-  }
+  }, [formData.categoryId, formData.category, categoriesData])
 
   // Sauvegarder le produit
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    let totalStock = formData.stock
-    if (formData.subCategory === 'casier') {
-      totalStock = formData.unitsPerPackage * formData.stock
+    const categoryType = categoriesData.find(c => c.id === formData.categoryId)?.type;
+    let unitVal: 'unite' | 'bouteille' | 'casier' | 'plat' | 'portion' | 'service' = 'unite';
+    if (categoryType === 'service') {
+      unitVal = 'service';
+    } else if (categoryType === 'nourriture') {
+      unitVal = 'plat';
     }
 
-    const productData: Product = {
-      id: editingProduct ? editingProduct.id : Date.now(),
+    const apiData: any = {
       name: formData.name,
-      category: formData.category,
-      subCategory: formData.subCategory,
-      pricePerUnit: formData.pricePerUnit,
-      unitsPerPackage: formData.subCategory === 'casier' ? formData.unitsPerPackage : 1,
-      stock: totalStock,
-      unit: formData.subCategory === 'casier' ? 'unité' : 'pièce',
-      supplierId: formData.supplierId,
-      minStock: formData.minStock,
-      characteristics: formData.characteristics,
+      category: formData.categoryId,
+      price: formData.pricePerUnit?.toString() || "0",
+      unit: unitVal,
+      is_active: true,
+      brand: '',
+      alcohol_percentage: null,
+      volume_cl: null,
+      attributes: formData.characteristics,
+      initial_stock: formData.subCategory === 'casier'
+        ? formData.stock * formData.unitsPerPackage
+        : formData.stock,
+      initial_min_stock: formData.minStock,
+      units_per_package: formData.subCategory === 'casier' ? formData.unitsPerPackage : 1,
+      supplier: formData.supplierId
     }
 
-    if (editingProduct) {
-      setProducts(products.map(p => p.id === editingProduct.id ? productData : p))
-    } else {
-      setProducts([...products, productData])
-    }
+    try {
+      setIsSaving(true)
+      const savePromise = editingProduct
+        ? updateProduct(editingProduct.id, apiData)
+        : createProduct(apiData)
 
-    setIsModalOpen(false)
+      toast.promise(savePromise, {
+        loading: editingProduct ? "Modification du produit..." : "Création du produit...",
+        success: editingProduct ? "✅ Produit modifié avec succès !" : "✅ Produit créé avec succès !",
+        error: "❌ Erreur lors de la sauvegarde."
+      })
+
+      await savePromise
+      setIsModalOpen(false)
+      await loadData(true)
+    } catch (e) {
+      console.error('Erreur lors de la sauvegarde du produit', e)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   // Supprimer un produit
-  const deleteProduct = (id: number) => {
+  const deleteProduct = async (id: number) => {
     if (confirm('Supprimer ce produit ?')) {
-      setProducts(products.filter(p => p.id !== id))
+      const deletePromise = deleteProductApi(id)
+      toast.promise(deletePromise, {
+        loading: 'Suppression du produit en cours...',
+        success: '✅ Produit supprimé avec succès !',
+        error: 'Erreur lors de la suppression.'
+      })
+      await deletePromise
+      await loadData(true)
     }
   }
 
   // --- Rendu ---
+  if (isLoading) {
+    return <Loader />
+  }
+
   return (
     <div className="p-4 space-y-4">
       {/* HEADER */}
@@ -309,17 +382,30 @@ export default function ProductsPage() {
             {products.length} produits • {products.filter(p => p.stock <= p.minStock && p.stock >= 0).length} alertes stock
           </p>
         </div>
-        <button
-          onClick={() => openModal()}
-          className="px-4 py-2 rounded-lg text-white text-sm font-semibold transition flex items-center gap-2"
-          style={{
-            background: '#4f46e5',
-            boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
-          }}
-        >
-          <Plus className="w-4 h-4" />
-          Ajouter un produit
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsCharacteristicsModalOpen(true)}
+            className="px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 border border-slate-700"
+            style={{
+              background: 'rgba(51, 65, 85, 0.5)',
+              color: '#94a3b8'
+            }}
+          >
+            <Sparkles className="w-4 h-4" />
+            Modèles de caractéristiques
+          </button>
+          <button
+            onClick={() => openModal()}
+            className="px-4 py-2 rounded-lg text-white text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center gap-2"
+            style={{
+              background: '#4f46e5',
+              boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
+            }}
+          >
+            <Plus className="w-4 h-4" />
+            Ajouter un produit
+          </button>
+        </div>
       </div>
 
       {/* FILTRES ET RECHERCHE */}
@@ -498,17 +584,22 @@ export default function ProductsPage() {
               <div>
                 <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Catégorie *</label>
                 <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  value={formData.categoryId || ''}
+                  onChange={(e) => {
+                    const catId = parseInt(e.target.value);
+                    const catName = categoriesData.find(c => c.id === catId)?.name || 'boisson';
+                    setFormData({ ...formData, categoryId: catId, category: catName })
+                  }}
                   className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
                   style={{
                     background: 'rgba(51, 65, 85, 0.5)',
                     border: '1px solid #334155'
                   }}
                 >
-                  <option value="boisson">Boisson</option>
-                  <option value="nourriture">Nourriture</option>
-                  <option value="service">Service</option>
+                  <option value="" disabled>Sélectionner une catégorie</option>
+                  {categoriesData.map(c => (
+                     <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
                 </select>
               </div>
 
@@ -517,7 +608,7 @@ export default function ProductsPage() {
                 <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
                   Type de vente *
                 </label>
-                {formData.category === 'boisson' ? (
+                {(categoriesData.find(c => c.id === formData.categoryId)?.type === 'boisson' || formData.category?.toLowerCase().includes('boisson')) ? (
                   <select
                     value={formData.subCategory}
                     onChange={(e) => setFormData({ ...formData, subCategory: e.target.value })}
@@ -562,54 +653,60 @@ export default function ProductsPage() {
                     required
                   />
                 </div>
-                <div>
-                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
-                    {formData.subCategory === 'casier' ? 'Nb unités/casier' : 'Quantité'}
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={formData.subCategory === 'casier' ? formData.unitsPerPackage : formData.stock}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value) || 0
-                      if (formData.subCategory === 'casier') {
-                        setFormData({ ...formData, unitsPerPackage: val })
-                      } else {
-                        setFormData({ ...formData, stock: val })
-                      }
-                    }}
-                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                    style={{
-                      background: 'rgba(51, 65, 85, 0.5)',
-                      border: '1px solid #334155'
-                    }}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
-                    {formData.subCategory === 'casier' ? 'Nombre de casiers' : '-'}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={formData.subCategory === 'casier' ? formData.stock : 0}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value) || 0
-                      if (formData.subCategory === 'casier') {
-                        setFormData({ ...formData, stock: val })
-                      }
-                    }}
-                    disabled={formData.subCategory !== 'casier'}
-                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition disabled:opacity-40"
-                    style={{
-                      background: 'rgba(51, 65, 85, 0.5)',
-                      border: '1px solid #334155'
-                    }}
-                  />
-                </div>
+
+                {formData.subCategory === 'casier' ? (
+                  <>
+                    <div>
+                      <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nb unités/casier *</label>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={formData.unitsPerPackage}
+                        onChange={(e) => setFormData({ ...formData, unitsPerPackage: parseInt(e.target.value) || 1 })}
+                        className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                        style={{
+                          background: 'rgba(51, 65, 85, 0.5)',
+                          border: '1px solid #334155'
+                        }}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nombre de casiers</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={formData.stock}
+                        onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
+                        className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                        style={{
+                          background: 'rgba(51, 65, 85, 0.5)',
+                          border: '1px solid #334155'
+                        }}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Quantité en stock</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.stock}
+                      onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
+                      className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                      style={{
+                        background: 'rgba(51, 65, 85, 0.5)',
+                        border: '1px solid #334155'
+                      }}
+                      required
+                    />
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Seuil alerte</label>
                   <input
@@ -636,76 +733,101 @@ export default function ProductsPage() {
               {/* Fournisseur */}
               <div>
                 <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Fournisseur</label>
-                <div className="flex gap-2">
-                  <select
-                    value={formData.supplierId || ''}
-                    onChange={(e) => setFormData({ ...formData, supplierId: e.target.value ? parseInt(e.target.value) : null })}
-                    className="flex-1 rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                    style={{
-                      background: 'rgba(51, 65, 85, 0.5)',
-                      border: '1px solid #334155'
-                    }}
-                  >
-                    <option value="">Aucun</option>
-                    {suppliers.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setShowNewSupplierInput(!showNewSupplierInput)}
-                    className="px-3 py-2.5 rounded-lg text-xs font-medium transition"
-                    style={{
-                      background: 'rgba(99, 102, 241, 0.15)',
-                      color: '#818cf8'
-                    }}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-                {showNewSupplierInput && (
-                  <div className="flex gap-2 mt-2">
-                    <input
-                      type="text"
-                      value={newSupplierName}
-                      onChange={(e) => setNewSupplierName(e.target.value)}
-                      placeholder="Nom du nouveau fournisseur..."
-                      className="flex-1 rounded-lg px-4 py-2 text-white text-sm outline-none transition"
-                      style={{
-                        background: 'rgba(51, 65, 85, 0.5)',
-                        border: '1px solid #334155'
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={addNewSupplier}
-                      className="px-4 py-2 rounded-lg text-white text-xs font-semibold transition"
-                      style={{
-                        background: '#22c55e',
-                        boxShadow: '0 10px 25px -5px rgba(34, 197, 94, 0.3)'
-                      }}
-                    >
-                      <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowNewSupplierInput(false)}
-                      className="px-4 py-2 rounded-lg text-xs font-medium transition"
-                      style={{
-                        background: 'transparent',
-                        border: '1px solid #334155',
-                        color: '#94a3b8'
-                      }}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
+                <select
+                  value={formData.supplierId || ''}
+                  onChange={(e) => setFormData({ ...formData, supplierId: e.target.value ? parseInt(e.target.value) : null })}
+                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                  style={{
+                    background: 'rgba(51, 65, 85, 0.5)',
+                    border: '1px solid #334155'
+                  }}
+                >
+                  <option value="">Aucun</option>
+                  {suppliers.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
               </div>
 
-              {/* Caractéristiques avec pré-remplissage */}
+              {/* Caractéristiques avec modèles */}
               <div>
                 <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Caractéristiques</label>
+                
+                {/* Sélecteur de modèle custom avec recherche */}
+                {formData.categoryId && currentCategoryCharacteristics.length > 0 && (
+                  <div className="mb-3 relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsTemplateDropdownOpen(!isTemplateDropdownOpen)
+                        setTemplateSearchTerm('')
+                      }}
+                      className="w-full flex items-center justify-between rounded-lg px-4 py-2.5 text-left text-sm outline-none transition"
+                      style={{
+                        background: 'rgba(51, 65, 85, 0.5)',
+                        border: '1px dashed #6366f1',
+                        color: '#818cf8'
+                      }}
+                    >
+                      <span>+ Charger depuis un modèle existant...</span>
+                      <Search className="w-4 h-4 opacity-60" />
+                    </button>
+
+                    {isTemplateDropdownOpen && (
+                      <div
+                        className="absolute left-0 right-0 mt-1 rounded-lg border z-50 overflow-hidden shadow-2xl"
+                        style={{
+                          background: '#1e293b',
+                          borderColor: '#334155'
+                        }}
+                      >
+                        {/* Barre de recherche */}
+                        <div className="p-2 border-b" style={{ borderColor: '#334155' }}>
+                          <input
+                            type="text"
+                            placeholder="Rechercher un modèle..."
+                            value={templateSearchTerm}
+                            onChange={(e) => setTemplateSearchTerm(e.target.value)}
+                            className="w-full rounded-md px-3 py-1.5 bg-slate-900 border border-slate-700 text-white text-xs outline-none focus:border-indigo-500"
+                            autoFocus
+                          />
+                        </div>
+
+                        {/* Liste des modèles */}
+                        <div className="max-h-48 overflow-y-auto py-1">
+                          {currentCategoryCharacteristics
+                            .filter((char: any) => char.name.toLowerCase().includes(templateSearchTerm.toLowerCase()))
+                            .map((char: any) => (
+                              <button
+                                key={char.id}
+                                type="button"
+                                onClick={() => {
+                                  if (char.attributes) {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      characteristics: { ...prev.characteristics, ...char.attributes }
+                                    }))
+                                  }
+                                  setIsTemplateDropdownOpen(false)
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-white hover:bg-indigo-600 transition"
+                              >
+                                {char.name}
+                              </button>
+                            ))}
+                          {currentCategoryCharacteristics
+                            .filter((char: any) => char.name.toLowerCase().includes(templateSearchTerm.toLowerCase())).length === 0 && (
+                              <p className="px-4 py-2 text-xs text-slate-500 italic">Aucun modèle trouvé</p>
+                            )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <p className="text-xs mb-2" style={{ color: '#64748b' }}>
+                  Tapez une clé (ex: Volume) et sa valeur (ex: 75cl), ou chargez un modèle ci-dessus.
+                </p>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
@@ -732,7 +854,8 @@ export default function ProductsPage() {
                   <button
                     type="button"
                     onClick={addCharacteristic}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition"
+                    disabled={!charKey.trim() || !charValue.trim()}
+                    className="px-3 py-2 rounded-lg text-xs font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
                       background: 'rgba(99, 102, 241, 0.15)',
                       color: '#818cf8'
@@ -743,7 +866,7 @@ export default function ProductsPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-1">
-                  {Object.entries(formData.characteristics).map(([key, value]) => (
+                  {Object.entries(formData.characteristics || {}).map(([key, value]) => (
                     <span
                       key={key}
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
@@ -760,7 +883,7 @@ export default function ProductsPage() {
                     </span>
                   ))}
                 </div>
-                {Object.keys(formData.characteristics).length === 0 && (
+                {(!formData.characteristics || Object.keys(formData.characteristics).length === 0) && (
                   <p className="text-xs mt-1" style={{ color: '#64748b' }}>Aucune caractéristique ajoutée</p>
                 )}
               </div>
@@ -769,7 +892,7 @@ export default function ProductsPage() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-medium transition"
+                  className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-[1.02] hover:bg-slate-700/50 active:scale-[0.98]"
                   style={{
                     background: 'transparent',
                     border: '1px solid #334155',
@@ -780,16 +903,170 @@ export default function ProductsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition"
+                  disabled={isSaving}
+                  className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
                   style={{
                     background: '#4f46e5',
                     boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
                   }}
                 >
-                  {editingProduct ? 'Modifier' : 'Ajouter'}
+                  {isSaving ? (
+                    <>
+                      <img src="/logos/NOXIA_Orbit_Logo.svg" alt="NOXIA" className="w-4 h-4 animate-spin" />
+                      Enregistrement...
+                    </>
+                  ) : (
+                    editingProduct ? 'Modifier' : 'Ajouter'
+                  )}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL GESTION DES CARACTERISTIQUES PAR CATEGORIE */}
+      {isCharacteristicsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="rounded-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]" style={{ background: '#1e293b', border: '1px solid #334155' }}>
+            <div className="flex items-center justify-between p-4 border-b border-slate-700">
+              <div>
+                <h2 className="text-lg font-bold text-white">Modèles de caractéristiques</h2>
+                <p className="text-xs text-slate-400">Configurez les champs par défaut pour chaque catégorie</p>
+              </div>
+              <button onClick={() => setIsCharacteristicsModalOpen(false)} className="p-2 hover:bg-slate-700 rounded-full transition text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto">
+              <div className="space-y-6">
+                {categoriesData.map(cat => (
+                  <div key={cat.id} className="p-4 rounded-lg bg-slate-800/50 border border-slate-700">
+                    <h3 className="font-bold text-indigo-400 mb-3 text-sm">{cat.name}</h3>
+                    
+                    {cat.characteristics && cat.characteristics.length > 0 ? (
+                      <div className="space-y-4 mb-4">
+                        {cat.characteristics.map((char: any) => (
+                          <div key={char.id} className="bg-slate-800 p-3 rounded-lg border border-slate-700">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-white font-medium text-sm">{char.name}</span>
+                              <button 
+                                onClick={async () => {
+                                  if (confirm(`Supprimer le modèle "${char.name}" ?`)) {
+                                    try {
+                                      const { deleteCategoryCharacteristic } = await import('../../../lib/api/catalog');
+                                      await deleteCategoryCharacteristic(cat.id, char.id);
+                                      loadData();
+                                    } catch (e) {
+                                      console.error(e);
+                                      alert("Erreur");
+                                    }
+                                  }
+                                }}
+                                className="text-red-400 hover:text-red-300 p-1"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                            
+                            {/* Liste des attributs pour cet article */}
+                            <div className="space-y-1 mb-2">
+                              {Object.entries(char.attributes || {}).map(([key, val]) => (
+                                <div key={key} className="flex justify-between text-xs items-center bg-slate-900/50 px-2 py-1 rounded">
+                                  <span className="text-slate-300"><span className="text-indigo-300 font-medium">{key}</span>: {val as string}</span>
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        const { createCategoryCharacteristic } = await import('../../../lib/api/catalog');
+                                        const newAttrs = { ...char.attributes };
+                                        delete newAttrs[key];
+                                        // On utilise createCategoryCharacteristic mais en fait c'est un update.
+                                        // Wait, we need an update API ! Let's use PUT.
+                                        const { put } = await import('../../../lib/api');
+                                        await put(`/catalog/categories/${cat.id}/characteristics/${char.id}/`, { name: char.name, attributes: newAttrs });
+                                        loadData();
+                                      } catch (e) { console.error(e); }
+                                    }}
+                                    className="text-red-400 hover:text-red-300"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                            
+                            {/* Ajouter un attribut à cet article */}
+                            <div className="flex gap-2">
+                              <input 
+                                type="text"
+                                placeholder="Clé (ex: Volume)"
+                                id={`attrKey-${char.id}`}
+                                className="w-1/3 rounded px-2 py-1 text-xs bg-slate-900 border border-slate-700 text-white"
+                              />
+                              <input 
+                                type="text"
+                                placeholder="Valeur (ex: 75cl)"
+                                id={`attrVal-${char.id}`}
+                                className="w-1/3 rounded px-2 py-1 text-xs bg-slate-900 border border-slate-700 text-white"
+                              />
+                              <button 
+                                onClick={async () => {
+                                  const keyInput = document.getElementById(`attrKey-${char.id}`) as HTMLInputElement;
+                                  const valInput = document.getElementById(`attrVal-${char.id}`) as HTMLInputElement;
+                                  if (keyInput && keyInput.value.trim()) {
+                                    try {
+                                      const { put } = await import('../../../lib/api');
+                                      const newAttrs = { ...char.attributes, [keyInput.value.trim()]: valInput?.value?.trim() || '' };
+                                      await put(`/catalog/categories/${cat.id}/characteristics/${char.id}/`, { name: char.name, attributes: newAttrs });
+                                      keyInput.value = '';
+                                      if(valInput) valInput.value = '';
+                                      loadData();
+                                    } catch (e) { console.error(e); }
+                                  }
+                                }}
+                                className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-medium"
+                              >
+                                Ajouter attr.
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500 mb-4 italic">Aucun modèle (article) configuré pour cette catégorie.</p>
+                    )}
+
+                    <div className="flex gap-2 border-t border-slate-700 pt-3">
+                      <input 
+                        type="text"
+                        placeholder="Nouvel article (ex: Bière, Whisky)..."
+                        id={`newCharName-${cat.id}`}
+                        className="flex-1 rounded px-3 py-1.5 text-sm bg-slate-900 border border-slate-700 text-white"
+                      />
+                      <button 
+                        onClick={async () => {
+                          const input = document.getElementById(`newCharName-${cat.id}`) as HTMLInputElement;
+                          if (input && input.value.trim()) {
+                            try {
+                              const { createCategoryCharacteristic } = await import('../../../lib/api/catalog');
+                              await createCategoryCharacteristic(cat.id, { name: input.value.trim(), attributes: {} });
+                              input.value = '';
+                              loadData();
+                            } catch (e) {
+                              console.error(e);
+                              alert("Erreur lors de l'ajout.");
+                            }
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm font-medium transition"
+                      >
+                        Créer le modèle
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}

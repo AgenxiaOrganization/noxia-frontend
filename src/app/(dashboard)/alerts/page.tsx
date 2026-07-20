@@ -1,99 +1,27 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, FormEvent } from 'react'
 import {
   Bell, AlertTriangle, CheckCircle, XCircle,
-  Package, DollarSign, Users, MessageSquare,
-  Mail, Smartphone, Settings, ChevronDown,
-  Search, Filter, Clock, Zap
+  Package, DollarSign, Smartphone, Mail, MessageSquare,
+  Settings, Search, Clock, Zap, X
 } from 'lucide-react'
 import React from 'react'
+import { getStockItems, patchStockItem, createStockMovement, StockItem } from '../../../lib/api/inventory'
+import Loader from '@/components/ui/Loader'
+import { toast } from 'sonner'
 
 // --- Types ---
 interface Alert {
   id: number
-  type: string
+  type: 'stock_faible' | 'stock_epuise' | 'caisse_ecart'
   product: string
   stock: number | null
   threshold: number | null
-  status: string
+  status: 'critique' | 'actif' | 'resolue'
   date: string
   channels: string[]
 }
-
-// --- Données Mockées ---
-const mockAlerts: Alert[] = [
-  { 
-    id: 1, 
-    type: 'stock_faible', 
-    product: 'Bière Guinness 65cl', 
-    stock: 12, 
-    threshold: 15,
-    status: 'actif',
-    date: '2026-07-08 10:00',
-    channels: ['whatsapp', 'email']
-  },
-  { 
-    id: 2, 
-    type: 'stock_faible', 
-    product: 'Champagne Moet 75cl', 
-    stock: 6, 
-    threshold: 3,
-    status: 'actif',
-    date: '2026-07-07 18:30',
-    channels: ['whatsapp']
-  },
-  { 
-    id: 3, 
-    type: 'stock_faible', 
-    product: 'Whisky Jack Daniel\'s', 
-    stock: 8, 
-    threshold: 5,
-    status: 'actif',
-    date: '2026-07-08 09:15',
-    channels: ['whatsapp', 'email', 'push']
-  },
-  { 
-    id: 4, 
-    type: 'stock_epuise', 
-    product: 'Jus d\'Orange 33cl', 
-    stock: 0, 
-    threshold: 15,
-    status: 'critique',
-    date: '2026-07-08 08:00',
-    channels: ['whatsapp', 'email', 'push']
-  },
-  { 
-    id: 5, 
-    type: 'stock_epuise', 
-    product: 'Vodka Absolut', 
-    stock: 0, 
-    threshold: 5,
-    status: 'critique',
-    date: '2026-07-07 22:00',
-    channels: ['whatsapp', 'email']
-  },
-  { 
-    id: 6, 
-    type: 'caisse_ecart', 
-    product: 'Caisse Principale', 
-    stock: null, 
-    threshold: null,
-    status: 'actif',
-    date: '2026-07-07 22:00',
-    channels: ['email']
-  },
-]
-
-const mockProducts = [
-  { id: 1, name: 'Bière Castel 65cl', stock: 48, minStock: 20, maxStock: 100, unit: 'unité' },
-  { id: 2, name: 'Bière Guinness 65cl', stock: 12, minStock: 15, maxStock: 100, unit: 'unité' },
-  { id: 3, name: 'Whisky Jack Daniel\'s', stock: 8, minStock: 5, maxStock: 50, unit: 'bouteille' },
-  { id: 4, name: 'Champagne Moet 75cl', stock: 6, minStock: 3, maxStock: 30, unit: 'bouteille' },
-  { id: 5, name: 'Coca-Cola 33cl', stock: 120, minStock: 30, maxStock: 200, unit: 'unité' },
-  { id: 6, name: 'Jus d\'Orange 33cl', stock: 0, minStock: 15, maxStock: 100, unit: 'unité' },
-  { id: 7, name: 'Vodka Absolut', stock: 0, minStock: 5, maxStock: 50, unit: 'bouteille' },
-]
 
 const channelIcons = {
   whatsapp: MessageSquare,
@@ -108,17 +36,159 @@ const channelLabels = {
 }
 
 export default function AlertsPage() {
+  const [stockItems, setStockItems] = useState<StockItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterType, setFilterType] = useState('all')
 
-  const filteredAlerts = mockAlerts.filter(a => {
+  // Modals pour la résolution rapide d'alerte de stock
+  const [isAdjustmentModalOpen, setIsAdjustmentModalOpen] = useState(false)
+  const [selectedStockItem, setSelectedStockItem] = useState<StockItem | null>(null)
+  const [adjustQty, setAdjustQty] = useState(10)
+  const [adjustNote, setAdjustNote] = useState('Approvisionnement suite alerte')
+
+  // Permet de simuler la résolution de l'alerte de caisse ou autre
+  const [resolvedAlertIds, setResolvedAlertIds] = useState<number[]>([])
+
+  const loadData = async (silent = false) => {
+    try {
+      if (!silent) setIsLoading(true)
+      const apiStockItems = await getStockItems()
+      setStockItems(apiStockItems || [])
+    } catch (err) {
+      console.error('Erreur chargement des donnees de stock pour alertes', err)
+      toast.error("Erreur lors de la récupération des alertes.")
+    } finally {
+      if (!silent) setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  // Construction dynamique des alertes à partir des articles de stock
+  const alerts: Alert[] = []
+
+  stockItems.forEach(item => {
+    const qty = parseFloat(item.quantity_on_hand as string)
+    const threshold = parseFloat(item.alert_threshold as string)
+
+    if (qty <= threshold) {
+      const isOutOfStock = qty === 0
+      alerts.push({
+        id: item.id, // On utilise l'ID du stock item
+        type: isOutOfStock ? 'stock_epuise' : 'stock_faible',
+        product: item.product_name || 'Produit inconnu',
+        stock: qty,
+        threshold: threshold,
+        status: isOutOfStock ? 'critique' : 'actif',
+        date: item.updated_at ? new Date(item.updated_at).toLocaleString('fr-FR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }) : new Date().toLocaleString(),
+        channels: ['whatsapp', 'email', 'push']
+      })
+    }
+  })
+
+  // Ajout de l'alerte de caisse de démonstration si non résolue
+  if (!resolvedAlertIds.includes(999)) {
+    alerts.push({
+      id: 999,
+      type: 'caisse_ecart',
+      product: 'Caisse Principale',
+      stock: null,
+      threshold: null,
+      status: 'actif',
+      date: '2026-07-16 12:00',
+      channels: ['email']
+    })
+  }
+
+  const filteredAlerts = alerts.filter(a => {
     const matchesSearch = a.product.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType = filterType === 'all' || a.type === filterType
     return matchesSearch && matchesType
   })
 
-  const activeAlerts = mockAlerts.filter(a => a.status === 'actif' || a.status === 'critique')
-  const criticalAlerts = mockAlerts.filter(a => a.status === 'critique')
+  const activeAlerts = alerts.filter(a => a.status === 'actif' || a.status === 'critique')
+  const criticalAlerts = alerts.filter(a => a.status === 'critique')
+
+  // Mise à jour à la volée du seuil d'alerte
+  const handleThresholdChange = async (itemId: number, newThreshold: number) => {
+    try {
+      const savePromise = patchStockItem(itemId, { alert_threshold: newThreshold })
+      toast.promise(savePromise, {
+        loading: "Mise à jour du seuil d'alerte...",
+        success: "✅ Seuil mis à jour avec succès !",
+        error: "❌ Erreur lors de la mise à jour."
+      })
+      await savePromise
+      await loadData(true)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  // Ouvrir la modal d'ajustement rapide pour résoudre l'alerte de stock
+  const openAdjustmentModal = (alertId: number) => {
+    const item = stockItems.find(si => si.id === alertId)
+    if (item) {
+      setSelectedStockItem(item)
+      // Proposer d'ajouter de quoi combler le seuil + 10 unités
+      const curStock = parseFloat(item.quantity_on_hand as string)
+      const threshold = parseFloat(item.alert_threshold as string)
+      setAdjustQty(Math.max(10, Math.ceil(threshold - curStock + 10)))
+      setAdjustNote('Réapprovisionnement suite alerte')
+      setIsAdjustmentModalOpen(true)
+    }
+  }
+
+  // Soumettre l'ajustement de stock pour résoudre l'alerte
+  const handleQuickAdjustmentSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!selectedStockItem) return
+
+    try {
+      setIsSaving(true)
+      const adjustPromise = createStockMovement({
+        stock_item: selectedStockItem.id,
+        movement_type: 'entry',
+        quantity: adjustQty,
+        reason: adjustNote
+      })
+
+      toast.promise(adjustPromise, {
+        loading: "Enregistrement de l'ajustement de stock...",
+        success: "✅ Stock ajouté, l'alerte est résolue !",
+        error: "❌ Erreur de validation du stock."
+      })
+
+      await adjustPromise
+      setIsAdjustmentModalOpen(false)
+      setSelectedStockItem(null)
+      await loadData(true)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Résoudre l'alerte de caisse
+  const handleResolveCaisse = () => {
+    setResolvedAlertIds(prev => [...prev, 999])
+    toast.success("✅ Alerte d'écart de caisse résolue !")
+  }
+
+  if (isLoading) {
+    return <Loader />
+  }
 
   return (
     <div className="p-4 space-y-4">
@@ -129,19 +199,6 @@ export default function AlertsPage() {
           <p className="text-sm" style={{ color: '#94a3b8' }}>
             {activeAlerts.length} alertes actives • {criticalAlerts.length} critiques
           </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            className="px-4 py-2 rounded-lg text-white text-sm font-semibold transition flex items-center gap-2"
-            style={{ 
-              background: 'rgba(99, 102, 241, 0.15)',
-              border: '1px solid rgba(99, 102, 241, 0.2)',
-              color: '#818cf8'
-            }}
-          >
-            <Settings className="w-4 h-4" />
-            Configurer les alertes
-          </button>
         </div>
       </div>
 
@@ -158,13 +215,13 @@ export default function AlertsPage() {
         <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
           <p className="text-xs" style={{ color: '#94a3b8' }}>Stock faible</p>
           <p className="text-xl font-bold text-orange-400">
-            {mockAlerts.filter(a => a.type === 'stock_faible').length}
+            {alerts.filter(a => a.type === 'stock_faible').length}
           </p>
         </div>
         <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
           <p className="text-xs" style={{ color: '#94a3b8' }}>Ruptures</p>
           <p className="text-xl font-bold text-red-400">
-            {mockAlerts.filter(a => a.type === 'stock_epuise').length}
+            {alerts.filter(a => a.type === 'stock_epuise').length}
           </p>
         </div>
       </div>
@@ -208,12 +265,12 @@ export default function AlertsPage() {
         </div>
       </div>
 
-      {/* LISTE DES ALERTES (Vue verticale améliorée) */}
+      {/* LISTE DES ALERTES (Vue dynamique) */}
       <div className="space-y-3">
         {filteredAlerts.length === 0 ? (
           <div className="text-center py-8">
             <Bell className="w-12 h-12 mx-auto mb-2" style={{ color: '#334155' }} />
-            <p className="text-sm" style={{ color: '#64748b' }}>Aucune alerte trouvée</p>
+            <p className="text-sm" style={{ color: '#64748b' }}>Aucune alerte active</p>
           </div>
         ) : (
           filteredAlerts.map((alert) => {
@@ -232,7 +289,6 @@ export default function AlertsPage() {
             const bgColor = alert.status === 'critique' ? 'rgba(239, 68, 68, 0.08)' : 
                             'rgba(245, 158, 11, 0.05)'
 
-            // ✅ Correction : Vérification des valeurs null avant calcul
             const stockValue = alert.stock ?? 0
             const thresholdValue = alert.threshold ?? 1
             const progress = Math.min(100, (stockValue / thresholdValue) * 100)
@@ -310,22 +366,13 @@ export default function AlertsPage() {
                           <span className="text-xs" style={{ color: '#94a3b8' }}>
                             Seuil : {alert.threshold ?? 'N/A'} unités
                           </span>
-                          <button
-                            className="text-xs px-2 py-0.5 rounded transition"
-                            style={{ 
-                              background: 'rgba(34, 197, 94, 0.15)',
-                              color: '#22c55e'
-                            }}
-                          >
-                            Commander
-                          </button>
                         </div>
                       )}
                       
                       {alert.type === 'caisse_ecart' && (
                         <div className="mt-1 flex items-center gap-3 flex-wrap">
                           <span className="text-xs font-semibold text-orange-400">Écart de caisse détecté</span>
-                          <span className="text-xs" style={{ color: '#94a3b8' }}>Vérifiez les comptes</span>
+                          <span className="text-xs" style={{ color: '#94a3b8' }}>Vérifiez les clôtures du POS</span>
                         </div>
                       )}
                     </div>
@@ -352,28 +399,25 @@ export default function AlertsPage() {
                       })}
                     </div>
                     
-                    {alert.status === 'actif' && (
+                    {alert.type !== 'caisse_ecart' ? (
                       <button
-                        className="px-3 py-1 rounded text-xs font-medium transition flex items-center gap-1"
+                        onClick={() => openAdjustmentModal(alert.id)}
+                        className="px-3 py-1 rounded text-xs font-medium transition flex items-center gap-1 hover:brightness-110 active:scale-95"
                         style={{ 
-                          background: 'rgba(34, 197, 94, 0.15)',
-                          color: '#22c55e'
+                          background: alert.type === 'stock_epuise' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)',
+                          color: alert.type === 'stock_epuise' ? '#ef4444' : '#22c55e'
                         }}
+                      >
+                        {alert.type === 'stock_epuise' ? <Zap className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
+                        {alert.type === 'stock_epuise' ? 'Agir' : 'Résoudre'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleResolveCaisse}
+                        className="px-3 py-1 rounded text-xs font-medium transition flex items-center gap-1 hover:brightness-110 active:scale-95 bg-green-500/20 text-green-400"
                       >
                         <CheckCircle className="w-3 h-3" />
                         Résoudre
-                      </button>
-                    )}
-                    {alert.status === 'critique' && (
-                      <button
-                        className="px-3 py-1 rounded text-xs font-medium transition flex items-center gap-1"
-                        style={{ 
-                          background: 'rgba(239, 68, 68, 0.15)',
-                          color: '#ef4444'
-                        }}
-                      >
-                        <Zap className="w-3 h-3" />
-                        Agir
                       </button>
                     )}
                   </div>
@@ -384,9 +428,9 @@ export default function AlertsPage() {
         )}
       </div>
 
-      {/* CONFIGURATION DES SEUILS */}
+      {/* CONFIGURATION DES SEUILS DYNAMIQUES */}
       <div 
-        className="rounded-xl border p-4"
+        className="rounded-xl border p-4 animate-fade-in"
         style={{ background: '#1e293b', borderColor: '#334155' }}
       >
         <h3 className="font-semibold text-sm text-white mb-3 flex items-center gap-2">
@@ -399,28 +443,43 @@ export default function AlertsPage() {
               <tr className="border-b" style={{ borderColor: '#334155' }}>
                 <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Produit</th>
                 <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Stock actuel</th>
-                <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Seuil actuel</th>
-                <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Nouveau seuil</th>
+                <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Seuil d'alerte</th>
                 <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Statut</th>
               </tr>
             </thead>
             <tbody>
-              {mockProducts.map((product) => {
-                const isLow = product.stock >= 0 && product.stock <= product.minStock
-                const isOut = product.stock === 0
-                
+              {stockItems.map((item) => {
+                const qty = parseFloat(item.quantity_on_hand as string)
+                const threshold = parseFloat(item.alert_threshold as string)
+                const isLow = qty >= 0 && qty <= threshold
+                const isOut = qty === 0
+
                 return (
-                  <tr key={product.id} className="border-b" style={{ borderColor: '#334155' }}>
-                    <td className="px-3 py-2 text-white">{product.name}</td>
-                    <td className="px-3 py-2" style={{ color: isOut ? '#ef4444' : isLow ? '#f59e0b' : '#94a3b8' }}>
-                      {product.stock >= 0 ? product.stock : 'Illimité'}
+                  <tr key={item.id} className="border-b transition hover:bg-slate-800/30" style={{ borderColor: '#334155' }}>
+                    <td className="px-3 py-2 text-white font-medium">{item.product_name}</td>
+                    <td className="px-3 py-2 font-semibold" style={{ color: isOut ? '#ef4444' : isLow ? '#f59e0b' : '#94a3b8' }}>
+                      {qty >= 0 ? `${qty} ${item.unit || 'unités'}` : 'Illimité'}
                     </td>
-                    <td className="px-3 py-2" style={{ color: '#94a3b8' }}>{product.minStock}</td>
                     <td className="px-3 py-2">
                       <input
                         type="number"
-                        defaultValue={product.minStock}
-                        className="w-20 rounded px-2 py-1 text-white text-xs outline-none transition"
+                        min="0"
+                        defaultValue={threshold}
+                        onBlur={(e) => {
+                          const val = parseInt(e.target.value)
+                          if (!isNaN(val) && val !== threshold) {
+                            handleThresholdChange(item.id, val)
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = parseInt((e.target as HTMLInputElement).value)
+                            if (!isNaN(val) && val !== threshold) {
+                              handleThresholdChange(item.id, val)
+                            }
+                          }
+                        }}
+                        className="w-20 rounded px-2 py-1 text-white text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                         style={{ 
                           background: 'rgba(51, 65, 85, 0.5)',
                           border: '1px solid #334155'
@@ -429,7 +488,7 @@ export default function AlertsPage() {
                     </td>
                     <td className="px-3 py-2">
                       <span 
-                        className={`text-xs px-2 py-0.5 rounded-full ${
+                        className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
                           isOut ? 'bg-red-500/20 text-red-400' :
                           isLow ? 'bg-orange-500/20 text-orange-400' :
                           'bg-green-500/20 text-green-400'
@@ -455,7 +514,7 @@ export default function AlertsPage() {
         ].map((channel, i) => (
           <div 
             key={i}
-            className="rounded-xl border p-4 text-center"
+            className="rounded-xl border p-4 text-center transition hover:border-slate-700"
             style={{ background: '#1e293b', borderColor: '#334155' }}
           >
             <div className="flex items-center justify-center gap-2">
@@ -463,13 +522,124 @@ export default function AlertsPage() {
               <span className="font-medium text-white">{channel.name}</span>
             </div>
             <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>{channel.desc}</p>
-            <label className="flex items-center justify-center gap-2 mt-2 text-xs">
-              <input type="checkbox" defaultChecked={channel.active} className="accent-primary-500" />
+            <label className="flex items-center justify-center gap-2 mt-2 text-xs cursor-pointer select-none">
+              <input type="checkbox" defaultChecked={channel.active} className="accent-primary-500 rounded" />
               <span style={{ color: '#94a3b8' }}>Actif</span>
             </label>
           </div>
         ))}
       </div>
+
+      {/* QUICK ADJUSTMENT MODAL */}
+      {isAdjustmentModalOpen && selectedStockItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div 
+            className="w-full max-w-md p-6 rounded-2xl border"
+            style={{ background: '#1e293b', borderColor: '#334155' }}
+          >
+            <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: '#334155' }}>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-orange-400" />
+                Réapprovisionnement rapide
+              </h2>
+              <button 
+                onClick={() => {
+                  setIsAdjustmentModalOpen(false)
+                  setSelectedStockItem(null)
+                }}
+                className="text-slate-400 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleQuickAdjustmentSubmit} className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#94a3b8' }}>
+                  Produit
+                </label>
+                <input 
+                  type="text" 
+                  disabled 
+                  value={selectedStockItem.product_name || ''} 
+                  className="w-full rounded-lg px-3 py-2 text-slate-400 text-sm border cursor-not-allowed"
+                  style={{ background: 'rgba(51, 65, 85, 0.2)', borderColor: '#334155' }}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#94a3b8' }}>
+                    Stock actuel
+                  </label>
+                  <p className="text-sm font-bold text-orange-400 p-2 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.15)' }}>
+                    {selectedStockItem.quantity_on_hand} {selectedStockItem.unit || 'unités'}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: '#94a3b8' }}>
+                    Seuil d'alerte
+                  </label>
+                  <p className="text-sm font-bold text-white p-2 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.15)' }}>
+                    {selectedStockItem.alert_threshold} {selectedStockItem.unit || 'unités'}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#94a3b8' }}>
+                  Quantité à ajouter ({selectedStockItem.unit || 'unités'})
+                </label>
+                <input 
+                  type="number" 
+                  min="1"
+                  required
+                  value={adjustQty}
+                  onChange={(e) => setAdjustQty(parseInt(e.target.value) || 1)}
+                  className="w-full rounded-lg px-3 py-2 text-white text-sm outline-none border focus:border-indigo-500"
+                  style={{ background: 'rgba(51, 65, 85, 0.5)', borderColor: '#334155' }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold mb-1" style={{ color: '#94a3b8' }}>
+                  Motif / Note d'ajustement
+                </label>
+                <input 
+                  type="text" 
+                  required
+                  value={adjustNote}
+                  onChange={(e) => setAdjustNote(e.target.value)}
+                  className="w-full rounded-lg px-3 py-2 text-white text-sm outline-none border focus:border-indigo-500"
+                  style={{ background: 'rgba(51, 65, 85, 0.5)', borderColor: '#334155' }}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t" style={{ borderColor: '#334155' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAdjustmentModalOpen(false)
+                    setSelectedStockItem(null)
+                  }}
+                  className="px-5 py-2 rounded-lg text-sm font-medium transition border"
+                  style={{ background: 'transparent', borderColor: '#334155', color: '#94a3b8' }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="px-5 py-2 rounded-lg text-white text-sm font-semibold transition bg-green-600 hover:brightness-110 active:scale-95 flex items-center gap-1 disabled:opacity-50"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Valider l'ajustement
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

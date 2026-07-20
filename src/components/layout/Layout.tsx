@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Sidebar } from './Sidebar'
 // import { TopBar } from './TopBar'
-import { TopBar } from './TopBar' // Correction du nom du fichier pour correspondre à la casse exacte
+import { TopBar } from './Topbar' // Correction du nom du fichier pour correspondre à la casse exacte
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
