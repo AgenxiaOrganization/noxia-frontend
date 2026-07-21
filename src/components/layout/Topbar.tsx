@@ -17,6 +17,49 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const [showCompanyId, setShowCompanyId] = useState(false)
   const [showEmployeeId, setShowEmployeeId] = useState(false)
 
+  const [activeTheme, setActiveTheme] = useState('indigo')
+  const [activeBg, setActiveBg] = useState('slate')
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('noxia_theme') || 'indigo'
+    const savedBg = localStorage.getItem('noxia_bg') || 'slate'
+    setActiveTheme(savedTheme)
+    setActiveBg(savedBg)
+    
+    // Écouteur pour synchroniser les changements de thèmes
+    const handleStorageChange = () => {
+      setActiveTheme(localStorage.getItem('noxia_theme') || 'indigo')
+      setActiveBg(localStorage.getItem('noxia_bg') || 'slate')
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
+  const changeTheme = (themeName: string) => {
+    const root = document.documentElement
+    root.classList.remove('theme-indigo', 'theme-emerald', 'theme-ocean', 'theme-white-pure', 'theme-white-soft')
+    if (themeName !== 'indigo') {
+      root.classList.add(`theme-${themeName}`)
+    }
+    localStorage.setItem('noxia_theme', themeName)
+    setActiveTheme(themeName)
+    window.dispatchEvent(new Event('storage'))
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'))
+    }, 100)
+  }
+
+  const changeBg = (bgName: string) => {
+    const root = document.documentElement
+    root.classList.remove('bg-slate', 'bg-oled', 'bg-abysse', 'bg-white-pure', 'bg-white-soft')
+    if (bgName !== 'slate') {
+      root.classList.add(`bg-${bgName}`)
+    }
+    localStorage.setItem('noxia_bg', bgName)
+    setActiveBg(bgName)
+    window.dispatchEvent(new Event('storage'))
+  }
+
   const [userData, setUserData] = useState({
     name: 'Chargement...',
     email: '',
@@ -102,53 +145,100 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
 
   return (
     <header 
-      className="h-14 border-b flex items-center justify-between px-4 sm:px-6 shrink-0 relative z-10"
-      style={{ 
-        borderColor: '#1e293b',
-        background: 'rgba(30, 41, 59, 0.5)'
-      }}
+      className="h-14 border-b border-dark-800/60 flex items-center justify-between px-4 sm:px-6 shrink-0 relative z-20 backdrop-blur-md bg-dark-950/70"
     >
       {/* Gauche */}
       <div className="flex items-center gap-4">
         <button 
           onClick={onMenuClick} 
-          className="md:hidden hover:text-white transition"
-          style={{ color: '#94a3b8' }}
+          className="md:hidden text-dark-300 hover:text-white hover:bg-white/5 p-1.5 rounded-lg transition"
         >
           <Menu className="w-5 h-5" />
         </button>
-        <h2 className="font-semibold text-sm truncate max-w-[120px] sm:max-w-none text-white">
-          Tableau de bord
-        </h2>
+        <div className="flex items-center gap-3">
+          <span className="font-display font-black text-sm tracking-widest bg-gradient-to-r from-primary-400 to-accent-400 bg-clip-text text-transparent select-none animate-pulse">
+            NOXIA
+          </span>
+          <span className="hidden sm:inline text-xs text-dark-500 font-semibold border-l border-dark-800/40 pl-3 select-none">
+            Tableau de bord
+          </span>
+        </div>
       </div>
+
+      {/* Double Sélecteur Intégré Globalement dans la Topbar */}
+      <div className="hidden md:flex items-center gap-2">
+        {/* Sélecteur de Thèmes (Accent / Police) */}
+        <div className="flex items-center gap-1 bg-dark-900/60 px-2 py-1 rounded-lg border border-dark-800/40 backdrop-blur-sm" title="Couleur de police">
+          <span className="text-[8px] uppercase tracking-wider font-extrabold text-dark-400 select-none mr-1.5">Police</span>
+          {[
+            { id: 'indigo', label: 'Indigo Royal', color: 'from-indigo-500 to-indigo-600' },
+            { id: 'emerald', label: 'Émeraude Sauvage', color: 'from-emerald-500 to-emerald-600' },
+            { id: 'ocean', label: 'Bleu Océan', color: 'from-sky-500 to-sky-600' },
+            { id: 'white-pure', label: 'Blanc Pur', color: 'from-white to-white-soft border border-dark-300/30' },
+            { id: 'white-soft', label: 'Blanc Doux', color: 'from-dark-200 to-dark-400 border border-dark-300/30' }
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => changeTheme(t.id)}
+              className={`w-3.5 h-3.5 rounded-full bg-gradient-to-br ${t.color} transition-all duration-200 hover:scale-110 relative ${
+                activeTheme === t.id 
+                  ? 'ring-2 ring-white ring-offset-2 ring-offset-dark-950 scale-105 shadow-lg' 
+                  : 'opacity-70 hover:opacity-100'
+              }`}
+              title={`Couleur de police : ${t.label}`}
+            />
+          ))}
+        </div>
+
+            {/* Sélecteur d'Arrière-plans */}
+            <div className="flex items-center gap-1 bg-dark-900/60 px-2 py-1 rounded-lg border border-dark-800/40 backdrop-blur-sm" title="Background">
+              <span className="text-[8px] uppercase tracking-wider font-extrabold text-dark-400 select-none mr-1.5">Fond</span>
+              {[
+                { id: 'slate', label: 'Ardoise', color: 'bg-dark-950 border border-dark-800' },
+                { id: 'oled', label: 'Noir OLED', color: 'bg-[#000000] border border-dark-900' },
+                { id: 'abysse', label: 'Bleu Abysse', color: 'bg-[#050b1a] border border-blue-950/40' },
+                { id: 'white-pure', label: 'Blanc Neige', color: 'bg-[#ffffff] border border-dark-300' },
+                { id: 'white-soft', label: 'Gris Doux', color: 'bg-[#f1f5f9] border border-dark-300' }
+              ].map((bg) => (
+                <button
+                  key={bg.id}
+                  onClick={() => changeBg(bg.id)}
+                  className={`w-3.5 h-3.5 rounded-md ${bg.color} transition-all duration-200 hover:scale-110 relative ${
+                    activeBg === bg.id 
+                      ? 'ring-2 ring-white ring-offset-2 ring-offset-dark-950 scale-105 shadow-lg' 
+                      : 'opacity-70 hover:opacity-100'
+                  }`}
+                  title={`Background : ${bg.label}`}
+                />
+              ))}
+            </div>
+          </div>
 
       {/* Droite */}
       <div className="flex items-center gap-4">
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-          <span className="text-xs" style={{ color: '#94a3b8' }}>ID Établissement:</span>
-          <code className="text-xs font-mono" style={{ color: '#818cf8' }}>
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-lg bg-dark-900/50 border border-dark-800/50">
+          <span className="text-xs text-dark-400">ID Établissement:</span>
+          <code className="text-xs font-mono font-semibold text-primary-400">
             {showCompanyId ? userData.companyId : '*************'}
           </code>
           <button
             onClick={() => setShowCompanyId(!showCompanyId)}
-            className="p-0.5 rounded hover:bg-white/10 transition"
-            style={{ color: '#94a3b8' }}
+            className="p-1 rounded hover:bg-white/5 text-dark-400 hover:text-white transition"
             title={showCompanyId ? "Masquer" : "Afficher"}
           >
             {showCompanyId ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
           </button>
           <button
             onClick={copyCompanyId}
-            className="p-0.5 rounded hover:bg-white/10 transition"
-            style={{ color: '#94a3b8' }}
+            className="p-1 rounded hover:bg-white/5 text-dark-400 hover:text-white transition"
             title="Copier"
           >
-            {copied ? <Check className="w-3 h-3" style={{ color: '#22c55e' }} /> : <Copy className="w-3 h-3" />}
+            {copied ? <Check className="w-3 h-3 text-accent-500" /> : <Copy className="w-3 h-3" />}
           </button>
         </div>
 
         {/* Date/Heure */}
-        <span className="text-xs hidden sm:block" style={{ color: '#94a3b8' }}>{time}</span>
+        <span className="text-xs font-medium text-dark-400 hidden sm:block">{time}</span>
 
         {/* Notifications et Alertes en temps réel */}
         <div className="flex items-center gap-1">
@@ -160,15 +250,14 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
         <div className="relative">
           <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="flex items-center gap-2 px-2 py-1 rounded-lg transition hover:bg-white/5"
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition hover:bg-white/[0.04] group"
           >
             <div 
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
-              style={{ background: '#4f46e5' }}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white bg-gradient-to-br from-primary-500 to-indigo-600 shadow-md"
             >
               {userData.avatar}
             </div>
-            <ChevronDown className="w-4 h-4" style={{ color: '#94a3b8' }} />
+            <ChevronDown className="w-4 h-4 text-dark-300 transition-transform duration-200 group-hover:text-white" />
           </button>
 
           {/* Dropdown Profil */}
@@ -179,28 +268,21 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
                 onClick={() => setIsProfileOpen(false)}
               />
               <div 
-                className="absolute right-0 top-full mt-2 w-72 rounded-xl border shadow-xl z-50 overflow-hidden"
-                style={{ 
-                  background: '#1e293b',
-                  borderColor: '#334155'
-                }}
+                className="absolute right-0 top-full mt-2 w-72 rounded-2xl border border-dark-800/80 shadow-2xl z-50 overflow-hidden bg-dark-900"
               >
                 {/* En-tête profil */}
                 <div 
-                  className="p-4 border-b text-center"
-                  style={{ borderColor: '#334155' }}
+                  className="p-5 border-b border-dark-800/60 text-center"
                 >
                   <div 
-                    className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-white mx-auto mb-2"
-                    style={{ background: '#4f46e5' }}
+                    className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-white mx-auto mb-2.5 bg-gradient-to-br from-primary-500 to-indigo-600 shadow-lg"
                   >
                     {userData.avatar}
                   </div>
-                  <p className="font-semibold text-white">{userData.name}</p>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>{userData.email}</p>
+                  <p className="font-semibold text-white text-base tracking-tight">{userData.name}</p>
+                  <p className="text-xs text-dark-400 mt-0.5">{userData.email}</p>
                   <span 
-                    className="text-xs px-2 py-0.5 rounded-full inline-block mt-1"
-                    style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}
+                    className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full inline-block mt-2 bg-primary-500/10 text-primary-400 border border-primary-500/15"
                   >
                     {userData.plan}
                   </span>
@@ -208,29 +290,28 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
 
                 {/* Infos entreprise */}
                 <div 
-                  className="p-3 border-b"
-                  style={{ borderColor: '#334155' }}
+                  className="p-4 border-b border-dark-800/60 space-y-3"
                 >
-                  <div className="flex items-center gap-2 text-sm mb-2">
-                    <Building2 className="w-4 h-4" style={{ color: '#64748b' }} />
-                    <div>
-                      <p className="text-white">{userData.company}</p>
-                      <p className="text-xs flex items-center gap-1" style={{ color: '#64748b' }}>
+                  <div className="flex items-center gap-3 text-sm">
+                    <Building2 className="w-[18px] h-[18px] text-dark-400 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-white font-medium truncate">{userData.company}</p>
+                      <p className="text-xs flex items-center gap-1 text-dark-400 mt-0.5">
                         ID Établissement: 
-                        <code style={{ color: '#818cf8' }}>{showCompanyId ? userData.companyId : '*************'}</code>
+                        <code className="text-primary-400 font-mono font-semibold">{showCompanyId ? userData.companyId : '*************'}</code>
                         <button onClick={(e) => { e.stopPropagation(); setShowCompanyId(!showCompanyId); }} className="hover:text-white transition">
                           {showCompanyId ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                         </button>
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <User className="w-4 h-4" style={{ color: '#64748b' }} />
-                    <div>
-                      <p className="text-white">Votre compte ({userData.role})</p>
-                      <p className="text-xs flex items-center gap-1" style={{ color: '#64748b' }}>
+                  <div className="flex items-center gap-3 text-sm">
+                    <User className="w-[18px] h-[18px] text-dark-400 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-white font-medium truncate">Votre compte ({userData.role})</p>
+                      <p className="text-xs flex items-center gap-1 text-dark-400 mt-0.5">
                         ID Employé: 
-                        <code style={{ color: '#818cf8' }}>{showEmployeeId ? userData.employeeId : '**********'}</code>
+                        <code className="text-primary-400 font-mono font-semibold">{showEmployeeId ? userData.employeeId : '**********'}</code>
                         <button onClick={(e) => { e.stopPropagation(); setShowEmployeeId(!showEmployeeId); }} className="hover:text-white transition">
                           {showEmployeeId ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                         </button>
@@ -240,44 +321,40 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
                 </div>
 
                 {/* Liens */}
-                <div className="p-2">
+                <div className="p-2 space-y-0.5">
                   <Link
                     href="/settings"
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition hover:bg-white/5"
-                    style={{ color: '#94a3b8' }}
+                    className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition text-dark-300 hover:bg-white/[0.04] hover:text-white"
                     onClick={() => setIsProfileOpen(false)}
                   >
-                    <Settings className="w-4 h-4" />
+                    <Settings className="w-4 h-4 text-dark-400" />
                     Paramètres
                   </Link>
                   <Link
                     href="/settings?tab=documents"
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition hover:bg-white/5"
-                    style={{ color: '#94a3b8' }}
+                    className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition text-dark-300 hover:bg-white/[0.04] hover:text-white"
                     onClick={() => setIsProfileOpen(false)}
                   >
-                    <FileText className="w-4 h-4" />
+                    <FileText className="w-4 h-4 text-dark-400" />
                     Documents
                   </Link>
                   <Link
                     href="/subscription"
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition hover:bg-white/5"
-                    style={{ color: '#94a3b8' }}
+                    className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition text-dark-300 hover:bg-white/[0.04] hover:text-white"
                     onClick={() => setIsProfileOpen(false)}
                   >
-                    <CreditCard className="w-4 h-4" />
+                    <CreditCard className="w-4 h-4 text-dark-400" />
                     Abonnement
                   </Link>
                   <button
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition w-full hover:bg-red-500/10"
-                    style={{ color: '#f87171' }}
+                    className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition w-full text-left text-red-400 hover:bg-red-500/10 hover:text-red-300"
                     onClick={() => {
                       setIsProfileOpen(false)
                       clearSession()
                       window.location.href = '/login'
                     }}
                   >
-                    <LogOut className="w-4 h-4" />
+                    <LogOut className="w-4 h-4 text-red-400" />
                     Déconnexion
                   </button>
                 </div>

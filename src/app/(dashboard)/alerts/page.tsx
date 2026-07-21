@@ -204,23 +204,23 @@ export default function AlertsPage() {
 
       {/* STATS RAPIDES */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Alertes actives</p>
-          <p className="text-xl font-bold text-orange-400">{activeAlerts.length}</p>
+        <div className="p-3 rounded-xl border border-dark-800/40 glass-card">
+          <p className="text-xs text-dark-400 font-medium">Alertes actives</p>
+          <p className="text-xl font-bold text-orange-400 mt-0.5">{activeAlerts.length}</p>
         </div>
-        <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Critiques</p>
-          <p className="text-xl font-bold text-red-400">{criticalAlerts.length}</p>
+        <div className="p-3 rounded-xl border border-dark-800/40 glass-card">
+          <p className="text-xs text-dark-400 font-medium">Critiques</p>
+          <p className="text-xl font-bold text-red-400 mt-0.5">{criticalAlerts.length}</p>
         </div>
-        <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Stock faible</p>
-          <p className="text-xl font-bold text-orange-400">
+        <div className="p-3 rounded-xl border border-dark-800/40 glass-card">
+          <p className="text-xs text-dark-400 font-medium">Stock faible</p>
+          <p className="text-xl font-bold text-orange-400 mt-0.5">
             {alerts.filter(a => a.type === 'stock_faible').length}
           </p>
         </div>
-        <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Ruptures</p>
-          <p className="text-xl font-bold text-red-400">
+        <div className="p-3 rounded-xl border border-dark-800/40 glass-card">
+          <p className="text-xs text-dark-400 font-medium">Ruptures</p>
+          <p className="text-xl font-bold text-red-400 mt-0.5">
             {alerts.filter(a => a.type === 'stock_epuise').length}
           </p>
         </div>
@@ -229,17 +229,13 @@ export default function AlertsPage() {
       {/* FILTRES */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500" />
           <input
             type="text"
             placeholder="Rechercher une alerte..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
-            style={{ 
-              background: 'rgba(51, 65, 85, 0.5)',
-              border: '1px solid #334155'
-            }}
+            className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition bg-dark-900 border border-dark-800/60 focus:border-primary-500"
           />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
@@ -248,13 +244,10 @@ export default function AlertsPage() {
               key={type}
               onClick={() => setFilterType(type)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
-                filterType === type ? 'border' : 'border-transparent'
+                filterType === type 
+                  ? 'bg-primary-500/10 border border-primary-500/30 text-primary-400 font-bold' 
+                  : 'bg-dark-900 border border-dark-800/40 text-dark-400 hover:text-white hover:bg-white/5'
               }`}
-              style={{
-                background: filterType === type ? 'rgba(99, 102, 241, 0.15)' : 'rgba(51, 65, 85, 0.3)',
-                borderColor: filterType === type ? '#6366f1' : 'transparent',
-                color: filterType === type ? '#818cf8' : '#94a3b8'
-              }}
             >
               {type === 'all' ? 'Tous' : 
                type === 'stock_faible' ? 'Stock faible' : 
@@ -300,7 +293,7 @@ export default function AlertsPage() {
                 className="rounded-xl border p-4 transition-all hover:border-primary-500"
                 style={{ 
                   background: bgColor,
-                  borderColor: alert.status === 'critique' ? '#ef4444' : '#334155'
+                  borderColor: alert.status === 'critique' ? '#ef4444' : 'var(--theme-border)'
                 }}
               >
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -328,7 +321,7 @@ export default function AlertsPage() {
                         >
                           {statusLabel}
                         </span>
-                        <span className="text-xs" style={{ color: '#64748b' }}>
+                        <span className="text-xs text-dark-400">
                           <Clock className="w-3 h-3 inline mr-1" />
                           {alert.date}
                         </span>
@@ -338,16 +331,16 @@ export default function AlertsPage() {
                       {alert.type === 'stock_faible' && alert.stock !== null && alert.threshold !== null && (
                         <div className="mt-1 flex items-center gap-3 flex-wrap">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs" style={{ color: '#94a3b8' }}>Stock actuel :</span>
+                            <span className="text-xs text-dark-400">Stock actuel :</span>
                             <span className="text-xs font-semibold text-orange-400">{alert.stock} unités</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs" style={{ color: '#94a3b8' }}>Seuil :</span>
+                            <span className="text-xs text-dark-400">Seuil :</span>
                             <span className="text-xs font-semibold text-white">{alert.threshold} unités</span>
                           </div>
                           {/* Barre de progression avec valeurs sécurisées */}
                           <div className="flex-1 min-w-[100px] max-w-[200px]">
-                            <div className="w-full h-1.5 rounded-full" style={{ background: '#334155' }}>
+                            <div className="w-full h-1.5 rounded-full bg-dark-700">
                               <div 
                                 className="h-1.5 rounded-full transition-all"
                                 style={{
@@ -430,21 +423,20 @@ export default function AlertsPage() {
 
       {/* CONFIGURATION DES SEUILS DYNAMIQUES */}
       <div 
-        className="rounded-xl border p-4 animate-fade-in"
-        style={{ background: '#1e293b', borderColor: '#334155' }}
+        className="rounded-2xl border border-dark-800/40 glass-card p-5 animate-fade-in"
       >
-        <h3 className="font-semibold text-sm text-white mb-3 flex items-center gap-2">
-          <Settings className="w-4 h-4" style={{ color: '#818cf8' }} />
+        <h3 className="font-display font-bold text-sm text-primary-500 mb-4 flex items-center gap-2">
+          <Settings className="w-4 h-4 text-primary-400" />
           Seuils d'alerte par produit
         </h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b" style={{ borderColor: '#334155' }}>
-                <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Produit</th>
-                <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Stock actuel</th>
-                <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Seuil d'alerte</th>
-                <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Statut</th>
+              <tr className="border-b border-dark-800/20">
+                <th className="px-3 py-2 text-left text-xs text-dark-400">Produit</th>
+                <th className="px-3 py-2 text-left text-xs text-dark-400">Stock actuel</th>
+                <th className="px-3 py-2 text-left text-xs text-dark-400">Seuil d'alerte</th>
+                <th className="px-3 py-2 text-left text-xs text-dark-400">Statut</th>
               </tr>
             </thead>
             <tbody>
@@ -455,9 +447,9 @@ export default function AlertsPage() {
                 const isOut = qty === 0
 
                 return (
-                  <tr key={item.id} className="border-b transition hover:bg-slate-800/30" style={{ borderColor: '#334155' }}>
+                  <tr key={item.id} className="border-b border-dark-800/10 transition hover:bg-white/[0.02]">
                     <td className="px-3 py-2 text-white font-medium">{item.product_name}</td>
-                    <td className="px-3 py-2 font-semibold" style={{ color: isOut ? '#ef4444' : isLow ? '#f59e0b' : '#94a3b8' }}>
+                    <td className={`px-3 py-2 font-semibold ${isOut ? 'text-red-500' : isLow ? 'text-orange-500' : 'text-dark-400'}`}>
                       {qty >= 0 ? `${qty} ${item.unit || 'unités'}` : 'Illimité'}
                     </td>
                     <td className="px-3 py-2">
@@ -479,11 +471,7 @@ export default function AlertsPage() {
                             }
                           }
                         }}
-                        className="w-20 rounded px-2 py-1 text-white text-xs outline-none transition focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-                        style={{ 
-                          background: 'rgba(51, 65, 85, 0.5)',
-                          border: '1px solid #334155'
-                        }}
+                        className="w-20 rounded-lg px-2.5 py-1 text-white text-xs outline-none bg-dark-950/40 border border-dark-800/60 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition"
                       />
                     </td>
                     <td className="px-3 py-2">
@@ -514,17 +502,16 @@ export default function AlertsPage() {
         ].map((channel, i) => (
           <div 
             key={i}
-            className="rounded-xl border p-4 text-center transition hover:border-slate-700"
-            style={{ background: '#1e293b', borderColor: '#334155' }}
+            className="rounded-2xl border border-dark-800/40 glass-card p-5 text-center transition hover:border-primary-500"
           >
             <div className="flex items-center justify-center gap-2">
-              <channel.icon className="w-5 h-5" style={{ color: '#818cf8' }} />
+              <channel.icon className="w-5 h-5 text-primary-400" />
               <span className="font-medium text-white">{channel.name}</span>
             </div>
-            <p className="text-xs mt-1" style={{ color: '#94a3b8' }}>{channel.desc}</p>
-            <label className="flex items-center justify-center gap-2 mt-2 text-xs cursor-pointer select-none">
+            <p className="text-xs text-dark-400 mt-1">{channel.desc}</p>
+            <label className="flex items-center justify-center gap-2 mt-3 text-xs cursor-pointer select-none text-dark-400 hover:text-white">
               <input type="checkbox" defaultChecked={channel.active} className="accent-primary-500 rounded" />
-              <span style={{ color: '#94a3b8' }}>Actif</span>
+              <span>Actif</span>
             </label>
           </div>
         ))}
@@ -534,10 +521,9 @@ export default function AlertsPage() {
       {isAdjustmentModalOpen && selectedStockItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
           <div 
-            className="w-full max-w-md p-6 rounded-2xl border"
-            style={{ background: '#1e293b', borderColor: '#334155' }}
+            className="w-full max-w-md p-6 rounded-2xl border border-dark-800/60 bg-dark-900 shadow-2xl animate-scale-in"
           >
-            <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: '#334155' }}>
+            <div className="flex items-center justify-between pb-3 border-b border-dark-800/60">
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
                 <AlertTriangle className="w-5 h-5 text-orange-400" />
                 Réapprovisionnement rapide
@@ -555,39 +541,38 @@ export default function AlertsPage() {
 
             <form onSubmit={handleQuickAdjustmentSubmit} className="mt-4 space-y-4">
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#94a3b8' }}>
+                <label className="block text-xs font-semibold mb-1 text-dark-400">
                   Produit
                 </label>
                 <input 
                   type="text" 
                   disabled 
                   value={selectedStockItem.product_name || ''} 
-                  className="w-full rounded-lg px-3 py-2 text-slate-400 text-sm border cursor-not-allowed"
-                  style={{ background: 'rgba(51, 65, 85, 0.2)', borderColor: '#334155' }}
+                  className="w-full rounded-lg px-3 py-2 bg-dark-950/40 border border-dark-800/60 text-dark-400 text-sm cursor-not-allowed"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#94a3b8' }}>
+                  <label className="block text-xs font-semibold mb-1 text-dark-400">
                     Stock actuel
                   </label>
-                  <p className="text-sm font-bold text-orange-400 p-2 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.15)' }}>
+                  <p className="text-sm font-bold text-orange-500 p-2.5 rounded-lg bg-orange-500/10 border border-orange-500/10">
                     {selectedStockItem.quantity_on_hand} {selectedStockItem.unit || 'unités'}
                   </p>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: '#94a3b8' }}>
+                  <label className="block text-xs font-semibold mb-1 text-dark-400">
                     Seuil d'alerte
                   </label>
-                  <p className="text-sm font-bold text-white p-2 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.15)' }}>
+                  <p className="text-sm font-bold text-white p-2.5 rounded-lg bg-dark-950/30 border border-dark-800/30">
                     {selectedStockItem.alert_threshold} {selectedStockItem.unit || 'unités'}
                   </p>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#94a3b8' }}>
+                <label className="block text-xs font-semibold mb-1 text-dark-400">
                   Quantité à ajouter ({selectedStockItem.unit || 'unités'})
                 </label>
                 <input 
@@ -596,13 +581,12 @@ export default function AlertsPage() {
                   required
                   value={adjustQty}
                   onChange={(e) => setAdjustQty(parseInt(e.target.value) || 1)}
-                  className="w-full rounded-lg px-3 py-2 text-white text-sm outline-none border focus:border-indigo-500"
-                  style={{ background: 'rgba(51, 65, 85, 0.5)', borderColor: '#334155' }}
+                  className="w-full rounded-lg px-3 py-2 text-white text-sm outline-none bg-dark-950/50 border border-dark-800/60 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: '#94a3b8' }}>
+                <label className="block text-xs font-semibold mb-1 text-dark-400">
                   Motif / Note d'ajustement
                 </label>
                 <input 
@@ -610,27 +594,25 @@ export default function AlertsPage() {
                   required
                   value={adjustNote}
                   onChange={(e) => setAdjustNote(e.target.value)}
-                  className="w-full rounded-lg px-3 py-2 text-white text-sm outline-none border focus:border-indigo-500"
-                  style={{ background: 'rgba(51, 65, 85, 0.5)', borderColor: '#334155' }}
+                  className="w-full rounded-lg px-3 py-2 text-white text-sm outline-none bg-dark-950/50 border border-dark-800/60 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t" style={{ borderColor: '#334155' }}>
+              <div className="flex justify-end gap-3 pt-4 border-t border-dark-800/60">
                 <button
                   type="button"
                   onClick={() => {
                     setIsAdjustmentModalOpen(false)
                     setSelectedStockItem(null)
                   }}
-                  className="px-5 py-2 rounded-lg text-sm font-medium transition border"
-                  style={{ background: 'transparent', borderColor: '#334155', color: '#94a3b8' }}
+                  className="px-5 py-2 rounded-lg text-sm font-medium transition border border-dark-800/60 text-dark-400 hover:text-white hover:bg-white/5"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2 rounded-lg text-white text-sm font-semibold transition bg-green-600 hover:brightness-110 active:scale-95 flex items-center gap-1 disabled:opacity-50"
+                  className="px-5 py-2 rounded-lg text-white text-sm font-semibold transition bg-primary-500 hover:brightness-110 active:scale-95 flex items-center gap-1.5 disabled:opacity-50"
                 >
                   <CheckCircle className="w-4 h-4" />
                   Valider l'ajustement

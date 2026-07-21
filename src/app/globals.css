@@ -3,7 +3,232 @@
 
 @custom-variant dark (&:is(.dark *));
 
+:root {
+  --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-plus-jakarta: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  
+  --theme-primary: 99 102 241;
+  --theme-primary-hover: 79 70 229;
+  --theme-primary-light: 129 140 248;
+  
+  --theme-bg-950: #0b0f19;
+  --theme-bg-900: #111726;
+  --theme-bg-800: #182035;
+  --theme-bg-700: #222d4a;
+  
+  --theme-text-primary: #ffffff;
+  --theme-text-muted: #94a3b8;
+}
+
+.theme-emerald {
+  --theme-primary: 16 185 129;
+  --theme-primary-hover: 5 150 105;
+  --theme-primary-light: 52 211 153;
+}
+
+.theme-ocean {
+  --theme-primary: 14 165 233;
+  --theme-primary-hover: 2 132 199;
+  --theme-primary-light: 56 189 248;
+}
+
+.theme-white-pure {
+  --theme-primary: 255 255 255;
+  --theme-primary-hover: 241 245 249;
+  --theme-primary-light: 255 255 255;
+}
+
+.theme-white-soft {
+  --theme-primary: 226 232 240;
+  --theme-primary-hover: 203 213 225;
+  --theme-primary-light: 241 245 249;
+}
+
+/* Surcharges des accents blancs sur fond clair pour préserver la lisibilité (pas de blanc sur blanc) */
+html.bg-white-pure.theme-white-pure,
+html.bg-white-soft.theme-white-pure,
+html.theme-white-pure.bg-white-pure,
+html.theme-white-pure.bg-white-soft {
+  --theme-primary: 15 23 42;
+  --theme-primary-hover: 51 65 85;
+  --theme-primary-light: 71 85 105;
+}
+
+html.bg-white-pure.theme-white-soft,
+html.bg-white-soft.theme-white-soft,
+html.theme-white-soft.bg-white-pure,
+html.theme-white-soft.bg-white-soft {
+  --theme-primary: 71 85 105;
+  --theme-primary-hover: 100 116 139;
+  --theme-primary-light: 148 163 184;
+}
+
+.bg-oled {
+  --theme-bg-950: #03050a;
+  --theme-bg-900: #080a10;
+  --theme-bg-800: #0f131f;
+  --theme-bg-700: #181d30;
+  --theme-text-primary: #ffffff;
+  --theme-text-muted: #94a3b8;
+}
+
+.bg-abysse {
+  --theme-bg-950: #050b1a;
+  --theme-bg-900: #0a1128;
+  --theme-bg-800: #111d3f;
+  --theme-bg-700: #1a295c;
+  --theme-text-primary: #ffffff;
+  --theme-text-muted: #94a3b8;
+}
+
+.bg-white-pure {
+  --theme-bg-950: #ffffff;
+  --theme-bg-900: #f8fafc;
+  --theme-bg-800: #f1f5f9;
+  --theme-bg-700: #e2e8f0;
+  --theme-text-primary: #0f172a;
+  --theme-text-muted: #475569;
+  --theme-border: rgba(15, 23, 42, 0.08);
+  --theme-glass-bg: rgba(255, 255, 255, 0.85);
+  --theme-glass-card: rgba(248, 250, 252, 0.55);
+  --theme-glass-card-hover: rgba(248, 250, 252, 0.85);
+}
+
+.bg-white-soft {
+  --theme-bg-950: #f1f5f9;
+  --theme-bg-900: #e2e8f0;
+  --theme-bg-800: #cbd5e1;
+  --theme-bg-700: #94a3b8;
+  --theme-text-primary: #0f172a;
+  --theme-text-muted: #334155;
+  --theme-border: rgba(15, 23, 42, 0.08);
+  --theme-glass-bg: rgba(241, 245, 249, 0.85);
+  --theme-glass-card: rgba(226, 232, 240, 0.55);
+  --theme-glass-card-hover: rgba(226, 232, 240, 0.85);
+}
+
+:root {
+  --theme-border: rgba(255, 255, 255, 0.08);
+  --theme-glass-bg: rgba(17, 23, 38, 0.8);
+  --theme-glass-card: rgba(17, 23, 38, 0.45);
+  --theme-glass-card-hover: rgba(17, 23, 38, 0.65);
+}
+
+.bg-oled {
+  --theme-border: rgba(255, 255, 255, 0.06);
+  --theme-glass-bg: rgba(3, 5, 10, 0.85);
+  --theme-glass-card: rgba(3, 5, 10, 0.5);
+  --theme-glass-card-hover: rgba(3, 5, 10, 0.7);
+}
+
+.bg-abysse {
+  --theme-border: rgba(99, 102, 241, 0.08);
+  --theme-glass-bg: rgba(5, 11, 26, 0.85);
+  --theme-glass-card: rgba(5, 11, 26, 0.5);
+  --theme-glass-card-hover: rgba(5, 11, 26, 0.7);
+}
+
 @theme {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-plus-jakarta), system-ui, -apple-system, sans-serif;
+
+  /* Surcharge des couleurs de base de Tailwind pour NOXIA Premium Adouci */
+  --color-dark-950: var(--theme-bg-950);
+  --color-dark-900: var(--theme-bg-900);
+  --color-dark-800: var(--theme-bg-800);
+  --color-dark-700: var(--theme-bg-700);
+  --color-dark-600: #303e67;
+  --color-dark-500: #45578f;
+  --color-dark-400: var(--theme-text-muted);
+  --color-dark-300: var(--theme-text-muted);
+  
+  --color-primary-500: rgb(var(--theme-primary));
+  --color-primary-600: rgb(var(--theme-primary-hover));
+  --color-primary-400: rgb(var(--theme-primary-light));
+  
+  --color-white: var(--theme-text-primary);
+  
+  --color-accent-500: #10b981;
+  --color-accent-600: #059669;
+  --color-accent-400: #34d399;
+}
+
+body {
+  color: var(--theme-text-primary);
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+@utility glass-panel {
+  background: var(--theme-glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--theme-border);
+}
+
+@utility glass-card {
+  background: var(--theme-glass-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--theme-border);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@utility glass-card-hover {
+  border-color: rgba(99, 102, 241, 0.25);
+  background: var(--theme-glass-card-hover);
+  box-shadow: 0 12px 36px -12px rgba(99, 102, 241, 0.18), 
+              0 1px 1px 0 rgba(99, 102, 241, 0.08) inset;
+  transform: translateY(-2px);
+}
+
+@utility github-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px), 
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+}
+
+@utility github-glow-indigo {
+  background: radial-gradient(circle at center, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0.03) 50%, transparent 100%);
+  filter: blur(60px);
+}
+
+@utility github-glow-emerald {
+  background: radial-gradient(circle at center, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.02) 50%, transparent 100%);
+  filter: blur(80px);
+}
+
+@utility github-border-gradient {
+  position: relative;
+  background-clip: padding-box;
+  border: 1px solid transparent;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0; left: 0;
+    z-index: -1;
+    margin: -1px;
+    border-radius: inherit;
+    background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.02), rgba(99, 102, 241, 0.15));
+    pointer-events: none;
+  }
+}
+
+@utility github-connector {
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    height: 80px;
+    background: linear-gradient(to bottom, rgba(99, 102, 241, 0.4), transparent);
+    z-index: 10;
+  }
 }

@@ -12,23 +12,28 @@ export function SalesChart({ data = [], period = 'day' }: { data: any[], period:
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    // Récupère la couleur du thème active
+    const themePrimaryRaw = getComputedStyle(document.documentElement).getPropertyValue('--theme-primary').trim() || '99 102 241'
+    const themePrimaryClean = themePrimaryRaw.replace(/\s+/g, ',')
+    const themePrimary = themePrimaryRaw.includes('#') ? themePrimaryRaw : `rgb(${themePrimaryClean})`
+    const themePrimaryFade = themePrimaryRaw.includes('#') ? themePrimaryRaw + '15' : `rgba(${themePrimaryClean}, 0.15)`
+
     const w = canvas.width
     const h = canvas.height
-    const padding = 40
+    const padding = 35
     const chartW = w - padding * 2
-    const chartH = h - padding * 2
+    const chartH = h - padding * 2 - 10
 
     const values = data.map(d => Number(d.value))
     const labels = data.map(d => d.label)
     const max = data.length > 0 ? Math.max(...values, 1000) * 1.2 : 1000
     const barW = data.length > 0 ? chartW / values.length - 8 : 0
 
-    // Fond
-    ctx.fillStyle = '#1e293b'
-    ctx.fillRect(0, 0, w, h)
+    // Efface le fond pour garder la transparence du verre
+    ctx.clearRect(0, 0, w, h)
 
-    // Lignes de grille
-    ctx.strokeStyle = '#334155'
+    // Lignes de grille ultra-fines et discrètes
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)'
     ctx.lineWidth = 0.5
     for (let i = 0; i < 4; i++) {
       const y = padding + (chartH / 4) * i
@@ -39,53 +44,55 @@ export function SalesChart({ data = [], period = 'day' }: { data: any[], period:
     }
 
     if (data.length > 0) {
-      // Bars
+      // Dessin des barres avec le gradient de couleur du thème actif
       values.forEach((value, i) => {
         const x = padding + (chartW / values.length) * i + 4
         const barH = (value / max) * chartH
         const y = padding + chartH - barH
 
         const gradient = ctx.createLinearGradient(x, y, x, padding + chartH)
-        gradient.addColorStop(0, '#818cf8')
-        gradient.addColorStop(1, '#4f46e5')
+        gradient.addColorStop(0, themePrimary)
+        gradient.addColorStop(1, themePrimaryFade) // 15% opacité
         
         ctx.fillStyle = gradient
         ctx.beginPath()
         ctx.roundRect(x, y, barW, barH, 4)
         ctx.fill()
 
-        // Labels des jours
-        ctx.fillStyle = '#94a3b8'
+        // Labels textuels sous les barres
+        ctx.fillStyle = '#64748b'
         ctx.font = '10px sans-serif'
         ctx.textAlign = 'center'
-        ctx.fillText(labels[i], x + barW / 2, padding + chartH + 20)
+        ctx.fillText(labels[i], x + barW / 2, padding + chartH + 15)
       })
     } else {
-      // Empty state text
-      ctx.fillStyle = '#64748b'
-      ctx.font = '12px sans-serif'
+      // État vide
+      ctx.fillStyle = '#475569'
+      ctx.font = '11px sans-serif'
       ctx.textAlign = 'center'
       ctx.fillText('Aucune donnée disponible', w / 2, h / 2)
     }
 
-    // Titre
-    ctx.fillStyle = '#94a3b8'
-    ctx.font = '12px sans-serif'
-    ctx.textAlign = 'left'
-    const title = period === 'day' ? 'Ventes par heure' : period === 'week' ? 'Ventes de la semaine' : period === 'month' ? 'Ventes du mois' : 'Ventes de l\'année'
-    ctx.fillText(title, padding, 20)
-
   }, [data, period])
+
+  const title = period === 'day' 
+    ? 'Ventes par heure' 
+    : period === 'week' 
+      ? 'Ventes de la semaine' 
+      : period === 'month' 
+        ? 'Ventes du mois' 
+        : 'Ventes de l\'année'
 
   return (
     <div 
-      className="p-4 rounded-xl border h-full"
-      style={{ 
-        background: '#1e293b',
-        borderColor: '#334155'
-      }}
+      className="p-5 rounded-2xl border border-dark-800/40 glass-card h-[320px] flex flex-col justify-between relative overflow-hidden"
     >
-      <canvas ref={canvasRef} width={500} height={250} className="w-full h-auto" />
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="font-display font-bold text-sm text-primary-500 tracking-tight">{title}</h3>
+      </div>
+      <div className="flex-1 relative w-full h-[220px]">
+        <canvas ref={canvasRef} width={500} height={200} className="w-full h-full object-contain" />
+      </div>
     </div>
   )
 }

@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "NOXIA - Gestion de bars et restaurants",
@@ -17,7 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" suppressHydrationWarning>
-      <body className={`${inter.className} bg-dark-900 text-white min-h-screen`}>
+      <body className="font-sans bg-dark-950 text-white min-h-screen antialiased">
         {children}
         <Toaster richColors position="top-right" theme="dark" />
       </body>

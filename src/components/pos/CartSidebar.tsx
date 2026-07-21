@@ -24,22 +24,17 @@ export default function CartSidebar({
 }: CartSidebarProps) {
   return (
     <div 
-      className="rounded-xl border p-4 flex flex-col h-full min-h-[400px]"
-      style={{ 
-        background: '#1e293b',
-        borderColor: '#334155'
-      }}
+      className="rounded-2xl border border-dark-800/40 p-5 flex flex-col h-full min-h-[400px] glass-card"
     >
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-semibold text-white flex items-center gap-2">
+        <h2 className="font-display font-bold text-sm text-primary-500 flex items-center gap-2">
           <ShoppingCart className="w-4 h-4" />
           Panier ({totalItems} article{totalItems > 1 ? 's' : ''})
         </h2>
         {cart.length > 0 && (
           <button
             onClick={clearCart}
-            className="text-xs transition flex items-center gap-1"
-            style={{ color: '#f87171' }}
+            className="text-xs transition flex items-center gap-1 text-red-400 hover:text-red-300"
           >
             <Trash2 className="w-3 h-3" />
             Vider
@@ -51,9 +46,9 @@ export default function CartSidebar({
       <div className="flex-1 overflow-y-auto space-y-2 max-h-[300px]">
         {cart.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-10">
-            <ShoppingCart className="w-12 h-12 mb-2" style={{ color: '#334155' }} />
-            <p className="text-sm" style={{ color: '#64748b' }}>Panier vide</p>
-            <p className="text-xs" style={{ color: '#334155' }}>Ajoutez des produits</p>
+            <ShoppingCart className="w-12 h-12 mb-2 text-dark-500" />
+            <p className="text-sm text-dark-400 font-medium">Panier vide</p>
+            <p className="text-xs text-dark-500 mt-0.5">Ajoutez des produits</p>
           </div>
         ) : (
           cart.map((item) => {
@@ -64,40 +59,36 @@ export default function CartSidebar({
             return (
               <div 
                 key={item.productId} 
-                className="flex items-center justify-between p-2 rounded-lg text-sm"
-                style={{ background: 'rgba(51, 65, 85, 0.3)' }}
+                className="flex items-center justify-between p-2.5 rounded-xl text-sm bg-dark-950/40 border border-dark-800/30"
               >
                 <div className="flex-1 min-w-0 pr-2">
                   <span className="font-medium text-white truncate block">{product.name}</span>
-                  <span className="text-xs" style={{ color: '#94a3b8' }}>
+                  <span className="text-xs text-dark-400">
                     {product.price.toLocaleString()} F x {item.qty}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm" style={{ color: '#22c55e' }}>
+                  <span className="font-bold text-sm text-accent-500">
                     {subtotal.toLocaleString()} F
                   </span>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => updateQty(item.productId, -1)}
-                      className="w-6 h-6 rounded flex items-center justify-center transition hover:bg-white/10"
-                      style={{ background: 'rgba(51, 65, 85, 0.5)' }}
+                      className="w-6 h-6 rounded-lg flex items-center justify-center transition bg-dark-950 border border-dark-800/50 hover:bg-white/5"
                     >
-                      <Minus className="w-3 h-3" style={{ color: '#94a3b8' }} />
+                      <Minus className="w-3 h-3 text-dark-400" />
                     </button>
                     <span className="w-6 text-center text-white">{item.qty}</span>
                     <button
                       onClick={() => updateQty(item.productId, 1)}
-                      className="w-6 h-6 rounded flex items-center justify-center transition hover:bg-white/10"
-                      style={{ background: 'rgba(51, 65, 85, 0.5)' }}
+                      className="w-6 h-6 rounded-lg flex items-center justify-center transition bg-dark-950 border border-dark-800/50 hover:bg-white/5"
                     >
-                      <Plus className="w-3 h-3" style={{ color: '#94a3b8' }} />
+                      <Plus className="w-3 h-3 text-dark-400" />
                     </button>
                   </div>
                   <button
                     onClick={() => removeFromCart(item.productId)}
-                    className="p-1 rounded hover:bg-red-500/20 transition"
-                    style={{ color: '#f87171' }}
+                    className="p-1 rounded-lg hover:bg-red-500/20 text-red-400 transition"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -109,19 +100,19 @@ export default function CartSidebar({
       </div>
 
       {/* Total et encaissement */}
-      <div className="border-t pt-3 mt-3" style={{ borderColor: '#334155' }}>
+      <div className="border-t border-dark-800/30 pt-3 mt-3">
         <div className="flex justify-between mb-3">
-          <span className="text-sm" style={{ color: '#94a3b8' }}>Total</span>
+          <span className="text-sm text-dark-400">Total</span>
           <span className="text-2xl font-bold text-white">{total.toLocaleString()} FCFA</span>
         </div>
         <button
           onClick={onCheckout}
           disabled={cart.length === 0}
-          className="w-full py-3 rounded-lg text-white font-semibold text-sm transition disabled:opacity-50"
-          style={{ 
-            background: cart.length > 0 ? '#22c55e' : '#334155',
-            boxShadow: cart.length > 0 ? '0 10px 25px -5px rgba(34, 197, 94, 0.3)' : 'none'
-          }}
+          className={`w-full py-3 rounded-xl text-white font-semibold text-sm transition disabled:opacity-50 ${
+            cart.length > 0 
+              ? 'bg-accent-500 hover:bg-accent-600 shadow-lg shadow-accent-500/20 active:scale-95' 
+              : 'bg-dark-800 text-dark-400 border border-dark-800/60 cursor-not-allowed'
+          }`}
         >
           Encaisser ({totalItems} article{totalItems > 1 ? 's' : ''})
         </button>

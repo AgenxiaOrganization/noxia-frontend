@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { MessageCircle, Bot, CreditCard, Clock, Sparkles, Check, CheckCheck } from 'lucide-react'
+import { MessageCircle, Bot, CreditCard, Clock, Sparkles, Check, CheckCheck, ShoppingBag } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   getNotifications,
@@ -19,6 +19,7 @@ const notifTypeConfig: Record<string, { icon: typeof MessageCircle; color: strin
   sub_change: { icon: CreditCard, color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.15)' },
   sub_expiry: { icon: Clock, color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.15)' },
   sub_reminder: { icon: Sparkles, color: '#a855f7', bgColor: 'rgba(168, 85, 247, 0.15)' },
+  sale_completed: { icon: ShoppingBag, color: '#10b981', bgColor: 'rgba(16, 185, 129, 0.15)' },
 }
 
 // --- Formatage de la date relative ---

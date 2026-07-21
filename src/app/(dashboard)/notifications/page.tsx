@@ -132,19 +132,18 @@ export default function NotificationsPage() {
       {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <MessageCircle className="w-6 h-6 text-primary-400" style={{ color: '#818cf8' }} />
+          <h1 className="text-2xl font-bold text-primary-500 flex items-center gap-2">
+            <MessageCircle className="w-6 h-6 text-primary-400" />
             Notifications
           </h1>
-          <p className="text-sm mt-1" style={{ color: '#94a3b8' }}>
+          <p className="text-sm mt-1 text-dark-400">
             Suivez l'activité de votre établissement (abonnements, bots, et intégrations)
           </p>
         </div>
         {unreadCount > 0 && (
           <button
             onClick={handleMarkAllRead}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-primary-500/10 hover:bg-primary-500/20"
-            style={{ color: '#818cf8', border: '1px solid rgba(129, 140, 248, 0.2)' }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-primary-500/10 border border-primary-500/20 text-primary-400 hover:bg-primary-500/20"
           >
             <CheckCheck className="w-4 h-4" />
             Tout marquer comme lu
@@ -154,8 +153,7 @@ export default function NotificationsPage() {
 
       {/* FILTRES & STATS */}
       <div
-        className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl border"
-        style={{ background: '#1e293b', borderColor: '#334155' }}
+        className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl border border-dark-800/40 glass-card"
       >
         <div className="flex gap-2">
           {(['all', 'unread', 'read'] as const).map((tab) => (
@@ -164,10 +162,9 @@ export default function NotificationsPage() {
               onClick={() => setFilter(tab)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 filter === tab
-                  ? 'bg-primary-500/20 text-primary-400 font-bold'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-primary-500/15 border border-primary-500/30 text-primary-400 font-bold'
+                  : 'text-dark-300 hover:text-white hover:bg-white/5'
               }`}
-              style={filter === tab ? { color: '#818cf8', background: 'rgba(129, 140, 248, 0.15)' } : {}}
             >
               {tab === 'all' && 'Toutes'}
               {tab === 'unread' && `Non lues (${unreadCount})`}
@@ -176,7 +173,7 @@ export default function NotificationsPage() {
           ))}
         </div>
         
-        <div className="text-xs" style={{ color: '#64748b' }}>
+        <div className="text-xs text-dark-400">
           Total : {notifications.length} notification{notifications.length > 1 ? 's' : ''}
         </div>
       </div>
@@ -184,14 +181,13 @@ export default function NotificationsPage() {
       {/* LISTE DES NOTIFICATIONS */}
       {filteredNotifs.length === 0 ? (
         <div
-          className="flex flex-col items-center justify-center py-16 border rounded-xl"
-          style={{ background: '#1e293b', borderColor: '#334155' }}
+          className="flex flex-col items-center justify-center py-16 border border-dark-800/40 glass-card"
         >
-          <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3 bg-slate-800">
-            <MessageCircle className="w-6 h-6 text-slate-500" />
+          <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3 bg-dark-950/40 border border-dark-800/60">
+            <MessageCircle className="w-6 h-6 text-dark-400" />
           </div>
           <p className="text-sm font-semibold text-white">Aucune notification</p>
-          <p className="text-xs mt-1 text-slate-500">
+          <p className="text-xs mt-1 text-dark-400">
             Vous n'avez pas de notifications correspondant à votre filtre actuel.
           </p>
         </div>
@@ -205,8 +201,7 @@ export default function NotificationsPage() {
               </div>
 
               <div
-                className="rounded-xl border overflow-hidden divide-y"
-                style={{ background: '#1e293b', borderColor: '#334155' }}
+                className="rounded-xl border border-dark-800/40 overflow-hidden divide-y divide-dark-800/20 bg-dark-900"
               >
                 {notifs.map((notif) => {
                   const config = notifTypeConfig[notif.type] || {
@@ -221,10 +216,9 @@ export default function NotificationsPage() {
                     <div
                       key={notif.id}
                       onClick={() => handleNotificationClick(notif)}
-                      className="group p-4 flex gap-4 transition cursor-pointer hover:bg-white/5"
-                      style={{
-                        background: notif.is_read ? 'transparent' : 'rgba(129, 140, 248, 0.03)'
-                      }}
+                      className={`group p-4 flex gap-4 transition cursor-pointer hover:bg-white/5 ${
+                        notif.is_read ? 'bg-transparent' : 'bg-primary-500/2'
+                      }`}
                     >
                       {/* Icône */}
                       <div
@@ -238,28 +232,27 @@ export default function NotificationsPage() {
                       <div className="flex-1 min-w-0 space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <span
-                            className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                            style={{ background: 'rgba(255,255,255,0.05)', color: '#94a3b8' }}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-dark-950/40 text-dark-400 border border-dark-800/40"
                           >
                             {config.label}
                           </span>
                           
-                          <span className="text-[10px]" style={{ color: '#475569' }}>
+                          <span className="text-[10px] text-dark-400">
                             {formatFullDate(notif.created_at)}
                           </span>
 
                           {!notif.is_read && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary-400 animate-pulse" style={{ background: '#818cf8' }} />
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary-400 animate-pulse" />
                           )}
                         </div>
 
                         <h3
-                          className={`text-sm ${notif.is_read ? 'font-medium text-slate-300' : 'font-bold text-white'}`}
+                          className={`text-sm ${notif.is_read ? 'font-medium text-dark-300' : 'font-bold text-white'}`}
                         >
                           {notif.title}
                         </h3>
 
-                        <p className="text-xs text-slate-400 leading-relaxed">
+                        <p className="text-xs text-dark-400 leading-relaxed">
                           {notif.message}
                         </p>
                       </div>
@@ -271,7 +264,7 @@ export default function NotificationsPage() {
                             className="p-2 rounded-lg transition opacity-60 group-hover:opacity-100 bg-white/5 hover:bg-white/10"
                             title="Naviguer"
                           >
-                            <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-white transition" />
+                            <ArrowRight className="w-4 h-4 text-dark-400 group-hover:text-white transition" />
                           </div>
                         ) : (
                           !notif.is_read && (
@@ -280,7 +273,7 @@ export default function NotificationsPage() {
                                 e.stopPropagation()
                                 handleMarkRead(notif.id)
                               }}
-                              className="p-2 rounded-lg transition hover:bg-white/5 text-slate-500 hover:text-white"
+                              className="p-2 rounded-lg transition hover:bg-white/5 text-dark-400 hover:text-white"
                               title="Marquer comme lu"
                             >
                               <Check className="w-4 h-4" />
@@ -299,30 +292,25 @@ export default function NotificationsPage() {
 
       {/* RAPPEL PREMIUM */}
       <div
-        className="p-5 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 overflow-hidden relative"
-        style={{
-          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%)',
-          borderColor: 'rgba(129, 140, 248, 0.3)'
-        }}
+        className="p-5 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-4 overflow-hidden relative bg-gradient-to-r from-primary-500/10 to-indigo-500/10 border-primary-500/20"
       >
         <div className="space-y-1 text-center md:text-left z-10">
           <h4 className="font-bold text-white flex items-center justify-center md:justify-start gap-2">
             <Sparkles className="w-5 h-5 text-yellow-400" />
             Passez à l'Abonnement Business
           </h4>
-          <p className="text-xs text-slate-300 max-w-xl">
+          <p className="text-xs text-dark-400 max-w-xl">
             Débloquez la messagerie WhatsApp & Telegram illimitée, la gestion multi-caisses avancée, des rapports financiers automatisés, et un assistant IA à votre disposition 24/7.
           </p>
         </div>
         <button
           onClick={() => router.push('/subscription')}
-          className="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-lg hover:shadow-indigo-500/20 active:scale-95 shrink-0 z-10"
-          style={{ background: '#4f46e5' }}
+          className="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-lg hover:shadow-indigo-500/20 active:scale-95 shrink-0 z-10 bg-primary-500 hover:bg-primary-600"
         >
           Voir les plans d'abonnement
         </button>
         {/* Cercles de fond décoratifs */}
-        <div className="absolute -right-10 -bottom-10 w-40 h-40 rounded-full bg-indigo-500/5 blur-2xl pointer-events-none" />
+        <div className="absolute -right-10 -bottom-10 w-40 h-40 rounded-full bg-primary-500/5 blur-2xl pointer-events-none" />
         <div className="absolute -left-10 -top-10 w-40 h-40 rounded-full bg-purple-500/5 blur-2xl pointer-events-none" />
       </div>
     </div>

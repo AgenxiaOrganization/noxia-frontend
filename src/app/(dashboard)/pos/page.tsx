@@ -43,12 +43,9 @@ export default function POSPage() {
       
       if (apiProducts && apiProducts.length > 0) {
         setProducts(apiProducts.map((p: any) => {
-          // p.stock_item will contain stock balance.
           let stock = 999;
-          if (p.tracks_stock && p.stock_item) {
-            stock = parseFloat(p.stock_item.quantity_on_hand);
-          } else if (p.tracks_stock) {
-            stock = 0;
+          if (p.unit !== 'service' && p.stock !== undefined && p.stock !== -1) {
+            stock = parseFloat(p.stock);
           }
 
           return {
@@ -204,10 +201,19 @@ export default function POSPage() {
       }
     })
 
+    let mappedMethod: 'cash' | 'mobile_money' | 'card' | 'other' = 'cash'
+    if (paymentMethod === 'Mobile Money') {
+      mappedMethod = 'mobile_money'
+    } else if (paymentMethod === 'Carte bancaire') {
+      mappedMethod = 'card'
+    } else if (paymentMethod !== 'Espèces') {
+      mappedMethod = 'other'
+    }
+
     // Envoi de la transaction en tâche de fond
     createSale({
       cash_register: cashRegisters[0].id,
-      payment_method: 'cash',
+      payment_method: mappedMethod,
       items: items as any
     })
       .then(async () => {
@@ -226,13 +232,13 @@ export default function POSPage() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <h1 className="text-xl font-bold text-white">Caisse (POS)</h1>
+        <h1 className="text-xl font-bold text-primary-500">Caisse (POS)</h1>
         {/* Sélecteur employé - affichage seul maintenant */}
         {isMounted && currentEmployee && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/50">
-            <User className="w-4 h-4 text-slate-400" />
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dark-800/40 bg-dark-900">
+            <User className="w-4 h-4 text-dark-400" />
             <span className="text-sm text-white">
-              {currentEmployee.name} <span className="text-slate-400">({currentEmployee.role})</span>
+              {currentEmployee.name} <span className="text-dark-400">({currentEmployee.role})</span>
             </span>
           </div>
         )}

@@ -36,17 +36,13 @@ export default function ProductGrid({
     <div className="lg:col-span-2 space-y-4">
       {/* Barre de recherche */}
       <div className="relative mt-4 sm:mt-0">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-500" />
         <input
           type="text"
           placeholder="Rechercher un produit..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
-          style={{
-            background: 'rgba(51, 65, 85, 0.5)',
-            border: '1px solid #334155'
-          }}
+          className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition bg-dark-900 border border-dark-800/60 focus:border-primary-500"
         />
       </div>
 
@@ -57,13 +53,10 @@ export default function ProductGrid({
             key={cat}
             onClick={() => setSelectedCategory(cat)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition whitespace-nowrap ${
-              selectedCategory === cat ? 'border' : 'border-transparent'
+              selectedCategory === cat 
+                ? 'bg-primary-500/10 border border-primary-500/30 text-primary-400 font-bold' 
+                : 'bg-dark-900 border border-dark-800/40 text-dark-400 hover:text-white hover:bg-white/5'
             }`}
-            style={{
-              background: selectedCategory === cat ? 'rgba(99, 102, 241, 0.15)' : 'rgba(51, 65, 85, 0.3)',
-              borderColor: selectedCategory === cat ? '#6366f1' : 'transparent',
-              color: selectedCategory === cat ? '#818cf8' : '#94a3b8'
-            }}
           >
             {cat === 'all' ? 'Tous' : categoryLabels[cat as keyof typeof categoryLabels] || cat}
           </button>
@@ -82,17 +75,16 @@ export default function ProductGrid({
               key={product.id}
               onClick={() => addToCart(product.id)}
               disabled={isOutOfStock && product.stock >= 0}
-              className="p-3 rounded-xl border text-left transition-all hover:border-primary-500 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="p-3 rounded-xl border text-left transition-all hover:border-primary-500 disabled:opacity-40 disabled:cursor-not-allowed glass-card"
               style={{ 
-                background: '#1e293b',
-                borderColor: isOutOfStock ? '#ef4444' : isLowStock ? '#f59e0b' : '#334155'
+                borderColor: isOutOfStock ? '#ef4444' : isLowStock ? '#f59e0b' : 'var(--theme-border)'
               }}
             >
               <div className="flex items-center gap-2 mb-1">
-                <Icon className="w-4 h-4" style={{ color: '#818cf8' }} />
+                <Icon className="w-4 h-4 text-primary-400" />
                 <span className="font-medium text-sm text-white truncate flex-1">{product.name}</span>
               </div>
-              <p className="text-sm font-semibold" style={{ color: '#22c55e' }}>
+              <p className="text-sm font-bold text-accent-500">
                 {product.price.toLocaleString()} FCFA
               </p>
               {product.stock >= 0 ? (
@@ -100,7 +92,7 @@ export default function ProductGrid({
                   {isOutOfStock ? '⚠️ Rupture' : `Stock: ${product.stock} ${product.unit}s`}
                 </p>
               ) : (
-                <p className="text-xs" style={{ color: '#64748b' }}>Illimité</p>
+                <p className="text-xs text-dark-500">Illimité</p>
               )}
             </button>
           )

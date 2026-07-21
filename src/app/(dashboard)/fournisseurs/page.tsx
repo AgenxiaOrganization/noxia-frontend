@@ -67,9 +67,14 @@ export default function SuppliersPage() {
         getProducts(),
         getSupplierOrders()
       ])
-      setSuppliers(apiSuppliers || [])
-      setProducts(apiProducts || [])
-      setOrders(apiOrders || [])
+
+      const suppliersList = apiSuppliers && (apiSuppliers as any).results ? (apiSuppliers as any).results : (apiSuppliers || [])
+      const productsList = apiProducts && (apiProducts as any).results ? (apiProducts as any).results : (apiProducts || [])
+      const ordersList = apiOrders && (apiOrders as any).results ? (apiOrders as any).results : (apiOrders || [])
+
+      setSuppliers(suppliersList)
+      setProducts(productsList)
+      setOrders(ordersList)
     } catch (e) {
       console.error('Erreur lors du chargement des fournisseurs, produits et commandes', e)
       toast.error('Erreur lors du chargement des données.')

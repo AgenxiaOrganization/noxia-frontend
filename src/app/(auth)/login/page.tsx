@@ -160,20 +160,10 @@ export default function LoginPage() {
     >
       <div className="w-full max-w-md">
 
-        {/* Logo */}
+        {/* En-tête */}
         <div className="text-center mb-8 animate-slide-up">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center mx-auto mb-4">
-            <img
-              src="/logos/NOXIA_Orbit_Logo.svg"
-              alt="NOXIA"
-              className="w-10 h-10"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none'
-              }}
-            />
-          </div>
-          <h1 className="text-2xl font-bold text-white">NOXIA</h1>
-          <p className="text-sm" style={{ color: '#94a3b8' }}>OS Intelligent pour Bars & Restaurants</p>
+          <h1 className="text-3xl font-display font-extrabold text-white tracking-tight">NOXIA</h1>
+          <p className="text-sm text-dark-400 mt-1.5 font-medium">OS Intelligent pour Bars & Restaurants</p>
         </div>
 
         {/* Card */}

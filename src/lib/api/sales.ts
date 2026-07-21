@@ -9,6 +9,8 @@ export interface CashRegister {
 export interface SaleItem {
   id?: number
   product: number
+  product_name?: string
+  product_category?: string
   quantity: string
   unit_price: string
   subtotal?: string
@@ -17,9 +19,11 @@ export interface SaleItem {
 export interface Sale {
   id: number
   cash_register: number
+  cash_register_name?: string
   cashier: number
+  cashier_name?: string
   status: 'open' | 'paid' | 'cancelled'
-  payment_method: 'cash'
+  payment_method: 'cash' | 'mobile_money' | 'card' | 'other'
   total_amount: string
   items: SaleItem[]
   created_at?: string
