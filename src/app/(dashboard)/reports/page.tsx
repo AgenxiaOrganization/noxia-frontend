@@ -6,7 +6,7 @@ import {
   DollarSign, ShoppingBag, Users, Award, Package, ChevronDown,
   Printer, FileText, Loader2, Sparkles, RefreshCw
 } from 'lucide-react'
-import { getSales, Sale } from '@/lib/api/sales'
+import { getSales, Sale, downloadSalesReportPDF, downloadSalesReportExcel } from '@/lib/api/sales'
 import { toast } from 'sonner'
 
 const logoBase64 = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB3aWR0aD0iNjQiIGhlaWdodD0iNjQiPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzYzNjZmMSIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxMGI5ODEiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxjaXJjbGUgY3g9IjI1NiIgY3k9IjI1NiIgcj0iMTkwIiBmaWxsPSJub25lIiBzdHJva2U9InVybCgjZykiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWRhc2hhcnJheT0iOTgwIDEyMCIvPgogIDxjaXJjbGUgY3g9IjQwNSIgY3k9IjE0MCIgcj0iMTEiIGZpbGw9IiMyREQ0RkYiLz4KICA8Y2lyY2xlIGN4PSIxMDciIGN5PSIzNzIiIHI9IjExIiBmaWxsPSIjMkRENEZGIi8+CiAgPHBhdGggZD0iTTE2MCAzNDAgTTE2MCAxNzAgUTE2MCAxNTAgMTgwIDE1MCBMMjA1IDE1MCBMMzA3IDI4NSBMMzA3IDE3MCBRMzA3IDE1MCAzMjcgMTUwIEwzNTIgMTUwIFEzNzIgMTUwIDM3MiAxNzAgTDM3MiAzNDAgUTM3MiAzNjAgMzUyIDM2MCBMMzI0IDM2MCBMMjI1IDIyOCBMMjI1IDM0MCBRMjI1IDM2MCAyMDUgMzYwIEwxODAgMzYwIFExNjAgMzYwIDE2MCAzNDBaIiBmaWxsPSJ1cmwoI2cpIi8+Cjwvc3ZnPg=="
@@ -334,84 +334,94 @@ export default function ReportsPage() {
   }, [filteredSales, period, chartType])
 
   // --- Exports réels ---
-  const handleExportExcel = () => {
-    if (filteredSales.length === 0) {
-      toast.error("Aucune vente à exporter sur cette période.")
-      return
+  const handleExportExcel = async () => {
+    try {
+      await downloadSalesReportExcel(period)
+      toast.success(`Rapport de ventes Excel (.xlsx) pour la période [${period.toUpperCase()}] téléchargé avec succès !`)
+    } catch (err) {
+      if (filteredSales.length === 0) {
+        toast.error("Aucune donnée disponible à exporter.")
+        return
+      }
+
+      const logoPng = getLogoPngDataUrl()
+      const excelHtml = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+        <meta http-equiv="content-type" content="text/plain; charset=UTF-8"/>
+        <style>
+          body { font-family: Arial, sans-serif; }
+          .title { font-size: 18px; font-weight: bold; color: #4f46e5; }
+          .subtitle { font-size: 11px; color: #64748b; margin-bottom: 15px; }
+          .th { background-color: #1e1b4b; color: #ffffff; font-weight: bold; text-align: center; padding: 8px; border: 1px solid #cbd5e1; }
+          .td { padding: 6px; border: 1px solid #cbd5e1; vertical-align: middle; }
+          .kpi-title { font-weight: bold; background-color: #f8fafc; }
+          .kpi-val { font-weight: bold; color: #059669; }
+          .currency { mso-number-format:"\\#\\,\\#\\#0\\ \\FCFA"; text-align: right; }
+        </style>
+        </head>
+        <body>
+          <table>
+            <tr>
+              <td colspan="7" class="title">NOXIA - RAPPORT DE VENTES POS (.XLSX)</td>
+            </tr>
+            <tr>
+              <td colspan="7" class="subtitle">Analyse d'activité | Généré le : ${new Date().toLocaleString()} | Période : ${period.toUpperCase()}</td>
+            </tr>
+            <tr></tr>
+            <tr>
+              <td class="kpi-title" colspan="3">Chiffre d'Affaires Brut :</td>
+              <td class="kpi-val" colspan="4">${totalSales.toLocaleString()} FCFA</td>
+            </tr>
+            <tr>
+              <td class="kpi-title" colspan="3">Nombre Total de Transactions :</td>
+              <td class="kpi-val" colspan="4">${totalTransactions}</td>
+            </tr>
+            <tr>
+              <td class="kpi-title" colspan="3">Panier Moyen / Ticket :</td>
+              <td class="kpi-val" colspan="4">${averageTicket.toLocaleString()} FCFA</td>
+            </tr>
+            <tr></tr>
+            <!-- En-têtes -->
+            <tr>
+              <td class="th">ID Vente</td>
+              <td class="th">Caisse POS</td>
+              <td class="th">Caissier / Agent</td>
+              <td class="th">Date & Heure</td>
+              <td class="th">Moyen de Paiement</td>
+              <td class="th">Montant Total</td>
+              <td class="th">Articles vendus</td>
+            </tr>
+            ${filteredSales.map(s => {
+              const dateFormatted = s.created_at ? new Date(s.created_at).toLocaleString() : ''
+              const itemsString = s.items.map(item => `${parseFloat(item.quantity)}x ${item.product_name}`).join(', ')
+              return `
+                <tr>
+                  <td class="td">#${s.id}</td>
+                  <td class="td">${s.cash_register_name || 'Caisse Principale'}</td>
+                  <td class="td">${s.cashier_name || 'Caissier'}</td>
+                  <td class="td">${dateFormatted}</td>
+                  <td class="td">${s.payment_method === 'cash' ? 'Espèces' : s.payment_method}</td>
+                  <td class="td currency">${parseFloat(s.total_amount)}</td>
+                  <td class="td">${itemsString}</td>
+                </tr>
+              `
+            }).join('')}
+          </table>
+        </body>
+        </html>
+      `
+
+      const blob = new Blob(['\ufeff' + excelHtml], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `Rapport_Ventes_${period}_${new Date().toISOString().split('T')[0]}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      toast.success("Rapport Excel (.xlsx) exporté avec succès !")
     }
-
-    const excelHtml = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head>
-      <meta charset="utf-8">
-      <style>
-        .header { background-color: #4f46e5; color: #ffffff; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-align: center; height: 40px; }
-        .kpi-title { font-family: Arial, sans-serif; font-size: 11px; color: #475569; font-weight: bold; background-color: #f1f5f9; text-align: center; }
-        .kpi-val { font-family: Arial, sans-serif; font-size: 14px; color: #1e1b4b; font-weight: bold; text-align: center; }
-        .th { background-color: #6366f1; color: #ffffff; font-family: Arial, sans-serif; font-size: 11px; font-weight: bold; border: 0.5pt solid #cbd5e1; }
-        .td { font-family: Arial, sans-serif; font-size: 11px; border: 0.5pt solid #cbd5e1; }
-        .currency { mso-number-format: "#\\,##0\\ \\F\\C\\F\\A"; }
-        .number { mso-number-format: "#\\,##0"; }
-      </style>
-      </head>
-      <body>
-        <table>
-          <tr>
-            <td colspan="7" class="header">RAPPORT DE VENTES NOXIA - Période : ${period.toUpperCase()}</td>
-          </tr>
-          <tr><td colspan="7"></td></tr>
-          <!-- Section KPIs -->
-          <tr>
-            <td colspan="2" class="kpi-title">Chiffre d'affaires</td>
-            <td colspan="2" class="kpi-title">Nombre de transactions</td>
-            <td colspan="3" class="kpi-title">Panier moyen</td>
-          </tr>
-          <tr>
-            <td colspan="2" class="kpi-val currency">${totalSales}</td>
-            <td colspan="2" class="kpi-val number">${totalTransactions}</td>
-            <td colspan="3" class="kpi-val currency">${averageTicket}</td>
-          </tr>
-          <tr><td colspan="7"></td></tr>
-          <!-- En-têtes de colonnes -->
-          <tr>
-            <td class="th">ID Vente</td>
-            <td class="th">Caisse</td>
-            <td class="th">Caissier</td>
-            <td class="th">Date & Heure</td>
-            <td class="th">Moyen de Paiement</td>
-            <td class="th">Montant Total</td>
-            <td class="th">Articles vendus</td>
-          </tr>
-          <!-- Données -->
-          ${filteredSales.map(s => {
-            const dateFormatted = s.created_at ? new Date(s.created_at).toLocaleString() : ''
-            const itemsString = s.items.map(item => `${parseFloat(item.quantity)}x ${item.product_name}`).join(', ')
-            return `
-              <tr>
-                <td class="td">#${s.id}</td>
-                <td class="td">${s.cash_register_name || 'Caisse Principale'}</td>
-                <td class="td">${s.cashier_name || 'Caissier'}</td>
-                <td class="td">${dateFormatted}</td>
-                <td class="td">${s.payment_method === 'cash' ? 'Espèces' : s.payment_method}</td>
-                <td class="td currency">${parseFloat(s.total_amount)}</td>
-                <td class="td">${itemsString}</td>
-              </tr>
-            `
-          }).join('')}
-        </table>
-      </body>
-      </html>
-    `
-
-    const blob = new Blob(['\ufeff' + excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `Rapport_Ventes_${period}_${new Date().toISOString().split('T')[0]}.xls`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    toast.success("Rapport Excel exporté avec mise en page !")
   }
 
   const handleExportWord = () => {
@@ -421,9 +431,10 @@ export default function ReportsPage() {
     }
 
     const logoPng = getLogoPngDataUrl()
+    const verifUrl = typeof window !== 'undefined' ? `${window.location.origin}/verify-doc` : 'http://127.0.0.1:3000/verify-doc'
     const docHtml = `
       <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-      <head><title>Rapport Financier Noxia</title>
+      <head><title>Rapport d'Activité Ventes Noxia</title>
       <style>
         body { font-family: Arial, sans-serif; color: #1e293b; padding: 20px; }
         .header-table { width: 100%; border: none; margin-bottom: 20px; }
@@ -433,8 +444,9 @@ export default function ReportsPage() {
         .subtitle { color: #64748b; font-size: 12px; margin: 5px 0 0 0; }
         table.data-table { border-collapse: collapse; width: 100%; margin-top: 20px; }
         table.data-table th, table.data-table td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; font-size: 12px; }
-        table.data-table th { background-color: #f1f5f9; font-weight: bold; }
+        table.data-table th { background-color: #1e1b4b; color: white; font-weight: bold; }
         .summary-box { margin-top: 20px; background-color: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .footer-box { margin-top: 30px; border-top: 2px solid #4f46e5; padding-top: 10px; font-size: 11px; color: #64748b; }
       </style>
       </head>
       <body>
@@ -444,20 +456,20 @@ export default function ReportsPage() {
               <img src="${logoPng}" width="60" height="60" alt="NOXIA" />
             </td>
             <td class="title-td">
-              <div class="title">NOXIA - RAPPORT FINANCIER D'ACTIVITÉ</div>
-              <div class="subtitle">Généré le : ${new Date().toLocaleString()} | Période : ${period.toUpperCase()}</div>
+              <div class="title">NOXIA Smart SaaS - RAPPORT DE VENTES</div>
+              <div class="subtitle">Généré le : ${new Date().toLocaleString()} | Période d'analyse : ${period.toUpperCase()}</div>
             </td>
           </tr>
         </table>
         
         <div class="summary-box">
-          <h3 style="margin-top: 0; color: #4f46e5;">Indicateurs Clés (KPIs)</h3>
-          <p style="margin: 5px 0;"><strong>Chiffre d'affaires :</strong> ${totalSales.toLocaleString()} FCFA</p>
+          <h3 style="margin-top: 0; color: #4f46e5;">Synthèse & Indicateurs Clés (KPIs)</h3>
+          <p style="margin: 5px 0;"><strong>Chiffre d'affaires Brut :</strong> ${totalSales.toLocaleString()} FCFA</p>
           <p style="margin: 5px 0;"><strong>Nombre total de ventes :</strong> ${totalTransactions}</p>
-          <p style="margin: 5px 0;"><strong>Panier moyen :</strong> ${averageTicket.toLocaleString()} FCFA</p>
+          <p style="margin: 5px 0;"><strong>Panier moyen par ticket :</strong> ${averageTicket.toLocaleString()} FCFA</p>
         </div>
 
-        <h2 style="margin-top: 30px; font-size: 16px; border-bottom: 2px solid #6366f1; padding-bottom: 5px;">Détail analytique des transactions</h2>
+        <h2 style="margin-top: 30px; font-size: 16px; border-bottom: 2px solid #6366f1; padding-bottom: 5px;">Détail analytique des transactions POS</h2>
         <table class="data-table">
           <thead>
             <tr>
@@ -466,7 +478,7 @@ export default function ReportsPage() {
               <th>Caisse</th>
               <th>Caissier</th>
               <th>Articles vendus</th>
-              <th>Montant</th>
+              <th>Montant Total</th>
             </tr>
           </thead>
           <tbody>
@@ -486,6 +498,11 @@ export default function ReportsPage() {
             }).join('')}
           </tbody>
         </table>
+
+        <div class="footer-box">
+          <p><strong>DOCUMENT CERTIFIÉ CONFORME NOXIA SMART SAAS</strong></p>
+          <p>Vérification d'authenticité en ligne : <a href="${verifUrl}">${verifUrl}</a></p>
+        </div>
       </body>
       </html>
     `
@@ -498,11 +515,16 @@ export default function ReportsPage() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    toast.success("Rapport Word (.doc) exporté avec logo !")
+    toast.success("Rapport Word (.doc) certifié exporté avec succès !")
   }
 
-  const handleExportPDF = () => {
-    window.print()
+  const handleExportPDF = async () => {
+    try {
+      await downloadSalesReportPDF(period)
+      toast.success(`Rapport d'activité PDF pour la période [${period.toUpperCase()}] téléchargé avec succès !`)
+    } catch (err) {
+      window.print()
+    }
   }
 
   if (isLoading) {

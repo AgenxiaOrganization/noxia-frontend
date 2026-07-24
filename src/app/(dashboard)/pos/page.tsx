@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { User } from 'lucide-react'
+import { User, Wallet } from 'lucide-react'
 import { getProducts, getCategories } from '../../../lib/api/catalog'
 import { createSale, getCashRegisters, createCashRegister, CashRegister } from '../../../lib/api/sales'
 import { useWebSockets } from '../../../lib/hooks/useWebSockets'
@@ -25,6 +25,7 @@ export default function POSPage() {
     setIsMounted(true)
   }, [])
   const [cashRegisters, setCashRegisters] = useState<CashRegister[]>([])
+  const [selectedCashRegisterId, setSelectedCashRegisterId] = useState<number | null>(null)
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [cart, setCart] = useState<CartItem[]>([])
@@ -72,6 +73,9 @@ export default function POSPage() {
         }
       }
       setCashRegisters(activeRegs || [])
+      if (activeRegs && activeRegs.length > 0) {
+        setSelectedCashRegisterId((prev) => prev ?? activeRegs[0].id)
+      }
 
       if (apiCategories && apiCategories.length > 0) {
         const catNames = apiCategories.map((c: any) => c.name.toLowerCase())
@@ -211,8 +215,9 @@ export default function POSPage() {
     }
 
     // Envoi de la transaction en tâche de fond
+    const targetCaisseId = selectedCashRegisterId || (cashRegisters.length > 0 ? cashRegisters[0].id : 1)
     createSale({
-      cash_register: cashRegisters[0].id,
+      cash_register: targetCaisseId,
       payment_method: mappedMethod,
       items: items as any
     })
@@ -233,13 +238,37 @@ export default function POSPage() {
     <div className="p-4 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <h1 className="text-xl font-bold text-primary-500">Caisse (POS)</h1>
-        {/* Sélecteur employé - affichage seul maintenant */}
-        {isMounted && currentEmployee && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dark-800/40 bg-dark-900">
-            <User className="w-4 h-4 text-dark-400" />
-            <span className="text-sm text-white">
-              {currentEmployee.name} <span className="text-dark-400">({currentEmployee.role})</span>
-            </span>
+        
+        {isMounted && (
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Sélecteur de Caisse POS */}
+            {cashRegisters.length > 0 && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dark-800/60 bg-dark-900 shadow-sm">
+                <Wallet className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs text-dark-400 font-medium">Caisse :</span>
+                <select
+                  value={selectedCashRegisterId ?? ''}
+                  onChange={(e) => setSelectedCashRegisterId(Number(e.target.value))}
+                  className="bg-transparent text-sm text-white font-semibold outline-none cursor-pointer pr-1"
+                >
+                  {cashRegisters.map(c => (
+                    <option key={c.id} value={c.id} className="bg-slate-900 text-white">
+                      {c.name} {!c.is_active ? '(Inactive)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Employé connecté */}
+            {currentEmployee && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-dark-800/40 bg-dark-900">
+                <User className="w-4 h-4 text-indigo-400" />
+                <span className="text-sm text-white font-medium">
+                  {currentEmployee.name} <span className="text-dark-400">({currentEmployee.role})</span>
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>

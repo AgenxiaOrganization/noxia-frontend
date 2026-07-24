@@ -37,7 +37,46 @@ export const updateCashRegister = (id: number, data: Partial<CashRegister>) => p
 export const deleteCashRegister = (id: number) => del<void>(`/sales/cash-registers/${id}/`)
 
 // Sales
-export const getSales = () => get<Sale[]>('/sales/sales/')
-export const createSale = (data: Partial<Sale>) => post<Sale>('/sales/sales/', data)
-export const updateSale = (id: number, data: Partial<Sale>) => put<Sale>(`/sales/sales/${id}/`, data)
-export const deleteSale = (id: number) => del<void>(`/sales/sales/${id}/`)
+export const getSales = async (): Promise<Sale[]> => {
+  const res = await get<{ results: Sale[] } | Sale[]>('/sales/')
+  return Array.isArray(res) ? res : res.results ?? []
+}
+export const createSale = (data: Partial<Sale>) => post<Sale>('/sales/', data)
+export const updateSale = (id: number, data: Partial<Sale>) => put<Sale>(`/sales/${id}/`, data)
+export const deleteSale = (id: number) => del<void>(`/sales/${id}/`)
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api/v1'
+import { getAuthHeaders } from '../auth'
+
+export async function downloadSalesReportPDF(period: string = 'semaine'): Promise<void> {
+  const res = await fetch(`${BASE_URL}/sales/reports/pdf/?period=${encodeURIComponent(period)}`, {
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) throw new Error("Échec du téléchargement du rapport de ventes PDF.")
+  const blob = await res.blob()
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `rapport_ventes_${period}.pdf`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
+}
+
+export async function downloadSalesReportExcel(period: string = 'semaine'): Promise<void> {
+  const res = await fetch(`${BASE_URL}/sales/reports/excel/?period=${encodeURIComponent(period)}`, {
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) throw new Error("Échec du téléchargement du rapport de ventes Excel.")
+  const blob = await res.blob()
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `rapport_ventes_${period}.xlsx`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
+}
+

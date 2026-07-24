@@ -13,15 +13,24 @@ export interface BotSession {
   employee_role: string
 }
 
-export interface Employee {
+export interface EmployeeUser {
   id: number
-  user_id: number
+  email: string
   first_name: string
   last_name: string
-  email: string
-  role: 'gerant' | 'caissier' | 'serveur' | 'stock'
+  phone?: string
+}
+
+export interface Employee {
+  id: number
+  user?: EmployeeUser
+  user_id?: number
+  first_name?: string
+  last_name?: string
+  email?: string
+  role: 'administrateur' | 'gerant' | 'caissier' | 'serveur' | 'magasinier' | 'stock' | string
   is_active: boolean
-  activation_code: string | null
+  activation_code?: string | null
   phone?: string
   password?: string
   activation_code_expires_at?: string | null
