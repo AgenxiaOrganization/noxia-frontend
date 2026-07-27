@@ -648,8 +648,9 @@ export default function SuppliersPage() {
                       className="rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
                     />
                   </th>
-                  <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Date</th>
+                  <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Date & Heure</th>
                   <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Fournisseur</th>
+                  <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Canal</th>
                   <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Produits</th>
                   <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Total</th>
                   <th className="px-3 py-2 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Statut</th>
@@ -658,13 +659,42 @@ export default function SuppliersPage() {
               </thead>
               <tbody>
                 {orders.map((order) => {
-                  const orderDate = order.created_at ? new Date(order.created_at).toLocaleDateString('fr-FR', {
-                    year: 'numeric', month: '2-digit', day: '2-digit'
+                  const orderDate = order.created_at ? new Date(order.created_at).toLocaleString('fr-FR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
                   }) : 'ND'
                   
-                  const productsSummary = order.products_list
-                    .map(p => `${p.name} x${p.quantity}`)
-                    .join(', ')
+                  let parsedList: any[] = []
+                  if (Array.isArray(order.products_list)) {
+                    parsedList = order.products_list
+                  } else if (typeof order.products_list === 'string') {
+                    try {
+                      const jsonP = JSON.parse(order.products_list)
+                      if (Array.isArray(jsonP)) parsedList = jsonP
+                      else if (jsonP && typeof jsonP === 'object') parsedList = [jsonP]
+                      else parsedList = [{ name: order.products_list }]
+                    } catch {
+                      parsedList = [{ name: order.products_list }]
+                    }
+                  } else if (order.products_list && typeof order.products_list === 'object') {
+                    parsedList = [order.products_list]
+                  }
+
+                  const productsSummary = parsedList.length > 0
+                    ? parsedList.map(p => {
+                        if (typeof p === 'object' && p !== null) {
+                          const name = p.name || 'Produit'
+                          const qty = p.quantity !== undefined && p.quantity !== null && p.quantity !== '' ? ` x${p.quantity}` : ''
+                          return `${name}${qty}`
+                        }
+                        return String(p)
+                      }).filter(Boolean).join(', ')
+                    : 'Aucun produit'
+
+                  const sourceKey = (order.source || '').toLowerCase()
+                  const sourceBadge = sourceKey.includes('telegram') ? { label: 'Telegram', icon: '✈️', style: 'bg-sky-500/20 text-sky-300 border-sky-500/30' }
+                    : sourceKey.includes('whatsapp') ? { label: 'WhatsApp', icon: '💬', style: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' }
+                    : sourceKey.includes('bot') ? { label: 'Assistant Web', icon: '🤖', style: 'bg-purple-500/20 text-purple-300 border-purple-500/30' }
+                    : { label: 'App Web', icon: '🖥️', style: 'bg-slate-700/50 text-slate-300 border-slate-600' }
 
                   const totalValue = typeof order.total_amount === 'string' ? parseFloat(order.total_amount) : order.total_amount
 
@@ -680,6 +710,12 @@ export default function SuppliersPage() {
                       </td>
                       <td className="px-3 py-2" style={{ color: '#94a3b8' }}>{orderDate}</td>
                       <td className="px-3 py-2 text-white font-medium">{order.supplier_name}</td>
+                      <td className="px-3 py-2">
+                        <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium border ${sourceBadge.style}`}>
+                          <span>{sourceBadge.icon}</span>
+                          <span>{sourceBadge.label}</span>
+                        </span>
+                      </td>
                       <td className="px-3 py-2 text-slate-300 max-w-xs truncate" title={productsSummary}>
                         {productsSummary}
                       </td>

@@ -90,6 +90,7 @@ export default function EmployeesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<any | null>(null)
   const [showEmployeeId, setShowEmployeeId] = useState<number | null>(null)
+  const [showSalaryId, setShowSalaryId] = useState<number | null>(null)
   const [isPermissionsModalOpen, setIsPermissionsModalOpen] = useState(false)
   const [draggedPermission, setDraggedPermission] = useState<string | null>(null)
   const [selectedRole, setSelectedRole] = useState<string>('caissier')
@@ -163,8 +164,8 @@ export default function EmployeesPage() {
         role: emp.role,
         phone: emp.user?.phone || '',
         email: emp.user?.email || '',
-        salary: emp.role === 'gerant' ? 250000 : emp.role === 'caissier' ? 150000 : 120000,
-        commission: emp.role === 'serveur' ? 5 : emp.role === 'caissier' ? 2 : 0,
+        salary: emp.role === 'administrateur' ? 0 : (emp.base_salary !== undefined && emp.base_salary !== null ? parseFloat(emp.base_salary) : (emp.role === 'gerant' ? 250000 : emp.role === 'caissier' ? 150000 : 120000)),
+        commission: emp.commission_rate !== undefined && emp.commission_rate !== null ? parseFloat(emp.commission_rate) : (emp.role === 'serveur' ? 5 : emp.role === 'caissier' ? 2 : 0),
         active: emp.is_active,
         sales: Number(emp.total_sales) || 0,
         employeeId: emp.activation_code || '',
@@ -295,6 +296,10 @@ export default function EmployeesPage() {
     const role = formData.get('role') as any
     const phone = formData.get('phone') as string
     const email = formData.get('email') as string
+    const salaryInput = formData.get('salary') as string
+    const commissionInput = formData.get('commission') as string
+    const baseSalary = role === 'administrateur' ? 0 : parseFloat(salaryInput) || 0
+    const commissionRate = parseFloat(commissionInput) || 0
 
     const names = fullName.trim().split(' ')
     const first_name = names[0] || ''
@@ -303,11 +308,17 @@ export default function EmployeesPage() {
     try {
       if (editingEmployee) {
         const editPromise = patchEmployee(editingEmployee.id, {
+          first_name,
+          last_name,
+          phone,
+          email,
           role: role,
-        })
+          base_salary: baseSalary,
+          commission_rate: commissionRate,
+        } as any)
         toast.promise(editPromise, {
-          loading: "Mise à jour du rôle...",
-          success: "✅ Rôle de l'employé mis à jour !",
+          loading: "Mise à jour de l'employé...",
+          success: "✅ Employé mis à jour avec succès !",
           error: "❌ Erreur lors de la mise à jour."
         })
         await editPromise
@@ -317,8 +328,10 @@ export default function EmployeesPage() {
           first_name,
           last_name,
           phone,
-          role
-        })
+          role,
+          base_salary: baseSalary,
+          commission_rate: commissionRate,
+        } as any)
         toast.promise(createPromise, {
           loading: "Création du compte...",
           success: "✅ Employé créé avec succès !",
@@ -582,11 +595,31 @@ export default function EmployeesPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-xs" style={{ color: '#94a3b8' }}>
-                      {employee.salary.toLocaleString()} F
-                      {employee.commission > 0 && (
-                        <span className="block text-xs" style={{ color: '#22c55e' }}>
-                          +{employee.commission}% comm.
+                      {employee.role === 'administrateur' ? (
+                        <span className="text-[11px] italic text-indigo-300 font-medium bg-indigo-500/10 px-2.5 py-0.5 rounded border border-indigo-500/20">
+                          N/A
                         </span>
+                      ) : (
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium text-white">
+                              {showSalaryId === employee.id ? `${employee.salary.toLocaleString()} F` : '••••••••'}
+                            </span>
+                            <button
+                              onClick={() => setShowSalaryId(showSalaryId === employee.id ? null : employee.id)}
+                              className="p-0.5 rounded hover:bg-white/10 transition"
+                              style={{ color: '#94a3b8' }}
+                              title={showSalaryId === employee.id ? 'Masquer le salaire' : 'Afficher le salaire'}
+                            >
+                              {showSalaryId === employee.id ? <EyeOff className="w-3 h-3 text-indigo-400" /> : <Eye className="w-3 h-3" />}
+                            </button>
+                          </div>
+                          {employee.commission > 0 && (
+                            <span className="block text-[11px]" style={{ color: '#22c55e' }}>
+                              +{employee.commission}% comm.
+                            </span>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3 text-xs">
@@ -785,8 +818,23 @@ export default function EmployeesPage() {
               <div className="grid grid-cols-2 gap-2 text-xs pt-1">
                 <div className="p-2 rounded bg-slate-900 border" style={{ borderColor: '#334155' }}>
                   <span className="block text-[10px]" style={{ color: '#94a3b8' }}>Salaire</span>
-                  <span className="font-semibold text-white">{employee.salary.toLocaleString()} F</span>
-                  {employee.commission > 0 && (
+                  {employee.role === 'administrateur' ? (
+                    <span className="font-semibold text-indigo-300 italic text-xs">N/A</span>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-white">
+                        {showSalaryId === employee.id ? `${employee.salary.toLocaleString()} F` : '••••••••'}
+                      </span>
+                      <button
+                        onClick={() => setShowSalaryId(showSalaryId === employee.id ? null : employee.id)}
+                        className="p-0.5 rounded hover:bg-white/10 transition text-slate-400"
+                        title={showSalaryId === employee.id ? 'Masquer le salaire' : 'Afficher le salaire'}
+                      >
+                        {showSalaryId === employee.id ? <EyeOff className="w-3 h-3 text-indigo-400" /> : <Eye className="w-3 h-3" />}
+                      </button>
+                    </div>
+                  )}
+                  {employee.role !== 'administrateur' && employee.commission > 0 && (
                     <span className="block text-[10px] text-green-400">+{employee.commission}% comm.</span>
                   )}
                 </div>
@@ -1019,15 +1067,14 @@ export default function EmployeesPage() {
               {editingEmployee ? 'Modifier l\'employé' : 'Ajouter un employé'}
             </h2>
 
-            <form className="space-y-3" onSubmit={handleSubmit}>
+            <form key={editingEmployee?.id || 'new'} className="space-y-3" onSubmit={handleSubmit}>
               <div>
                 <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nom complet</label>
                 <input
                   type="text"
                   name="fullName"
                   defaultValue={editingEmployee?.name || ''}
-                  disabled={!!editingEmployee}
-                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition disabled:opacity-50"
+                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
                   style={{ 
                     background: 'rgba(51, 65, 85, 0.5)',
                     border: '1px solid #334155'
@@ -1061,8 +1108,7 @@ export default function EmployeesPage() {
                     type="text"
                     name="phone"
                     defaultValue={editingEmployee?.phone || '+241 '}
-                    disabled={!!editingEmployee}
-                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition disabled:opacity-50"
+                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
                     style={{ 
                       background: 'rgba(51, 65, 85, 0.5)',
                       border: '1px solid #334155'
@@ -1077,17 +1123,14 @@ export default function EmployeesPage() {
                   type="email"
                   name="email"
                   defaultValue={editingEmployee?.email || ''}
-                  disabled={!!editingEmployee}
-                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition disabled:opacity-50"
+                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
                   style={{ 
                     background: 'rgba(51, 65, 85, 0.5)',
                     border: '1px solid #334155'
                   }}
-                  required={!editingEmployee}
+                  required
                 />
               </div>
-
-
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -1096,8 +1139,7 @@ export default function EmployeesPage() {
                     type="number"
                     name="salary"
                     defaultValue={editingEmployee?.salary || 120000}
-                    disabled={!!editingEmployee}
-                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition disabled:opacity-50"
+                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
                     style={{ 
                       background: 'rgba(51, 65, 85, 0.5)',
                       border: '1px solid #334155'
@@ -1110,8 +1152,7 @@ export default function EmployeesPage() {
                     type="number"
                     name="commission"
                     defaultValue={editingEmployee?.commission || 0}
-                    disabled={!!editingEmployee}
-                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition disabled:opacity-50"
+                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
                     style={{ 
                       background: 'rgba(51, 65, 85, 0.5)',
                       border: '1px solid #334155'

@@ -30,6 +30,8 @@ export interface Employee {
   email?: string
   role: 'administrateur' | 'gerant' | 'caissier' | 'serveur' | 'magasinier' | 'stock' | string
   is_active: boolean
+  base_salary?: number
+  commission_rate?: number
   activation_code?: string | null
   phone?: string
   password?: string

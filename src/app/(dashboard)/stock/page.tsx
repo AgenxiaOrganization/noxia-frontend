@@ -373,9 +373,10 @@ export default function StockPage() {
             </thead>
             <tbody>
               {filteredProducts.map((product) => {
-                const isLow = product.stock >= 0 && product.stock <= product.minStock
-                const isOut = product.stock === 0
-                const isInfinite = product.stock < 0
+                const isServiceUnit = product.unit === 'service' || product.category?.toLowerCase().includes('service')
+                const isInfinite = product.stock < 0 || isServiceUnit
+                const isLow = !isInfinite && product.stock >= 0 && product.stock <= product.minStock
+                const isOut = !isInfinite && product.stock === 0
                 const progress = product.maxStock > 0 ? (product.stock / product.maxStock) * 100 : 0
 
                 return (

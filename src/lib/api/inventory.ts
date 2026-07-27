@@ -46,7 +46,9 @@ export interface SupplierOrder {
   supplier: number
   supplier_name: string
   status: 'pending' | 'shipped' | 'delivered'
-  products_list: { name: string; quantity: string | number }[]
+  source?: 'web' | 'whatsapp' | 'telegram' | 'bot_web' | string
+  source_display?: string
+  products_list: { name: string; quantity: string | number }[] | any
   message?: string
   total_amount: number | string
   created_at: string

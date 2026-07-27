@@ -67,14 +67,15 @@ export default function ProductGrid({
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[50vh] overflow-y-auto pr-1">
         {filteredProducts.map((product) => {
           const Icon = categoryIcons[product.category as keyof typeof categoryIcons] || ShoppingCart
-          const isLowStock = product.stock >= 0 && product.stock <= 5
-          const isOutOfStock = product.stock === 0
+          const isService = product.unit === 'service' || product.stock === -1
+          const isLowStock = !isService && product.stock >= 0 && product.stock <= 5
+          const isOutOfStock = !isService && product.stock === 0
           
           return (
             <button
               key={product.id}
               onClick={() => addToCart(product.id)}
-              disabled={isOutOfStock && product.stock >= 0}
+              disabled={isOutOfStock}
               className="p-3 rounded-xl border text-left transition-all hover:border-primary-500 disabled:opacity-40 disabled:cursor-not-allowed glass-card"
               style={{ 
                 borderColor: isOutOfStock ? '#ef4444' : isLowStock ? '#f59e0b' : 'var(--theme-border)'
@@ -87,12 +88,15 @@ export default function ProductGrid({
               <p className="text-sm font-bold text-accent-500">
                 {product.price.toLocaleString()} FCFA
               </p>
-              {product.stock >= 0 ? (
+              {!isService ? (
                 <p className={`text-xs ${isOutOfStock ? 'text-red-400' : isLowStock ? 'text-orange-400' : 'text-dark-400'}`}>
                   {isOutOfStock ? '⚠️ Rupture' : `Stock: ${product.stock} ${product.unit}s`}
                 </p>
               ) : (
-                <p className="text-xs text-dark-500">Illimité</p>
+                <p className="text-xs text-primary-400 font-medium flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-primary-400" />
+                  Illimité
+                </p>
               )}
             </button>
           )

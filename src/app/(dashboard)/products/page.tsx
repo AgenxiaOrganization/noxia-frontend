@@ -306,11 +306,15 @@ export default function ProductsPage() {
     e.preventDefault()
 
     const categoryType = categoriesData.find(c => c.id === formData.categoryId)?.type;
+    const isService = categoryType === 'service' || formData.category?.toLowerCase().includes('service');
+
     let unitVal: 'unite' | 'bouteille' | 'casier' | 'plat' | 'portion' | 'service' = 'unite';
-    if (categoryType === 'service') {
+    if (isService) {
       unitVal = 'service';
     } else if (categoryType === 'nourriture') {
       unitVal = 'plat';
+    } else if (formData.unit && ['unite', 'bouteille', 'casier', 'plat', 'portion', 'service'].includes(formData.unit)) {
+      unitVal = formData.unit as any;
     }
 
     const apiData: any = {
@@ -323,10 +327,10 @@ export default function ProductsPage() {
       alcohol_percentage: null,
       volume_cl: null,
       attributes: formData.characteristics,
-      initial_stock: formData.subCategory === 'casier'
+      initial_stock: isService ? -1 : (formData.subCategory === 'casier'
         ? formData.stock * formData.unitsPerPackage
-        : formData.stock,
-      initial_min_stock: formData.minStock,
+        : formData.stock),
+      initial_min_stock: isService ? 0 : formData.minStock,
       units_per_package: formData.subCategory === 'casier' ? formData.unitsPerPackage : 1,
       supplier: formData.supplierId
     }
@@ -446,9 +450,10 @@ export default function ProductsPage() {
       {/* LISTE DES PRODUITS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {filteredProducts.map((product) => {
-          const isLowStock = product.stock >= 0 && product.stock <= product.minStock
-          const isOutOfStock = product.stock === 0
-          const isInfinite = product.stock < 0
+          const isServiceUnit = product.unit === 'service' || product.category?.toLowerCase().includes('service')
+          const isInfinite = product.stock < 0 || isServiceUnit
+          const isLowStock = !isInfinite && product.stock >= 0 && product.stock <= product.minStock
+          const isOutOfStock = !isInfinite && product.stock === 0
 
           return (
             <div
@@ -469,7 +474,7 @@ export default function ProductsPage() {
                 <span
                   className={`text-xs px-2 py-0.5 rounded-full ${isOutOfStock ? 'bg-red-500/20 text-red-400' :
                     isLowStock ? 'bg-orange-500/20 text-orange-400' :
-                      isInfinite ? 'bg-blue-500/20 text-blue-400' :
+                      isInfinite ? 'bg-indigo-500/20 text-indigo-300' :
                         'bg-green-500/20 text-green-400'
                     }`}
                 >
@@ -485,7 +490,7 @@ export default function ProductsPage() {
                 <div className="text-right">
                   <p className="text-xs" style={{ color: '#94a3b8' }}>Stock</p>
                   <p className={`font-semibold ${isLowStock && !isInfinite ? 'text-orange-400' : 'text-white'}`}>
-                    {isInfinite ? '∞' : product.stock} {product.unit}s
+                    {isInfinite ? 'Illimité' : `${product.stock} ${product.unit}s`}
                   </p>
                 </div>
               </div>
@@ -654,32 +659,77 @@ export default function ProductsPage() {
                   />
                 </div>
 
-                {formData.subCategory === 'casier' ? (
-                  <>
+                {(categoriesData.find(c => c.id === formData.categoryId)?.type === 'service' || formData.category?.toLowerCase().includes('service')) ? (
+                  <div className="col-span-1 sm:col-span-3 p-3 rounded-xl flex items-center gap-2.5" style={{ background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
+                    <Sparkles className="w-5 h-5 text-indigo-400 shrink-0" />
                     <div>
-                      <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nb unités/casier *</label>
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={formData.unitsPerPackage}
-                        onChange={(e) => setFormData({ ...formData, unitsPerPackage: parseInt(e.target.value) || 1 })}
-                        className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                        style={{
-                          background: 'rgba(51, 65, 85, 0.5)',
-                          border: '1px solid #334155'
-                        }}
-                        required
-                      />
+                      <p className="text-xs font-semibold text-white">Produit de type Service (Chicha, VIP, Pass...)</p>
+                      <p className="text-xs text-slate-300">Le stock est automatiquement géré comme <strong>Illimité</strong> (aucun décompte physique d'unités à la caisse).</p>
                     </div>
+                  </div>
+                ) : (
+                  <>
+                    {formData.subCategory === 'casier' ? (
+                      <>
+                        <div>
+                          <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nb unités/casier *</label>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={formData.unitsPerPackage}
+                            onChange={(e) => setFormData({ ...formData, unitsPerPackage: parseInt(e.target.value) || 1 })}
+                            className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                            style={{
+                              background: 'rgba(51, 65, 85, 0.5)',
+                              border: '1px solid #334155'
+                            }}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nombre de casiers</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={formData.stock}
+                            onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
+                            className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                            style={{
+                              background: 'rgba(51, 65, 85, 0.5)',
+                              border: '1px solid #334155'
+                            }}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div>
+                        <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Quantité en stock</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={formData.stock < 0 ? 0 : formData.stock}
+                          onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
+                          className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                          style={{
+                            background: 'rgba(51, 65, 85, 0.5)',
+                            border: '1px solid #334155'
+                          }}
+                          required
+                        />
+                      </div>
+                    )}
+
                     <div>
-                      <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nombre de casiers</label>
+                      <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Seuil alerte</label>
                       <input
                         type="number"
                         min="0"
                         step="1"
-                        value={formData.stock}
-                        onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
+                        value={formData.minStock}
+                        onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value) || 0 })}
                         className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
                         style={{
                           background: 'rgba(51, 65, 85, 0.5)',
@@ -688,40 +738,7 @@ export default function ProductsPage() {
                       />
                     </div>
                   </>
-                ) : (
-                  <div>
-                    <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Quantité en stock</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={formData.stock}
-                      onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
-                      className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                      style={{
-                        background: 'rgba(51, 65, 85, 0.5)',
-                        border: '1px solid #334155'
-                      }}
-                      required
-                    />
-                  </div>
                 )}
-
-                <div>
-                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Seuil alerte</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={formData.minStock}
-                    onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value) || 0 })}
-                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                    style={{
-                      background: 'rgba(51, 65, 85, 0.5)',
-                      border: '1px solid #334155'
-                    }}
-                  />
-                </div>
               </div>
 
               {formData.subCategory === 'casier' && (

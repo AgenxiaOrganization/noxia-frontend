@@ -44,7 +44,7 @@ export default function POSPage() {
       
       if (apiProducts && apiProducts.length > 0) {
         setProducts(apiProducts.map((p: any) => {
-          let stock = 999;
+          let stock = -1;
           if (p.unit !== 'service' && p.stock !== undefined && p.stock !== -1) {
             stock = parseFloat(p.stock);
           }
@@ -116,7 +116,8 @@ export default function POSPage() {
     const product = getProduct(productId)
     if (!product) return
 
-    if (product.stock >= 0 && product.stock !== 999) {
+    const isService = product.unit === 'service' || product.stock === -1
+    if (!isService && product.stock >= 0) {
       const existing = cart.find(item => item.productId === productId)
       const currentQty = existing ? existing.qty : 0
       if (currentQty >= product.stock) {
