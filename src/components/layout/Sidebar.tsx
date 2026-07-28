@@ -84,6 +84,7 @@ export function Sidebar({
               <Link
                 key={item.id}
                 href={`/${item.id}`}
+                prefetch={true}
                 className={`relative flex items-center rounded-xl text-sm font-medium transition-all duration-200 overflow-hidden group ${
                   !open && collapsed ? 'justify-center p-2.5 w-11 h-11 mx-auto' : 'gap-3 px-3.5 py-2.5'
                 } ${

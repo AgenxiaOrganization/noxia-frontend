@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { User, Wallet } from 'lucide-react'
 import { getProducts, getCategories } from '../../../lib/api/catalog'
-import { createSale, getCashRegisters, createCashRegister, CashRegister } from '../../../lib/api/sales'
+import { createSale, getCashRegisters, createCashRegister, CashRegister, getSales, Sale } from '../../../lib/api/sales'
 import { useWebSockets } from '../../../lib/hooks/useWebSockets'
 import { getUser, getMembership } from '../../../lib/auth'
 import { toast } from 'sonner'
@@ -12,6 +12,8 @@ import { Product, CartItem } from '../../../components/pos/types'
 import ProductGrid from '../../../components/pos/ProductGrid'
 import CartSidebar from '../../../components/pos/CartSidebar'
 import PaymentModal from '../../../components/pos/PaymentModal'
+import DailySalesList from '../../../components/pos/DailySalesList'
+import ReceiptModal from '../../../components/pos/ReceiptModal'
 
 export default function POSPage() {
   const user = getUser()
@@ -19,6 +21,9 @@ export default function POSPage() {
   const currentEmployee = user ? { id: user.id, name: `${user.first_name} ${user.last_name}`, role: membership?.role || 'Employé' } : null
 
   const [products, setProducts] = useState<Product[]>([])
+  const [dailySales, setDailySales] = useState<Sale[]>([])
+  const [isLoadingSales, setIsLoadingSales] = useState(false)
+  const [selectedReceiptSale, setSelectedReceiptSale] = useState<Sale | null>(null)
   const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
@@ -36,11 +41,16 @@ export default function POSPage() {
 
   const loadData = async () => {
     try {
-      const [apiProducts, apiCashRegs, apiCategories] = await Promise.all([
+      setIsLoadingSales(true)
+      const [apiProducts, apiCashRegs, apiCategories, apiSales] = await Promise.all([
         getProducts(),
         getCashRegisters(),
-        getCategories()
+        getCategories(),
+        getSales()
       ])
+      
+      setDailySales(apiSales || [])
+      setIsLoadingSales(false)
       
       if (apiProducts && apiProducts.length > 0) {
         setProducts(apiProducts.map((p: any) => {
@@ -83,6 +93,7 @@ export default function POSPage() {
       }
     } catch (e) {
       console.error('Erreur lors du chargement des données POS', e)
+      setIsLoadingSales(false)
     }
   }
 
@@ -222,9 +233,12 @@ export default function POSPage() {
       payment_method: mappedMethod,
       items: items as any
     })
-      .then(async () => {
+      .then(async (newSale) => {
         toast.success(`✅ Vente enregistrée : ${currentTotal.toLocaleString()} FCFA (${paymentMethod})`)
         await loadData()
+        if (newSale && newSale.id) {
+          setSelectedReceiptSale(newSale)
+        }
       })
       .catch((err) => {
         console.error("Erreur lors de l'encaissement:", err)
@@ -236,7 +250,7 @@ export default function POSPage() {
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <h1 className="text-xl font-bold text-primary-500">Caisse (POS)</h1>
         
@@ -299,6 +313,16 @@ export default function POSPage() {
         />
       </div>
 
+      {/* Section des Encaissements du jour en Temps Réel */}
+      {isMounted && (
+        <DailySalesList
+          sales={dailySales}
+          isLoading={isLoadingSales}
+          onRefresh={loadData}
+          onViewReceipt={(sale) => setSelectedReceiptSale(sale)}
+        />
+      )}
+
       {/* Modal de Paiement */}
       <PaymentModal
         isOpen={paymentModal}
@@ -307,6 +331,13 @@ export default function POSPage() {
         totalItems={totalItems}
         selectedEmployee={selectedEmployee}
         handleCheckout={handleCheckout}
+      />
+
+      {/* Modal de Reçu d'encaissement */}
+      <ReceiptModal
+        isOpen={Boolean(selectedReceiptSale)}
+        onClose={() => setSelectedReceiptSale(null)}
+        sale={selectedReceiptSale}
       />
     </div>
   )

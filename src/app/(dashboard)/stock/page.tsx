@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { getProducts, createCategory, createProduct, createCategoryCharacteristic, getCategories } from '../../../lib/api/catalog'
 import { getStockItems, getStockMovements, createStockMovement } from '../../../lib/api/inventory'
+import { ensureArray } from '@/lib/api'
 import Loader from '@/components/ui/Loader'
 import { toast } from 'sonner'
 
@@ -50,24 +51,27 @@ export default function StockPage() {
     try {
       if (!silent) setIsLoading(true)
       
-      let [apiProducts, apiStockItems, apiMovements, apiCategories] = await Promise.all([
+      const [rawProducts, rawStockItems, rawMovements, rawCategories] = await Promise.all([
         getProducts(),
         getStockItems(),
         getStockMovements(),
         getCategories()
       ])
 
-      if (!apiProducts || apiProducts.length === 0) {
-        if (!apiCategories || apiCategories.length === 0) {
-          const catBoissons = await createCategory({ name: 'Boissons', type: 'boisson' })
-          const catNourriture = await createCategory({ name: 'Nourriture', type: 'nourriture' })
-          const catServices = await createCategory({ name: 'Services', type: 'service' })
-          apiCategories = [catBoissons, catNourriture, catServices]
-        }
+      let apiProducts = ensureArray<any>(rawProducts)
+      let apiStockItems = ensureArray<any>(rawStockItems)
+      let apiMovements = ensureArray<any>(rawMovements)
+      let apiCategories = ensureArray<any>(rawCategories)
 
-        const catBoisson = apiCategories.find(c => c.type === 'boisson')
-        const catNourriture = apiCategories.find(c => c.type === 'nourriture')
-        const catService = apiCategories.find(c => c.type === 'service')
+      if (apiProducts.length === 0 && apiCategories.length === 0) {
+        const catBoissons = await createCategory({ name: 'Boissons', type: 'boisson' })
+        const createdCatNourriture = await createCategory({ name: 'Nourriture', type: 'nourriture' })
+        const catServices = await createCategory({ name: 'Services', type: 'service' })
+        apiCategories = [catBoissons, createdCatNourriture, catServices]
+
+        const catBoisson = apiCategories.find((c: any) => c.type === 'boisson')
+        const catNourriture = apiCategories.find((c: any) => c.type === 'nourriture')
+        const catService = apiCategories.find((c: any) => c.type === 'service')
 
         // Créer des modèles de caractéristiques s'il n'y en a pas encore
         if (catBoisson && (!catBoisson.characteristics || catBoisson.characteristics.length === 0)) {
@@ -142,12 +146,12 @@ export default function StockPage() {
           getStockItems(),
           getStockMovements()
         ])
-        apiProducts = freshProducts
-        apiStockItems = freshStockItems
-        apiMovements = freshMovements
+        apiProducts = ensureArray<any>(freshProducts)
+        apiStockItems = ensureArray<any>(freshStockItems)
+        apiMovements = ensureArray<any>(freshMovements)
       }
 
-      const stockItemsMap = new Map(apiStockItems.map(item => [item.product, item]))
+      const stockItemsMap = new Map(apiStockItems.map((item: any) => [item.product, item]))
 
       const mappedProducts: Product[] = apiProducts.map((p: any) => {
         const isCasier = p.packagings && p.packagings.length > 0 && p.packagings[0].name === 'Casier';

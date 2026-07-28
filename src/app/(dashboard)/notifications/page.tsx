@@ -6,6 +6,7 @@ import {
   Check, CheckCheck, Calendar, ArrowRight
 } from 'lucide-react'
 import { getNotifications, markAsRead, markAllAsRead, type Notification } from '@/lib/api/notifications'
+import { ensureArray } from '@/lib/api'
 import Loader from '@/components/ui/Loader'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -56,7 +57,7 @@ export default function NotificationsPage() {
     try {
       if (!silent) setIsLoading(true)
       const response = await getNotifications(1, 'notification')
-      setNotifications(response.results || [])
+      setNotifications(ensureArray<Notification>(response))
     } catch (err) {
       console.error('Erreur lors du chargement des notifications', err)
       toast.error('Erreur lors de la récupération des notifications.')
@@ -75,6 +76,7 @@ export default function NotificationsPage() {
       setNotifications(prev =>
         prev.map(n => n.id === id ? { ...n, is_read: true } : n)
       )
+      window.dispatchEvent(new Event('notifications_updated'))
       toast.success('Notification marquée comme lue')
     } catch (err) {
       console.error(err)
@@ -92,6 +94,7 @@ export default function NotificationsPage() {
       })
       await markPromise
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+      window.dispatchEvent(new Event('notifications_updated'))
     } catch (err) {
       console.error(err)
     }

@@ -30,6 +30,8 @@ import {
 
 import { getEmployees, getCompanyMe, updateCompanyMe, Employee } from '@/lib/api/companies'
 import { getCashRegisters, createCashRegister, updateCashRegister, deleteCashRegister, getSales, CashRegister, Sale } from '@/lib/api/sales'
+import { getMembership } from '@/lib/auth'
+import { ensureArray } from '@/lib/api'
 
 const enhanceSignatureCanvas = (imageSrc: string): Promise<string> => {
   return new Promise((resolve) => {
@@ -140,60 +142,55 @@ const enhanceSignatureCanvas = (imageSrc: string): Promise<string> => {
         }
       }
 
-      // 3. Détection de la zone englobante (Bounding Box) du contenu de la signature avec filtrage du bruit
+      ctx.putImageData(imgData, 0, 0)
+
+      // 3. Détection des limites utiles de la signature (Bounding Box) pour auto-crop
       let minX = width, minY = height, maxX = 0, maxY = 0
-      let hasInk = false
+      let hasContent = false
 
       for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
           const idx = (y * width + x) * 4
-          const r = data[idx]
-          const g = data[idx + 1]
-          const b = data[idx + 2]
-          const lum = 0.299 * r + 0.587 * g + 0.114 * b
-          // Détecter l'encre réelle (luminance < 230)
-          if (lum < 230) {
-            hasInk = true
+          // Si le pixel n'est pas blanc pur (encre détectée)
+          if (data[idx] < 250 || data[idx + 1] < 250 || data[idx + 2] < 250) {
             if (x < minX) minX = x
             if (x > maxX) maxX = x
             if (y < minY) minY = y
             if (y > maxY) maxY = y
+            hasContent = true
           }
         }
       }
 
-      ctx.putImageData(imgData, 0, 0)
+      if (!hasContent) return resolve(canvas.toDataURL('image/png'))
 
-      if (!hasInk) {
-        return resolve(canvas.toDataURL('image/png', 0.95))
-      }
+      // Marge de sécurité autour du tracé (padding de 30px)
+      const pad = 30
+      minX = Math.max(0, minX - pad)
+      minY = Math.max(0, minY - pad)
+      maxX = Math.min(width - 1, maxX + pad)
+      maxY = Math.min(height - 1, maxY + pad)
 
-      // Marge de respiration équilibrée de 3% autour de la signature
-      const contentW = maxX - minX + 1
-      const contentH = maxY - minY + 1
-      const padX = Math.round(contentW * 0.03)
-      const padY = Math.round(contentH * 0.03)
+      const cropW = maxX - minX + 1
+      const cropH = maxY - minY + 1
 
-      const cropX = Math.max(0, minX - padX)
-      const cropY = Math.max(0, minY - padY)
-      const cropW = Math.min(width - cropX, contentW + padX * 2)
-      const cropH = Math.min(height - cropY, contentH + padY * 2)
-
+      // 4. Recadrage haute définition dans un nouveau Canvas
       const croppedCanvas = document.createElement('canvas')
       croppedCanvas.width = cropW
       croppedCanvas.height = cropH
-      const cropCtx = croppedCanvas.getContext('2d')
-      if (!cropCtx) return resolve(canvas.toDataURL('image/png', 0.95))
+      const croppedCtx = croppedCanvas.getContext('2d')
+      if (!croppedCtx) return resolve(canvas.toDataURL('image/png'))
 
-      cropCtx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH)
+      croppedCtx.drawImage(canvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH)
 
-      // 4. Centrage parfait (horizontal et vertical) et agrandissement maximal (94% du cadre)
+      // 5. Normalisation du canvas final aux dimensions optimales
       const outCanvas = document.createElement('canvas')
       outCanvas.width = 1200
       outCanvas.height = 600
       const outCtx = outCanvas.getContext('2d')
-      if (!outCtx) return resolve(canvas.toDataURL('image/png', 0.95))
+      if (!outCtx) return resolve(croppedCanvas.toDataURL('image/png'))
 
+      // Fond blanc pur ré-appliqué
       outCtx.fillStyle = '#FFFFFF'
       outCtx.fillRect(0, 0, outCanvas.width, outCanvas.height)
 
@@ -299,10 +296,14 @@ export default function FinancePage() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     try {
+      const membership = getMembership()
+      const role = (membership?.role || '').toLowerCase()
+      const canAccessFinance = ['administrateur', 'responsable', 'gerant', 'comptable'].includes(role) || !role
+
       const [sumRes, expRes, payRes, empRes, caisseRes, salesRes, companyRes] = await Promise.all([
-        getFinancialSummary(selectedMonth).catch(() => null),
-        getExpenses(selectedMonth).catch(() => []),
-        getPayrollRecords(selectedMonth).catch(() => []),
+        canAccessFinance ? getFinancialSummary(selectedMonth).catch(() => null) : Promise.resolve(null),
+        canAccessFinance ? getExpenses(selectedMonth).catch(() => []) : Promise.resolve([]),
+        canAccessFinance ? getPayrollRecords(selectedMonth).catch(() => []) : Promise.resolve([]),
         getEmployees().catch(() => []),
         getCashRegisters().catch(() => []),
         getSales().catch(() => []),
@@ -310,11 +311,11 @@ export default function FinancePage() {
       ])
 
       setSummary(sumRes)
-      setExpenses(expRes)
-      setPayrolls(payRes)
-      setEmployees(empRes)
-      setCashRegisters(caisseRes)
-      setSales(salesRes)
+      setExpenses(ensureArray(expRes))
+      setPayrolls(ensureArray(payRes))
+      setEmployees(ensureArray(empRes))
+      setCashRegisters(ensureArray(caisseRes))
+      setSales(ensureArray(salesRes))
       setCompanyProfile(companyRes)
       if (companyRes?.tva_rate !== undefined) {
         setEditingTvaRate(parseFloat(String(companyRes.tva_rate)))

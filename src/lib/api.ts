@@ -71,16 +71,6 @@ interface RequestContext {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-export async function post<T>(path: string, body: Record<string, unknown>): Promise<T> {
-  const serialized = JSON.stringify(body)
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-    body: serialized,
-  })
-  return parseResponse<T>(res, { method: 'POST', path, body: serialized })
-}
-
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -182,7 +172,64 @@ async function parseResponse<T>(res: Response, ctx: RequestContext): Promise<T> 
   return data as T
 }
 
-export async function get<T>(path: string): Promise<T> {
+// ─── CACHE MÉMOIRE ULTRA-RAPIDE (Stale-While-Revalidate) ──────────────────────
+const apiCache = new Map<string, { data: any; timestamp: number }>()
+const CACHE_TTL_MS = 60000 // 60 secondes de fraîcheur
+
+/**
+ * Garantit qu'une donnée renvoyée par l'API est sous forme de tableau,
+ * même si le backend renvoie un objet paginé DRF { count: X, results: [...] }, null ou undefined.
+ */
+export function ensureArray<T>(data: any): T[] {
+  if (Array.isArray(data)) return data
+  if (data && Array.isArray(data.results)) return data.results
+  return []
+}
+
+export function invalidateApiCache(pathPrefix?: string) {
+  if (!pathPrefix) {
+    apiCache.clear()
+    return
+  }
+  for (const key of apiCache.keys()) {
+    if (key.includes(pathPrefix)) {
+      apiCache.delete(key)
+    }
+  }
+}
+
+function getPathPrefix(path: string): string {
+  const parts = path.split('/').filter(Boolean)
+  return parts.length > 0 ? `/${parts[0]}` : ''
+}
+
+export async function get<T>(path: string, options?: { skipCache?: boolean }): Promise<T> {
+  const cacheKey = path
+  const now = Date.now()
+  const cached = apiCache.get(cacheKey)
+
+  // Si données en cache, les renvoyer instantanément (0ms de latence !)
+  if (!options?.skipCache && cached) {
+    const isFresh = (now - cached.timestamp < CACHE_TTL_MS)
+    // SWR : Revalidation en arrière-plan si périmé
+    if (!isFresh) {
+      fetch(`${BASE_URL}${path}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders(),
+        },
+      })
+        .then(res => parseResponse<T>(res, { method: 'GET', path }))
+        .then(freshData => {
+          apiCache.set(cacheKey, { data: freshData, timestamp: Date.now() })
+        })
+        .catch(() => {})
+    }
+
+    return cached.data as T
+  }
+
   const res = await fetch(`${BASE_URL}${path}`, {
     method: 'GET',
     headers: {
@@ -190,7 +237,20 @@ export async function get<T>(path: string): Promise<T> {
       ...getAuthHeaders(),
     },
   })
-  return parseResponse<T>(res, { method: 'GET', path })
+  const data = await parseResponse<T>(res, { method: 'GET', path })
+  apiCache.set(cacheKey, { data, timestamp: Date.now() })
+  return data
+}
+
+export async function post<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const serialized = JSON.stringify(body)
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+    body: serialized,
+  })
+  invalidateApiCache(getPathPrefix(path))
+  return parseResponse<T>(res, { method: 'POST', path, body: serialized })
 }
 
 export async function put<T>(path: string, body: Record<string, unknown>): Promise<T> {
@@ -200,6 +260,7 @@ export async function put<T>(path: string, body: Record<string, unknown>): Promi
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: serialized,
   })
+  invalidateApiCache(getPathPrefix(path))
   return parseResponse<T>(res, { method: 'PUT', path, body: serialized })
 }
 
@@ -210,6 +271,7 @@ export async function patch<T>(path: string, body: Record<string, unknown>): Pro
     headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: serialized,
   })
+  invalidateApiCache(getPathPrefix(path))
   return parseResponse<T>(res, { method: 'PATCH', path, body: serialized })
 }
 
@@ -221,6 +283,7 @@ export async function del<T>(path: string): Promise<T> {
       ...getAuthHeaders(),
     },
   })
+  invalidateApiCache(getPathPrefix(path))
   return parseResponse<T>(res, { method: 'DELETE', path })
 }
 

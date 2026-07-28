@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { getProducts, createProduct, updateProduct, deleteProduct as deleteProductApi, getCategories, createCategory, createCategoryCharacteristic } from '../../../lib/api/catalog'
 import { getSuppliers, createSupplier, Supplier } from '../../../lib/api/inventory'
+import { ensureArray } from '@/lib/api'
 import { useWebSockets } from '../../../lib/hooks/useWebSockets'
 import Loader from '@/components/ui/Loader'
 import { toast } from 'sonner'
@@ -21,41 +22,80 @@ interface Product {
   pricePerUnit: number
   unitsPerPackage: number
   stock: number
-  unit: string
-  supplierId: number | null
-  minStock: number
-  characteristics: Record<string, string>
+  unit?: string
+  supplierId?: number | null
+  minStock?: number
+  characteristics?: Record<string, string>
 }
-
-
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [categoriesData, setCategoriesData] = useState<any[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
+
+  // Modale Produit
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCharacteristicsModalOpen, setIsCharacteristicsModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
+  
+  // Modale Catégorie
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+  const [newCatName, setNewCatName] = useState('')
+  const [newCatType, setNewCatType] = useState<'boisson' | 'nourriture' | 'service'>('boisson')
+  
+  // Modale Caractéristiques
+  const [isCharModalOpen, setIsCharModalOpen] = useState(false)
+  const [selectedCatForChar, setSelectedCatForChar] = useState<any | null>(null)
+  const [charModelName, setCharModelName] = useState('')
+  const [charAttributesList, setCharAttributesList] = useState<{ key: string, value: string }[]>([
+    { key: '', value: '' }
+  ])
+
+  // Modale Fournisseur
+  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false)
+  const [supplierForm, setSupplierForm] = useState({ name: '', phone: '', email: '', address: '' })
+
   const [isSaving, setIsSaving] = useState(false)
+
+  // Form State Produit
+  const [formData, setFormData] = useState({
+    name: '',
+    category: 'boisson',
+    categoryId: undefined as number | undefined,
+    subCategory: 'unite',
+    pricePerUnit: 0,
+    unitsPerPackage: 12,
+    stock: 0,
+    unit: 'unite',
+    supplierId: null as number | null,
+    minStock: 10,
+    characteristics: {} as Record<string, string>
+  })
+
+  // Websocket pour les alertes de stock faible en temps réel
+  useWebSockets('/ws/alerts/', (data: any) => {
+    if (data?.product_name) {
+      toast.warning(`Alerte Stock : ${data.product_name} est sous le seuil (${data.quantity_on_hand})`)
+    }
+  })
 
   const seedDefaultData = async () => {
     try {
-      let apiCategories = await getCategories()
-      if (!apiCategories || apiCategories.length === 0) {
+      let cats = ensureArray<any>(await getCategories())
+      if (cats.length === 0) {
         const catBoissons = await createCategory({ name: 'Boissons', type: 'boisson' })
         const catNourriture = await createCategory({ name: 'Nourriture', type: 'nourriture' })
         const catServices = await createCategory({ name: 'Services', type: 'service' })
-        apiCategories = [catBoissons, catNourriture, catServices]
+        cats = [catBoissons, catNourriture, catServices]
       }
 
-      const catBoisson = apiCategories.find(c => c.type === 'boisson')
-      const catNourriture = apiCategories.find(c => c.type === 'nourriture')
-      const catService = apiCategories.find(c => c.type === 'service')
+      const catBoisson = cats.find((c: any) => c.type === 'boisson')
+      const catNourriture = cats.find((c: any) => c.type === 'nourriture')
+      const catService = cats.find((c: any) => c.type === 'service')
 
-      // Créer des modèles de caractéristiques s'il n'y en a pas encore
       if (catBoisson && (!catBoisson.characteristics || catBoisson.characteristics.length === 0)) {
         await createCategoryCharacteristic(catBoisson.id, {
           name: 'Bière',
@@ -130,28 +170,32 @@ export default function ProductsPage() {
   const loadData = async (silent = false) => {
     try {
       if (!silent) setIsLoading(true)
-      let [apiCategories, apiSuppliers, apiProducts] = await Promise.all([
+      const [rawCats, rawSuppliers, rawProds] = await Promise.all([
         getCategories(),
         getSuppliers(),
         getProducts()
       ])
 
-      if ((!apiCategories || apiCategories.length === 0) || (!apiProducts || apiProducts.length === 0)) {
+      let apiCategories = ensureArray<any>(rawCats)
+      let apiSuppliers = ensureArray<Supplier>(rawSuppliers)
+      let apiProducts = ensureArray<any>(rawProds)
+
+      if (apiCategories.length === 0 && apiProducts.length === 0) {
         await seedDefaultData()
         const [freshCats, freshSuppliers, freshProds] = await Promise.all([
           getCategories(),
           getSuppliers(),
           getProducts()
         ])
-        apiCategories = freshCats
-        apiSuppliers = freshSuppliers
-        apiProducts = freshProds
+        apiCategories = ensureArray<any>(freshCats)
+        apiSuppliers = ensureArray<Supplier>(freshSuppliers)
+        apiProducts = ensureArray<any>(freshProds)
       }
 
-      setCategoriesData(apiCategories || [])
-      setSuppliers(apiSuppliers || [])
+      setCategoriesData(apiCategories)
+      setSuppliers(apiSuppliers)
 
-      if (apiProducts && apiProducts.length > 0) {
+      if (apiProducts.length > 0) {
         setProducts(apiProducts.map((p: any) => {
           const isCasier = p.packagings && p.packagings.length > 0 && p.packagings[0].name === 'Casier';
           return {
@@ -182,26 +226,6 @@ export default function ProductsPage() {
   useEffect(() => {
     loadData()
   }, [])
-
-  useWebSockets('/ws/prices/', (data) => {
-    console.log("Mise à jour du catalogue reçue via WebSockets", data)
-    loadData()
-  })
-
-  // État du formulaire
-  const [formData, setFormData] = useState<Omit<Product, 'id'>>({
-    name: '',
-    category: 'boisson',
-    categoryId: categoriesData.length > 0 ? categoriesData[0].id : undefined,
-    subCategory: 'casier',
-    pricePerUnit: 0,
-    unitsPerPackage: 1,
-    stock: 0,
-    unit: 'unité',
-    supplierId: null,
-    minStock: 10,
-    characteristics: {},
-  })
 
   // États pour les champs flexibles
   const [charKey, setCharKey] = useState('')
@@ -235,8 +259,8 @@ export default function ProductsPage() {
         stock: product.subCategory === 'casier'
           ? Math.floor(product.stock / (product.unitsPerPackage || 1))
           : product.stock,
-        unit: product.unit,
-        supplierId: product.supplierId,
+        unit: product.unit || 'unite',
+        supplierId: product.supplierId ?? null,
         minStock: product.minStock || 10,
         characteristics: product.characteristics || {},
       })
@@ -383,7 +407,7 @@ export default function ProductsPage() {
         <div>
           <h1 className="text-xl font-bold text-white">Produits</h1>
           <p className="text-sm" style={{ color: '#94a3b8' }}>
-            {products.length} produits • {products.filter(p => p.stock <= p.minStock && p.stock >= 0).length} alertes stock
+            {products.length} produits • {products.filter(p => p.stock <= (p.minStock ?? 10) && p.stock >= 0).length} alertes stock
           </p>
         </div>
         <div className="flex gap-2">
@@ -452,7 +476,7 @@ export default function ProductsPage() {
         {filteredProducts.map((product) => {
           const isServiceUnit = product.unit === 'service' || product.category?.toLowerCase().includes('service')
           const isInfinite = product.stock < 0 || isServiceUnit
-          const isLowStock = !isInfinite && product.stock >= 0 && product.stock <= product.minStock
+          const isLowStock = !isInfinite && product.stock >= 0 && product.stock <= (product.minStock ?? 10)
           const isOutOfStock = !isInfinite && product.stock === 0
 
           return (

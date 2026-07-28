@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { getUser, getMembership, getCompany } from '../../../lib/auth'
 import { getEmployees, createEmployee, patchEmployee, deleteEmployee, regenerateEmployeeCode, sendEmployeeCode, getCompanyMe, updateCompanyMe } from '../../../lib/api/companies'
+import { ensureArray } from '@/lib/api'
 import { toast } from 'sonner'
 import Loader from '@/components/ui/Loader'
 
@@ -158,7 +159,7 @@ export default function EmployeesPage() {
         getCompanyMe()
       ])
       
-      setEmployees((apiEmployees || []).map((emp: any, index: number) => ({
+      setEmployees(ensureArray(apiEmployees).map((emp: any, index: number) => ({
         id: emp.id,
         name: `${emp.user?.first_name || ''} ${emp.user?.last_name || ''}`.trim() || emp.user?.email || 'Nom inconnu',
         role: emp.role,
