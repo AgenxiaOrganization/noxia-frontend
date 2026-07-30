@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { getAccessToken } from '../auth'
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'ws://localhost:8000'
+const getWsBaseUrl = () => {
+  if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL
+  if (typeof window !== 'undefined') {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const host = window.location.hostname || '127.0.0.1'
+    return `${protocol}//${host}:8000`
+  }
+  return 'ws://127.0.0.1:8000'
+}
 
 export function useWebSockets<T>(path: string | null | undefined, onMessage: (data: T) => void) {
   const [isConnected, setIsConnected] = useState(false)
@@ -22,7 +30,8 @@ export function useWebSockets<T>(path: string | null | undefined, onMessage: (da
     const connect = () => {
       if (!isMounted) return
 
-      ws.current = new WebSocket(`${WS_URL}${path}?token=${token}`)
+      const baseUrl = getWsBaseUrl()
+      ws.current = new WebSocket(`${baseUrl}${path}?token=${token}`)
 
       ws.current.onopen = () => {
         if (isMounted) setIsConnected(true)

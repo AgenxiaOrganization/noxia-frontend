@@ -319,14 +319,24 @@ export default function SuppliersPage() {
 
   // Changer le statut d'une commande
   const handleUpdateOrderStatus = async (orderId: number, newStatus: 'pending' | 'shipped' | 'delivered') => {
+    setActiveStatusMenu(null)
+    const updatePromise = updateSupplierOrderStatus(orderId, newStatus)
+
+    toast.promise(updatePromise, {
+      loading: "Mise à jour du statut...",
+      success: () => {
+        return newStatus === 'delivered'
+          ? "✅ Commande livrée ! Le stock du produit a été mis à jour automatiquement."
+          : "✅ Statut de la commande mis à jour avec succès !"
+      },
+      error: "❌ Erreur lors du changement de statut."
+    })
+
     try {
-      await updateSupplierOrderStatus(orderId, newStatus)
-      toast.success('Statut de la commande mis à jour !')
-      setActiveStatusMenu(null)
-      loadData()
+      await updatePromise
+      await loadData()
     } catch (err) {
       console.error('Erreur lors du changement de statut de la commande', err)
-      toast.error('Erreur lors de la mise à jour.')
     }
   }
 
@@ -725,37 +735,52 @@ export default function SuppliersPage() {
                       <td className="px-3 py-2 relative">
                         <button
                           onClick={() => setActiveStatusMenu(activeStatusMenu === order.id ? null : order.id)}
-                          className={`text-xs px-2 py-0.5 rounded-full font-medium transition cursor-pointer select-none ${
-                            order.status === 'pending' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' :
-                            order.status === 'shipped' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                            'bg-green-500/20 text-green-400 border border-green-500/30'
+                          className={`text-xs px-2.5 py-1 rounded-full font-semibold transition cursor-pointer select-none border flex items-center gap-1.5 ${
+                            order.status === 'pending'
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
+                              : order.status === 'shipped'
+                              ? 'bg-sky-500/20 text-sky-300 border-sky-500/40 hover:bg-sky-500/30'
+                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
                           }`}
                         >
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            order.status === 'pending' ? 'bg-amber-400' :
+                            order.status === 'shipped' ? 'bg-sky-400' : 'bg-emerald-400'
+                          }`} />
                           {order.status === 'pending' ? 'En attente' :
                            order.status === 'shipped' ? 'Expédiée' : 'Livrée'}
                         </button>
 
                         {activeStatusMenu === order.id && (
                           <div 
-                            className="absolute right-0 bottom-full mb-1 w-32 rounded-lg shadow-xl border p-1 z-10"
-                            style={{ background: '#1e293b', borderColor: '#334155' }}
+                            className="absolute right-0 top-full mt-1 w-36 rounded-xl shadow-2xl border p-1.5 z-50 animate-in fade-in zoom-in-95 duration-100"
+                            style={{ background: '#0f172a', borderColor: '#334155' }}
                           >
                             <button
                               onClick={() => handleUpdateOrderStatus(order.id, 'pending')}
-                              className="w-full text-left px-2 py-1 text-xs text-orange-400 rounded hover:bg-slate-700 transition"
+                              className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg transition font-medium flex items-center gap-2 ${
+                                order.status === 'pending' ? 'bg-amber-500/20 text-amber-300' : 'text-slate-300 hover:bg-slate-800'
+                              }`}
                             >
+                              <span className="w-2 h-2 rounded-full bg-amber-400" />
                               En attente
                             </button>
                             <button
                               onClick={() => handleUpdateOrderStatus(order.id, 'shipped')}
-                              className="w-full text-left px-2 py-1 text-xs text-blue-400 rounded hover:bg-slate-700 transition"
+                              className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg transition font-medium flex items-center gap-2 ${
+                                order.status === 'shipped' ? 'bg-sky-500/20 text-sky-300' : 'text-slate-300 hover:bg-slate-800'
+                              }`}
                             >
+                              <span className="w-2 h-2 rounded-full bg-sky-400" />
                               Expédiée
                             </button>
                             <button
                               onClick={() => handleUpdateOrderStatus(order.id, 'delivered')}
-                              className="w-full text-left px-2 py-1 text-xs text-green-400 rounded hover:bg-slate-700 transition"
+                              className={`w-full text-left px-2.5 py-1.5 text-xs rounded-lg transition font-medium flex items-center gap-2 ${
+                                order.status === 'delivered' ? 'bg-emerald-500/20 text-emerald-300' : 'text-slate-300 hover:bg-slate-800'
+                              }`}
                             >
+                              <span className="w-2 h-2 rounded-full bg-emerald-400" />
                               Livrée
                             </button>
                           </div>

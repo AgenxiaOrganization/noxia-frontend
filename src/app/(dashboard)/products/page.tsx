@@ -20,6 +20,7 @@ interface Product {
   categoryId?: number
   subCategory: string
   pricePerUnit: number
+  cratePrice?: number | string | null
   unitsPerPackage: number
   stock: number
   unit?: string
@@ -67,6 +68,7 @@ export default function ProductsPage() {
     categoryId: undefined as number | undefined,
     subCategory: 'unite',
     pricePerUnit: 0,
+    cratePrice: '' as string | number,
     unitsPerPackage: 12,
     stock: 0,
     unit: 'unite',
@@ -76,9 +78,10 @@ export default function ProductsPage() {
   })
 
   // Websocket pour les alertes de stock faible en temps réel
-  useWebSockets('/ws/alerts/', (data: any) => {
-    if (data?.product_name) {
-      toast.warning(`Alerte Stock : ${data.product_name} est sous le seuil (${data.quantity_on_hand})`)
+  useWebSockets('/ws/notifications/', (data: any) => {
+    const notif = data?.notification || data
+    if (notif?.category === 'alert' || notif?.type === 'stock_low' || notif?.type === 'stock_out' || notif?.product_name) {
+      toast.warning(notif.title || `Alerte Stock : ${notif.product_name || 'Un produit'} est sous le seuil`)
     }
   })
 
@@ -205,6 +208,7 @@ export default function ProductsPage() {
             categoryId: p.category,
             subCategory: isCasier ? 'casier' : 'unite',
             pricePerUnit: parseFloat(p.price),
+            cratePrice: p.crate_price !== null && p.crate_price !== undefined ? p.crate_price : '',
             unitsPerPackage: isCasier ? p.packagings[0].units_per_package : 1,
             stock: p.stock !== undefined ? p.stock : 0,
             unit: p.unit,
@@ -255,6 +259,7 @@ export default function ProductsPage() {
         categoryId: product.categoryId,
         subCategory: product.subCategory || 'casier',
         pricePerUnit: product.pricePerUnit,
+        cratePrice: product.cratePrice !== null && product.cratePrice !== undefined ? product.cratePrice : '',
         unitsPerPackage: product.unitsPerPackage || 1,
         stock: product.subCategory === 'casier'
           ? Math.floor(product.stock / (product.unitsPerPackage || 1))
@@ -272,6 +277,7 @@ export default function ProductsPage() {
         categoryId: categoriesData.length > 0 ? categoriesData[0].id : undefined,
         subCategory: 'casier',
         pricePerUnit: 0,
+        cratePrice: '',
         unitsPerPackage: 1,
         stock: 0,
         unit: 'unité',
@@ -345,6 +351,7 @@ export default function ProductsPage() {
       name: formData.name,
       category: formData.categoryId,
       price: formData.pricePerUnit?.toString() || "0",
+      crate_price: formData.cratePrice !== '' && formData.cratePrice !== null && formData.cratePrice !== undefined ? formData.cratePrice.toString() : null,
       unit: unitVal,
       is_active: true,
       brand: '',
@@ -665,7 +672,7 @@ export default function ProductsPage() {
               </div>
 
               {/* Prix, Quantité, Stock, Seuil */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 <div>
                   <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Prix unitaire (F) *</label>
                   <input
@@ -674,7 +681,7 @@ export default function ProductsPage() {
                     step="50"
                     value={formData.pricePerUnit}
                     onChange={(e) => setFormData({ ...formData, pricePerUnit: parseFloat(e.target.value) || 0 })}
-                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                    className="w-full rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
                     style={{
                       background: 'rgba(51, 65, 85, 0.5)',
                       border: '1px solid #334155'
@@ -683,8 +690,28 @@ export default function ProductsPage() {
                   />
                 </div>
 
+                {formData.subCategory === 'casier' && (
+                  <div>
+                    <label className="block text-xs mb-1" style={{ color: '#818cf8' }}>
+                      Prix du casier (F) <span className="text-[10px] text-slate-400 font-normal">(Opt.)</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="100"
+                      placeholder="ex: 4000"
+                      value={formData.cratePrice}
+                      onChange={(e) => setFormData({ ...formData, cratePrice: e.target.value })}
+                      className="w-full rounded-lg px-3 py-2.5 text-white text-sm outline-none transition border border-indigo-500/40 focus:border-indigo-400"
+                      style={{
+                        background: 'rgba(99, 102, 241, 0.1)',
+                      }}
+                    />
+                  </div>
+                )}
+
                 {(categoriesData.find(c => c.id === formData.categoryId)?.type === 'service' || formData.category?.toLowerCase().includes('service')) ? (
-                  <div className="col-span-1 sm:col-span-3 p-3 rounded-xl flex items-center gap-2.5" style={{ background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
+                  <div className="col-span-1 sm:col-span-4 p-3 rounded-xl flex items-center gap-2.5" style={{ background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
                     <Sparkles className="w-5 h-5 text-indigo-400 shrink-0" />
                     <div>
                       <p className="text-xs font-semibold text-white">Produit de type Service (Chicha, VIP, Pass...)</p>
@@ -703,7 +730,7 @@ export default function ProductsPage() {
                             step="1"
                             value={formData.unitsPerPackage}
                             onChange={(e) => setFormData({ ...formData, unitsPerPackage: parseInt(e.target.value) || 1 })}
-                            className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                            className="w-full rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
                             style={{
                               background: 'rgba(51, 65, 85, 0.5)',
                               border: '1px solid #334155'
@@ -719,7 +746,7 @@ export default function ProductsPage() {
                             step="1"
                             value={formData.stock}
                             onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
-                            className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                            className="w-full rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
                             style={{
                               background: 'rgba(51, 65, 85, 0.5)',
                               border: '1px solid #334155'
@@ -736,7 +763,7 @@ export default function ProductsPage() {
                           step="1"
                           value={formData.stock < 0 ? 0 : formData.stock}
                           onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
-                          className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                          className="w-full rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
                           style={{
                             background: 'rgba(51, 65, 85, 0.5)',
                             border: '1px solid #334155'
@@ -754,7 +781,7 @@ export default function ProductsPage() {
                         step="1"
                         value={formData.minStock}
                         onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value) || 0 })}
-                        className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                        className="w-full rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
                         style={{
                           background: 'rgba(51, 65, 85, 0.5)',
                           border: '1px solid #334155'

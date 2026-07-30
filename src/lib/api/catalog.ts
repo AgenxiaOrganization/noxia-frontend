@@ -23,6 +23,7 @@ export interface Product {
   sku: string
   unit: 'unite' | 'bouteille' | 'casier' | 'plat' | 'portion' | 'service'
   price: string
+  crate_price?: string | number | null
   is_active: boolean
   brand: string
   alcohol_percentage: string | null

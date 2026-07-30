@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { 
   LayoutDashboard, Package, Box, CreditCard, Users, 
   FileBarChart, DollarSign, Truck, Bell, MessageSquare, MessageCircle,
-  Settings, Key, ChevronLeft, ChevronRight
+  Settings, Key, Activity, ChevronLeft, ChevronRight
 } from 'lucide-react'
 
 const menuItems = [
@@ -22,6 +22,7 @@ const menuItems = [
   { id: 'messaging', label: 'Messagerie', icon: MessageSquare },
   { id: 'settings', label: 'Paramètres', icon: Settings },
   { id: 'subscription', label: 'Abonnement', icon: Key },
+  { id: 'logs', label: 'Logs', icon: Activity },
 ]
 
 export function Sidebar({ 
