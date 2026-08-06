@@ -2,20 +2,31 @@
 
 import { useState, useEffect } from 'react'
 import {
-  Settings, Save, Globe, Shield, Bell, Users, 
-  DollarSign, Mail, Server, Database, Cloud, 
+  Settings, Save, Globe, Shield, Users, 
+  DollarSign, Mail, Server, Cloud, 
   Lock, Key, Eye, EyeOff, CheckCircle, XCircle,
   AlertTriangle, Zap, Target, Award, Gift, Crown,
   TrendingUp, TrendingDown, BarChart3, PieChart,
   Download, Upload, RefreshCw, Plus, Trash2,
   Edit, MoreVertical, ChevronDown, Activity,
-  Phone,
-  Send,
-  Smartphone,
-  X
+  Phone, Send, Smartphone, X, Copy, Check,
+  Star, Sparkles, Rocket, Zap as ZapIcon
 } from 'lucide-react'
 
 // Types
+interface Plan {
+  id: string
+  name: string
+  code: string
+  price: number
+  trialDays: number
+  features: string[]
+  isActive: boolean
+  description: string
+  popular?: boolean
+  color: string
+}
+
 interface SystemSettings {
   general: {
     platformName: string
@@ -38,61 +49,25 @@ interface SystemSettings {
       requireNumbers: boolean
       requireSpecialChars: boolean
     }
-    ipWhitelist: string[]
     rateLimiting: {
       enabled: boolean
       maxRequests: number
       timeWindow: number
     }
   }
-  payment: {
-    provider: 'stripe' | 'paypal' | 'mobile_money' | 'other'
-    currencies: string[]
-    taxRate: number
-    commissionRate: number
-    paymentGateways: {
-      id: string
-      name: string
-      enabled: boolean
-      config: Record<string, string>
-    }[]
-  }
   subscription: {
-    plans: {
-      id: string
-      name: string
-      code: string
-      price: number
-      trialDays: number
-      features: string[]
-      isActive: boolean
-    }[]
+    plans: Plan[]
     trialPeriod: number
     autoRenewDefault: boolean
     gracePeriod: number
-  }
-  notification: {
-    email: {
-      smtpHost: string
-      smtpPort: number
-      smtpUser: string
-      smtpPassword: string
-      fromEmail: string
-      fromName: string
-      encryption: 'tls' | 'ssl' | 'none'
+    promoCode: {
+      enabled: boolean
+      code: string
+      discount: number
+      validUntil: string
+      maxUses: number
+      used: number
     }
-    channels: {
-      whatsapp: { enabled: boolean; apiKey: string; phoneNumber: string }
-      telegram: { enabled: boolean; botToken: string; botUsername: string }
-      sms: { enabled: boolean; provider: string; apiKey: string }
-    }
-    templates: {
-      id: string
-      name: string
-      subject: string
-      body: string
-      type: 'welcome' | 'payment' | 'subscription' | 'alert' | 'custom'
-    }[]
   }
   integration: {
     n8n: {
@@ -109,12 +84,6 @@ interface SystemSettings {
       enabled: boolean
       trackingId: string
     }
-  }
-  storage: {
-    provider: 'local' | 's3' | 'r2'
-    config: Record<string, string>
-    maxFileSize: number
-    allowedFileTypes: string[]
   }
 }
 
@@ -141,55 +110,74 @@ const mockSettings: SystemSettings = {
       requireNumbers: true,
       requireSpecialChars: true
     },
-    ipWhitelist: ['192.168.1.0/24', '10.0.0.0/8'],
     rateLimiting: {
       enabled: true,
       maxRequests: 100,
       timeWindow: 60
     }
   },
-  payment: {
-    provider: 'mobile_money',
-    currencies: ['FCFA', 'EUR', 'USD'],
-    taxRate: 18,
-    commissionRate: 3,
-    paymentGateways: [
-      { id: 'stripe', name: 'Stripe', enabled: true, config: { apiKey: 'pk_test_...' } },
-      { id: 'paypal', name: 'PayPal', enabled: false, config: { clientId: '...' } },
-      { id: 'mobile_money', name: 'Mobile Money', enabled: true, config: { provider: 'Orange Money' } }
-    ]
-  },
   subscription: {
     plans: [
-      { id: 'essai', name: 'Essai', code: 'TRIAL', price: 0, trialDays: 30, features: ['Toutes les fonctionnalités'], isActive: true },
-      { id: 'starter', name: 'Starter', code: 'STARTER', price: 5000, trialDays: 0, features: ['Tableau de bord', 'Gestion des ventes', 'Gestion des stocks', 'Rapports basiques'], isActive: true },
-      { id: 'premium', name: 'Premium', code: 'PREMIUM', price: 11000, trialDays: 0, features: ['Tout Starter +', 'Rapports avancés', 'Multi-utilisateurs', 'Multi-caisses', 'Assistant IA'], isActive: true },
-      { id: 'business', name: 'Business', code: 'BUSINESS', price: 14000, trialDays: 0, features: ['Tout Premium +', 'Support prioritaire', 'Multi-établissements', 'API publique'], isActive: true }
+      { 
+        id: 'essai', 
+        name: 'Essai', 
+        code: 'TRIAL', 
+        price: 0, 
+        trialDays: 30, 
+        features: ['Toutes les fonctionnalités'], 
+        isActive: true, 
+        description: 'Découvrez NOXIA en conditions réelles',
+        popular: false,
+        color: '#22c55e'
+      },
+      { 
+        id: 'starter', 
+        name: 'Starter', 
+        code: 'STARTER', 
+        price: 5000, 
+        trialDays: 0, 
+        features: ['Tableau de bord', 'Gestion des ventes', 'Gestion des stocks', 'Rapports basiques'], 
+        isActive: true, 
+        description: 'Pour les petits établissements',
+        popular: false,
+        color: '#818cf8'
+      },
+      { 
+        id: 'premium', 
+        name: 'Premium', 
+        code: 'PREMIUM', 
+        price: 11000, 
+        trialDays: 0, 
+        features: ['Tout Starter +', 'Rapports avancés', 'Multi-utilisateurs', 'Multi-caisses', 'Assistant IA'], 
+        isActive: true, 
+        description: 'Pour les établissements en croissance',
+        popular: true,
+        color: '#f59e0b'
+      },
+      { 
+        id: 'business', 
+        name: 'Business', 
+        code: 'BUSINESS', 
+        price: 14000, 
+        trialDays: 0, 
+        features: ['Tout Premium +', 'Support prioritaire', 'Multi-établissements', 'API publique'], 
+        isActive: true, 
+        description: 'Pour les groupes et franchises',
+        popular: false,
+        color: '#8b5cf6'
+      }
     ],
     trialPeriod: 30,
     autoRenewDefault: true,
-    gracePeriod: 5
-  },
-  notification: {
-    email: {
-      smtpHost: 'smtp.gmail.com',
-      smtpPort: 587,
-      smtpUser: 'noreply@noxia.io',
-      smtpPassword: '********',
-      fromEmail: 'noreply@noxia.io',
-      fromName: 'NOXIA',
-      encryption: 'tls'
-    },
-    channels: {
-      whatsapp: { enabled: true, apiKey: 'WA_API_KEY', phoneNumber: '+24166000000' },
-      telegram: { enabled: true, botToken: 'TELEGRAM_BOT_TOKEN', botUsername: 'NOXIABot' },
-      sms: { enabled: false, provider: 'Twilio', apiKey: 'TWILIO_API_KEY' }
-    },
-    templates: [
-      { id: 'welcome', name: 'Bienvenue', subject: 'Bienvenue sur NOXIA', body: 'Bonjour {{name}}, bienvenue sur NOXIA !', type: 'welcome' },
-      { id: 'payment', name: 'Confirmation de paiement', subject: 'Paiement confirmé', body: 'Votre paiement de {{amount}} a été confirmé.', type: 'payment' },
-      { id: 'subscription_expiry', name: 'Expiration abonnement', subject: 'Votre abonnement expire', body: 'Votre abonnement expire dans {{days}} jours.', type: 'subscription' }
-    ]
+    gracePeriod: 5,
+    promoCode: {
+      enabled: true,
+      code: 'NOXIA2026',
+      discount: 20,
+      validUntil: '2026-12-31',
+      maxUses: 100,
+      used: 37
+    }
   },
   integration: {
     n8n: {
@@ -206,17 +194,6 @@ const mockSettings: SystemSettings = {
       enabled: true,
       trackingId: 'UA-XXXXXXXX-X'
     }
-  },
-  storage: {
-    provider: 'r2',
-    config: {
-      endpoint: 'https://account.r2.cloudflarestorage.com',
-      bucket: 'noxia-storage',
-      accessKey: 'R2_ACCESS_KEY',
-      secretKey: 'R2_SECRET_KEY'
-    },
-    maxFileSize: 10,
-    allowedFileTypes: ['pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx']
   }
 }
 
@@ -227,6 +204,12 @@ const planColors = {
   'Business': '#8b5cf6'
 }
 
+// Couleurs prédéfinies pour les plans
+const presetColors = [
+  '#22c55e', '#818cf8', '#f59e0b', '#8b5cf6', 
+  '#ef4444', '#ec4899', '#3b82f6', '#14b8a6', '#f97316', '#6366f1'
+]
+
 export default function SuperAdminParametres() {
   const [settings, setSettings] = useState<SystemSettings>(mockSettings)
   const [activeTab, setActiveTab] = useState('general')
@@ -234,7 +217,22 @@ export default function SuperAdminParametres() {
   const [showSaveSuccess, setShowSaveSuccess] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [newPlan, setNewPlan] = useState({ name: '', code: '', price: 0, trialDays: 0 })
+  
+  // État pour l'édition d'un plan
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null)
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false)
+  const [newPlan, setNewPlan] = useState<Partial<Plan>>({
+    name: '',
+    code: '',
+    price: 0,
+    trialDays: 0,
+    features: [],
+    description: '',
+    isActive: true,
+    popular: false,
+    color: '#6366f1'
+  })
+  const [newFeature, setNewFeature] = useState('')
 
   useEffect(() => {
     setIsAnimating(true)
@@ -251,29 +249,84 @@ export default function SuperAdminParametres() {
     }, 1500)
   }
 
-  const handleAddPlan = () => {
-    if (!newPlan.name.trim()) return
-    const plan = {
-      id: newPlan.code.toLowerCase(),
+  // --- Gestion des plans ---
+  const openPlanModal = (plan?: Plan) => {
+    if (plan) {
+      setEditingPlan(plan)
+      setNewPlan({ ...plan })
+    } else {
+      setEditingPlan(null)
+      setNewPlan({
+        name: '',
+        code: '',
+        price: 0,
+        trialDays: 0,
+        features: [],
+        description: '',
+        isActive: true,
+        popular: false,
+        color: '#6366f1'
+      })
+    }
+    setNewFeature('')
+    setIsPlanModalOpen(true)
+  }
+
+  const addFeature = () => {
+    if (newFeature.trim()) {
+      setNewPlan({
+        ...newPlan,
+        features: [...(newPlan.features || []), newFeature.trim()]
+      })
+      setNewFeature('')
+    }
+  }
+
+  const removeFeature = (index: number) => {
+    setNewPlan({
+      ...newPlan,
+      features: (newPlan.features || []).filter((_, i) => i !== index)
+    })
+  }
+
+  const savePlan = () => {
+    if (!newPlan.name || !newPlan.code) return
+    
+    const planData: Plan = {
+      id: editingPlan?.id || newPlan.code.toLowerCase(),
       name: newPlan.name,
       code: newPlan.code.toUpperCase(),
-      price: newPlan.price,
-      trialDays: newPlan.trialDays,
-      features: [],
-      isActive: true
+      price: newPlan.price || 0,
+      trialDays: newPlan.trialDays || 0,
+      features: newPlan.features || [],
+      isActive: newPlan.isActive !== undefined ? newPlan.isActive : true,
+      description: newPlan.description || '',
+      popular: newPlan.popular || false,
+      color: newPlan.color || '#6366f1'
     }
+
+    let updatedPlans: Plan[]
+    if (editingPlan) {
+      updatedPlans = settings.subscription.plans.map(p => 
+        p.id === editingPlan.id ? planData : p
+      )
+    } else {
+      updatedPlans = [...settings.subscription.plans, planData]
+    }
+
     setSettings({
       ...settings,
       subscription: {
         ...settings.subscription,
-        plans: [...settings.subscription.plans, plan]
+        plans: updatedPlans
       }
     })
-    setNewPlan({ name: '', code: '', price: 0, trialDays: 0 })
+    setIsPlanModalOpen(false)
+    setEditingPlan(null)
   }
 
-  const handleDeletePlan = (planId: string) => {
-    if (confirm(`Supprimer le plan "${planId}" ?`)) {
+  const deletePlan = (planId: string) => {
+    if (confirm(`Supprimer le plan "${settings.subscription.plans.find(p => p.id === planId)?.name}" ?`)) {
       setSettings({
         ...settings,
         subscription: {
@@ -282,6 +335,34 @@ export default function SuperAdminParametres() {
         }
       })
     }
+  }
+
+  const togglePlanActive = (planId: string) => {
+    setSettings({
+      ...settings,
+      subscription: {
+        ...settings.subscription,
+        plans: settings.subscription.plans.map(p =>
+          p.id === planId ? { ...p, isActive: !p.isActive } : p
+        )
+      }
+    })
+  }
+
+  const togglePlanPopular = (planId: string) => {
+    setSettings({
+      ...settings,
+      subscription: {
+        ...settings.subscription,
+        plans: settings.subscription.plans.map(p =>
+          p.id === planId ? { ...p, popular: !p.popular } : p
+        )
+      }
+    })
+  }
+
+  const formatCurrency = (amount: number) => {
+    return amount.toLocaleString() + ' FCFA'
   }
 
   return (
@@ -328,11 +409,8 @@ export default function SuperAdminParametres() {
         {[
           { id: 'general', label: 'Général', icon: Globe },
           { id: 'security', label: 'Sécurité', icon: Shield },
-          { id: 'payment', label: 'Paiements', icon: DollarSign },
           { id: 'subscription', label: 'Abonnements', icon: Crown },
-          { id: 'notification', label: 'Notifications', icon: Bell },
-          { id: 'integration', label: 'Intégrations', icon: Cloud },
-          { id: 'storage', label: 'Stockage', icon: Database }
+          { id: 'integration', label: 'Intégrations', icon: Cloud }
         ].map(tab => {
           const Icon = tab.icon
           return (
@@ -604,146 +682,73 @@ export default function SuperAdminParametres() {
           </div>
         )}
 
-        {/* ===== PAIEMENTS ===== */}
-        {activeTab === 'payment' && (
-          <div className="rounded-xl border p-4" style={{ background: '#1e293b', borderColor: '#334155' }}>
-            <h3 className="font-semibold text-sm text-white mb-4 flex items-center gap-2">
-              <DollarSign className="w-4 h-4" style={{ color: '#818cf8' }} />
-              Configuration des paiements
-            </h3>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Fournisseur de paiement</label>
-                <select
-                  value={settings.payment.provider}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    payment: { ...settings.payment, provider: e.target.value as any }
-                  })}
-                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                  style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
-                >
-                  <option value="stripe">Stripe</option>
-                  <option value="paypal">PayPal</option>
-                  <option value="mobile_money">Mobile Money</option>
-                  <option value="other">Autre</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Taux de TVA (%)</label>
-                <input
-                  type="number"
-                  value={settings.payment.taxRate}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    payment: { ...settings.payment, taxRate: parseFloat(e.target.value) }
-                  })}
-                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                  style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
-                />
-              </div>
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Commission (%)</label>
-                <input
-                  type="number"
-                  value={settings.payment.commissionRate}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    payment: { ...settings.payment, commissionRate: parseFloat(e.target.value) }
-                  })}
-                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                  style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ===== ABONNEMENTS ===== */}
         {activeTab === 'subscription' && (
           <div className="space-y-4">
+            {/* Plans */}
             <div className="rounded-xl border p-4" style={{ background: '#1e293b', borderColor: '#334155' }}>
-              <h3 className="font-semibold text-sm text-white mb-4 flex items-center gap-2">
-                <Crown className="w-4 h-4" style={{ color: '#818cf8' }} />
-                Plans d'abonnement
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-sm text-white flex items-center gap-2">
+                  <Crown className="w-4 h-4" style={{ color: '#818cf8' }} />
+                  Plans d'abonnement
+                </h3>
+                <button
+                  onClick={() => openPlanModal()}
+                  className="px-3 py-1.5 rounded-lg text-white text-xs font-semibold transition flex items-center gap-1"
+                  style={{ background: '#4f46e5', boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)' }}
+                >
+                  <Plus className="w-3 h-3" />
+                  Ajouter un plan
+                </button>
+              </div>
+
               <div className="space-y-3">
                 {settings.subscription.plans.map((plan) => (
-                  <div key={plan.id} className="flex items-center justify-between p-3 rounded-lg border" style={{ borderColor: '#334155' }}>
-                    <div className="flex items-center gap-3">
+                  <div key={plan.id} className="flex items-center justify-between p-3 rounded-lg border transition hover:border-primary-500" style={{ borderColor: plan.isActive ? '#334155' : 'rgba(51,65,85,0.3)' }}>
+                    <div className="flex items-center gap-3 flex-wrap">
                       <span 
-                        className="text-xs px-2 py-0.5 rounded-full font-medium"
+                        className="text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1"
                         style={{ 
-                          background: `${planColors[plan.name as keyof typeof planColors] || '#6366f1'}20`,
-                          color: planColors[plan.name as keyof typeof planColors] || '#6366f1'
+                          background: `${plan.color || planColors[plan.name as keyof typeof planColors] || '#6366f1'}20`,
+                          color: plan.color || planColors[plan.name as keyof typeof planColors] || '#6366f1'
                         }}
                       >
+                        {plan.popular && <Star className="w-3 h-3 fill-current" />}
                         {plan.name}
                       </span>
-                      <span className="text-sm text-white">{plan.price.toLocaleString()} FCFA</span>
+                      <span className="text-sm text-white">{formatCurrency(plan.price)}</span>
                       {plan.trialDays > 0 && (
                         <span className="text-xs" style={{ color: '#22c55e' }}>{plan.trialDays} jours d'essai</span>
                       )}
                       <span className={`text-xs ${plan.isActive ? 'text-green-400' : 'text-red-400'}`}>
                         {plan.isActive ? '✅ Actif' : '❌ Inactif'}
                       </span>
+                      {plan.popular && (
+                        <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}>
+                          Populaire
+                        </span>
+                      )}
                     </div>
                     <div className="flex gap-1">
-                      <button className="p-1 rounded hover:bg-white/10" style={{ color: '#94a3b8' }}>
+                      <button onClick={() => togglePlanPopular(plan.id)} className="p-1 rounded hover:bg-white/10" style={{ color: '#f59e0b' }} title="Marquer comme populaire">
+                        <Star className={`w-4 h-4 ${plan.popular ? 'fill-current' : ''}`} />
+                      </button>
+                      <button onClick={() => togglePlanActive(plan.id)} className="p-1 rounded hover:bg-white/10" style={{ color: plan.isActive ? '#f87171' : '#22c55e' }} title={plan.isActive ? 'Désactiver' : 'Activer'}>
+                        {plan.isActive ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+                      </button>
+                      <button onClick={() => openPlanModal(plan)} className="p-1 rounded hover:bg-white/10" style={{ color: '#94a3b8' }}>
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDeletePlan(plan.id)} className="p-1 rounded hover:bg-red-500/20" style={{ color: '#f87171' }}>
+                      <button onClick={() => deletePlan(plan.id)} className="p-1 rounded hover:bg-red-500/20" style={{ color: '#f87171' }}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="mt-4 p-3 rounded-lg border border-dashed" style={{ borderColor: '#334155' }}>
-                <p className="text-xs mb-2" style={{ color: '#94a3b8' }}>Ajouter un plan</p>
-                <div className="flex flex-wrap gap-2">
-                  <input
-                    type="text"
-                    placeholder="Nom"
-                    value={newPlan.name}
-                    onChange={(e) => setNewPlan({ ...newPlan, name: e.target.value })}
-                    className="flex-1 min-w-[120px] rounded-lg px-4 py-2 text-white text-sm outline-none transition"
-                    style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Code"
-                    value={newPlan.code}
-                    onChange={(e) => setNewPlan({ ...newPlan, code: e.target.value.toUpperCase() })}
-                    className="w-24 rounded-lg px-4 py-2 text-white text-sm outline-none transition"
-                    style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
-                  />
-                  <input
-                    type="number"
-                    placeholder="Prix"
-                    value={newPlan.price || ''}
-                    onChange={(e) => setNewPlan({ ...newPlan, price: parseInt(e.target.value) || 0 })}
-                    className="w-24 rounded-lg px-4 py-2 text-white text-sm outline-none transition"
-                    style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
-                  />
-                  <input
-                    type="number"
-                    placeholder="Jours essai"
-                    value={newPlan.trialDays || ''}
-                    onChange={(e) => setNewPlan({ ...newPlan, trialDays: parseInt(e.target.value) || 0 })}
-                    className="w-24 rounded-lg px-4 py-2 text-white text-sm outline-none transition"
-                    style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
-                  />
-                  <button
-                    onClick={handleAddPlan}
-                    className="px-4 py-2 rounded-lg text-white text-sm font-semibold transition"
-                    style={{ background: '#4f46e5', boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)' }}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
             </div>
+
+            {/* Paramètres d'abonnement */}
             <div className="rounded-xl border p-4" style={{ background: '#1e293b', borderColor: '#334155' }}>
               <h3 className="font-semibold text-sm text-white mb-4">Paramètres d'abonnement</h3>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -789,28 +794,41 @@ export default function SuperAdminParametres() {
                 </div>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* ===== NOTIFICATIONS ===== */}
-        {activeTab === 'notification' && (
-          <div className="space-y-4">
+            {/* Code promo */}
             <div className="rounded-xl border p-4" style={{ background: '#1e293b', borderColor: '#334155' }}>
-              <h3 className="font-semibold text-sm text-white mb-4 flex items-center gap-2">
-                <Mail className="w-4 h-4" style={{ color: '#818cf8' }} />
-                Configuration email
-              </h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Serveur SMTP</label>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold text-sm text-white flex items-center gap-2">
+                  <Gift className="w-4 h-4" style={{ color: '#818cf8' }} />
+                  Code promo
+                </h3>
+                <label className="relative inline-flex items-center cursor-pointer">
                   <input
-                    type="text"
-                    value={settings.notification.email.smtpHost}
+                    type="checkbox"
+                    checked={settings.subscription.promoCode.enabled}
                     onChange={(e) => setSettings({
                       ...settings,
-                      notification: {
-                        ...settings.notification,
-                        email: { ...settings.notification.email, smtpHost: e.target.value }
+                      subscription: {
+                        ...settings.subscription,
+                        promoCode: { ...settings.subscription.promoCode, enabled: e.target.checked }
+                      }
+                    })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all" style={{ background: settings.subscription.promoCode.enabled ? '#4f46e5' : '#334155' }} />
+                </label>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Code</label>
+                  <input
+                    type="text"
+                    value={settings.subscription.promoCode.code}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      subscription: {
+                        ...settings.subscription,
+                        promoCode: { ...settings.subscription.promoCode, code: e.target.value.toUpperCase() }
                       }
                     })}
                     className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
@@ -818,15 +836,17 @@ export default function SuperAdminParametres() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Port SMTP</label>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Réduction (%)</label>
                   <input
                     type="number"
-                    value={settings.notification.email.smtpPort}
+                    min="0"
+                    max="100"
+                    value={settings.subscription.promoCode.discount}
                     onChange={(e) => setSettings({
                       ...settings,
-                      notification: {
-                        ...settings.notification,
-                        email: { ...settings.notification.email, smtpPort: parseInt(e.target.value) }
+                      subscription: {
+                        ...settings.subscription,
+                        promoCode: { ...settings.subscription.promoCode, discount: parseInt(e.target.value) }
                       }
                     })}
                     className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
@@ -834,103 +854,55 @@ export default function SuperAdminParametres() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Utilisateur SMTP</label>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Valable jusqu'au</label>
                   <input
-                    type="text"
-                    value={settings.notification.email.smtpUser}
+                    type="date"
+                    value={settings.subscription.promoCode.validUntil}
                     onChange={(e) => setSettings({
                       ...settings,
-                      notification: {
-                        ...settings.notification,
-                        email: { ...settings.notification.email, smtpUser: e.target.value }
+                      subscription: {
+                        ...settings.subscription,
+                        promoCode: { ...settings.subscription.promoCode, validUntil: e.target.value }
                       }
                     })}
                     className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
                     style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
                   />
                 </div>
-                <div>
-                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Mot de passe SMTP</label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={settings.notification.email.smtpPassword}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        notification: {
-                          ...settings.notification,
-                          email: { ...settings.notification.email, smtpPassword: e.target.value }
-                        }
-                      })}
-                      className="w-full rounded-lg px-4 py-2.5 pr-10 text-white text-sm outline-none transition"
-                      style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
-                    />
-                    <button
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2"
-                      style={{ color: '#64748b' }}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-xl border p-4" style={{ background: '#1e293b', borderColor: '#334155' }}>
-              <h3 className="font-semibold text-sm text-white mb-4 flex items-center gap-2">
-                <Bell className="w-4 h-4" style={{ color: '#818cf8' }} />
-                Canaux de notification
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[
-                  { key: 'whatsapp', label: 'WhatsApp', icon: Smartphone },
-                  { key: 'telegram', label: 'Telegram', icon: Send },
-                  { key: 'sms', label: 'SMS', icon: Phone }
-                ].map((channel) => {
-                  const config = settings.notification.channels[channel.key as keyof typeof settings.notification.channels]
-                  return (
-                    <div key={channel.key} className="p-3 rounded-lg border" style={{ borderColor: '#334155' }}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-white">{channel.label}</span>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={config.enabled}
-                            onChange={(e) => setSettings({
-                              ...settings,
-                              notification: {
-                                ...settings.notification,
-                                channels: {
-                                  ...settings.notification.channels,
-                                  [channel.key]: { ...config, enabled: e.target.checked }
-                                }
-                              }
-                            })}
-                            className="sr-only peer"
-                          />
-                          <div className="w-9 h-5 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all" style={{ background: config.enabled ? '#4f46e5' : '#334155' }} />
-                        </label>
-                      </div>
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Utilisations</label>
+                    <div className="flex items-center gap-2">
                       <input
-                        type="text"
-                        placeholder="Clé API"
-                        value={(config as any).apiKey || ''}
+                        type="number"
+                        value={settings.subscription.promoCode.used}
                         onChange={(e) => setSettings({
                           ...settings,
-                          notification: {
-                            ...settings.notification,
-                            channels: {
-                              ...settings.notification.channels,
-                              [channel.key]: { ...config, apiKey: e.target.value }
-                            }
+                          subscription: {
+                            ...settings.subscription,
+                            promoCode: { ...settings.subscription.promoCode, used: parseInt(e.target.value) }
                           }
                         })}
-                        className="w-full rounded-lg px-3 py-1.5 text-white text-xs outline-none transition"
+                        className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
                         style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
                       />
+                      <span className="text-xs" style={{ color: '#64748b' }}>/ {settings.subscription.promoCode.maxUses}</span>
                     </div>
-                  )
-                })}
+                  </div>
+                  <button
+                    onClick={() => setSettings({
+                      ...settings,
+                      subscription: {
+                        ...settings.subscription,
+                        promoCode: { ...settings.subscription.promoCode, used: 0 }
+                      }
+                    })}
+                    className="px-3 py-2.5 rounded-lg text-xs font-medium transition whitespace-nowrap"
+                    style={{ background: 'rgba(51,65,85,0.3)', color: '#94a3b8' }}
+                  >
+                    Réinitialiser
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1043,88 +1015,189 @@ export default function SuperAdminParametres() {
             </div>
           </div>
         )}
+      </div>
 
-        {/* ===== STOCKAGE ===== */}
-        {activeTab === 'storage' && (
-          <div className="rounded-xl border p-4" style={{ background: '#1e293b', borderColor: '#334155' }}>
-            <h3 className="font-semibold text-sm text-white mb-4 flex items-center gap-2">
-              <Database className="w-4 h-4" style={{ color: '#818cf8' }} />
-              Configuration du stockage
-            </h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Fournisseur de stockage</label>
-                <select
-                  value={settings.storage.provider}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    storage: { ...settings.storage, provider: e.target.value as any }
-                  })}
-                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                  style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
-                >
-                  <option value="local">Local</option>
-                  <option value="s3">AWS S3</option>
-                  <option value="r2">Cloudflare R2</option>
-                </select>
+      {/* MODAL PLAN */}
+      {isPlanModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.7)' }}
+          onClick={() => setIsPlanModalOpen(false)}
+        >
+          <div 
+            className="w-full max-w-lg rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
+            style={{ 
+              background: '#1e293b',
+              border: '1px solid #334155'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white">
+                {editingPlan ? 'Modifier le plan' : 'Ajouter un plan'}
+              </h2>
+              <button onClick={() => setIsPlanModalOpen(false)} className="p-1 rounded hover:bg-white/10" style={{ color: '#94a3b8' }}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nom du plan *</label>
+                  <input
+                    type="text"
+                    value={newPlan.name || ''}
+                    onChange={(e) => setNewPlan({ ...newPlan, name: e.target.value })}
+                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                    style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Code *</label>
+                  <input
+                    type="text"
+                    value={newPlan.code || ''}
+                    onChange={(e) => setNewPlan({ ...newPlan, code: e.target.value.toUpperCase() })}
+                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                    style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
+                  />
+                </div>
               </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Prix (FCFA)</label>
+                  <input
+                    type="number"
+                    value={newPlan.price || ''}
+                    onChange={(e) => setNewPlan({ ...newPlan, price: parseInt(e.target.value) || 0 })}
+                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                    style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Jours d'essai</label>
+                  <input
+                    type="number"
+                    value={newPlan.trialDays || ''}
+                    onChange={(e) => setNewPlan({ ...newPlan, trialDays: parseInt(e.target.value) || 0 })}
+                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                    style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Couleur</label>
+                  <select
+                    value={newPlan.color || '#6366f1'}
+                    onChange={(e) => setNewPlan({ ...newPlan, color: e.target.value })}
+                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                    style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
+                  >
+                    {presetColors.map(color => (
+                      <option key={color} value={color}>
+                        <span className="w-4 h-4 rounded-full inline-block" style={{ background: color }} />
+                        {color}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Taille max fichier (MB)</label>
+                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Description</label>
                 <input
-                  type="number"
-                  value={settings.storage.maxFileSize}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    storage: { ...settings.storage, maxFileSize: parseInt(e.target.value) }
-                  })}
+                  type="text"
+                  value={newPlan.description || ''}
+                  onChange={(e) => setNewPlan({ ...newPlan, description: e.target.value })}
                   className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
                   style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
                 />
               </div>
-            </div>
-            <div className="mt-4">
-              <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Types de fichiers autorisés</label>
-              <div className="flex flex-wrap gap-2">
-                {settings.storage.allowedFileTypes.map((type) => (
-                  <span key={type} className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
-                    .{type}
-                    <button
-                      onClick={() => setSettings({
-                        ...settings,
-                        storage: {
-                          ...settings.storage,
-                          allowedFileTypes: settings.storage.allowedFileTypes.filter(t => t !== type)
-                        }
-                      })}
-                      className="hover:text-red-400"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
+
+              <div>
+                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Fonctionnalités</label>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {(newPlan.features || []).map((feature, index) => (
+                    <span key={index} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
+                      {feature}
+                      <button onClick={() => removeFeature(index)} className="hover:text-red-400">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                  {(newPlan.features || []).length === 0 && (
+                    <span className="text-xs" style={{ color: '#64748b' }}>Aucune fonctionnalité</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newFeature}
+                    onChange={(e) => setNewFeature(e.target.value)}
+                    placeholder="Ajouter une fonctionnalité..."
+                    className="flex-1 rounded-lg px-4 py-2 text-white text-sm outline-none transition"
+                    style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
+                    onKeyPress={(e) => e.key === 'Enter' && addFeature()}
+                  />
+                  <button
+                    onClick={addFeature}
+                    className="px-3 py-2 rounded-lg text-white text-xs font-semibold transition"
+                    style={{ background: '#4f46e5', boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)' }}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newPlan.isActive !== undefined ? newPlan.isActive : true}
+                    onChange={(e) => setNewPlan({ ...newPlan, isActive: e.target.checked })}
+                    className="accent-primary-500"
+                  />
+                  <span className="text-white">Actif</span>
+                </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={newPlan.popular || false}
+                    onChange={(e) => setNewPlan({ ...newPlan, popular: e.target.checked })}
+                    className="accent-primary-500"
+                  />
+                  <span className="text-white">Populaire</span>
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t" style={{ borderColor: '#334155' }}>
                 <button
-                  onClick={() => {
-                    const newType = prompt('Nouveau type de fichier (ex: pdf)')
-                    if (newType) {
-                      setSettings({
-                        ...settings,
-                        storage: {
-                          ...settings.storage,
-                          allowedFileTypes: [...settings.storage.allowedFileTypes, newType]
-                        }
-                      })
-                    }
+                  onClick={() => setIsPlanModalOpen(false)}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-medium transition"
+                  style={{ 
+                    background: 'transparent',
+                    border: '1px solid #334155',
+                    color: '#94a3b8'
                   }}
-                  className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(51, 65, 85, 0.3)', color: '#94a3b8' }}
                 >
-                  <Plus className="w-3 h-3" />
-                  Ajouter
+                  Annuler
+                </button>
+                <button
+                  onClick={savePlan}
+                  className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition"
+                  style={{ 
+                    background: '#4f46e5',
+                    boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
+                  }}
+                >
+                  {editingPlan ? 'Modifier' : 'Ajouter'}
                 </button>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

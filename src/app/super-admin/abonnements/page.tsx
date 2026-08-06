@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
+import { ServerContext } from '../layout'
 import {
   CreditCard, Search, Eye, Edit, Trash2, MoreVertical,
   Check, X, Building2, Calendar, Clock, DollarSign,
@@ -8,7 +9,7 @@ import {
   TrendingUp, TrendingDown, BarChart3, Users,
   ShoppingBag, AlertTriangle, Crown, Star, Gift,
   Zap, Target, RefreshCw, Mail, Send,
-  Plus
+  Plus, PauseCircle, PlayCircle, AlertCircle
 } from 'lucide-react'
 
 // Types
@@ -19,6 +20,7 @@ interface Subscription {
     name: string
     country: string
     plan: string
+    server?: string
   }
   plan: {
     id: number
@@ -27,7 +29,7 @@ interface Subscription {
     price: number
     trialDays: number
   }
-  status: 'active' | 'trial' | 'expired' | 'cancelled' | 'pending'
+  status: 'active' | 'trial' | 'expired' | 'cancelled' | 'pending' | 'suspended'
   startDate: string
   endDate: string
   trialEnd?: string
@@ -47,13 +49,14 @@ interface Subscription {
   createdAt: string
   updatedAt: string
   notes?: string
+  daysUntilExpiry?: number
 }
 
-// Données mockées
+// Données mockées enrichies
 const mockSubscriptions: Subscription[] = [
   {
     id: 1,
-    company: { id: 1, name: 'Bar Le Premium', country: 'Gabon', plan: 'Premium' },
+    company: { id: 1, name: 'Bar Le Premium', country: 'Gabon', plan: 'Premium', server: 'Gabon' },
     plan: { id: 1, name: 'Premium', code: 'PREMIUM', price: 11000, trialDays: 0 },
     status: 'active',
     startDate: '2026-06-01',
@@ -71,11 +74,12 @@ const mockSubscriptions: Subscription[] = [
     ],
     createdAt: '2026-06-01',
     updatedAt: '2026-07-10',
-    notes: 'Client fidèle, paiement ponctuel'
+    notes: 'Client fidèle, paiement ponctuel',
+    daysUntilExpiry: 15
   },
   {
     id: 2,
-    company: { id: 2, name: 'Snack Le Délice', country: 'Gabon', plan: 'Starter' },
+    company: { id: 2, name: 'Snack Le Délice', country: 'Gabon', plan: 'Starter', server: 'Gabon' },
     plan: { id: 2, name: 'Starter', code: 'STARTER', price: 5000, trialDays: 5 },
     status: 'active',
     startDate: '2026-06-15',
@@ -92,11 +96,12 @@ const mockSubscriptions: Subscription[] = [
     ],
     createdAt: '2026-06-15',
     updatedAt: '2026-07-09',
-    notes: 'Essai gratuit terminé, passage en Starter'
+    notes: 'Essai gratuit terminé, passage en Starter',
+    daysUntilExpiry: 5
   },
   {
     id: 3,
-    company: { id: 3, name: 'Boîte VIP', country: 'Cameroun', plan: 'Business' },
+    company: { id: 3, name: 'Boîte VIP', country: 'Cameroun', plan: 'Business', server: 'Cameroun' },
     plan: { id: 3, name: 'Business', code: 'BUSINESS', price: 14000, trialDays: 0 },
     status: 'active',
     startDate: '2026-05-20',
@@ -113,11 +118,12 @@ const mockSubscriptions: Subscription[] = [
     ],
     createdAt: '2026-05-20',
     updatedAt: '2026-07-08',
-    notes: 'Premium client, paiement automatique'
+    notes: 'Premium client, paiement automatique',
+    daysUntilExpiry: 20
   },
   {
     id: 4,
-    company: { id: 4, name: 'Restaurant La Terrasse', country: 'Côte d\'Ivoire', plan: 'Premium' },
+    company: { id: 4, name: 'Restaurant La Terrasse', country: 'Côte d\'Ivoire', plan: 'Premium', server: 'Côte d\'Ivoire' },
     plan: { id: 1, name: 'Premium', code: 'PREMIUM', price: 11000, trialDays: 0 },
     status: 'expired',
     startDate: '2026-04-10',
@@ -134,11 +140,12 @@ const mockSubscriptions: Subscription[] = [
     ],
     createdAt: '2026-04-10',
     updatedAt: '2026-07-05',
-    notes: 'Abonnement expiré, relance en cours'
+    notes: 'Abonnement expiré, relance en cours',
+    daysUntilExpiry: 0
   },
   {
     id: 5,
-    company: { id: 5, name: 'Bar Le Soleil', country: 'Sénégal', plan: 'Essai' },
+    company: { id: 5, name: 'Bar Le Soleil', country: 'Sénégal', plan: 'Essai', server: 'Sénégal' },
     plan: { id: 4, name: 'Essai', code: 'TRIAL', price: 0, trialDays: 30 },
     status: 'trial',
     startDate: '2026-07-08',
@@ -153,11 +160,12 @@ const mockSubscriptions: Subscription[] = [
     paymentHistory: [],
     createdAt: '2026-07-08',
     updatedAt: '2026-07-08',
-    notes: 'Nouvel essai, à suivre'
+    notes: 'Nouvel essai, à suivre',
+    daysUntilExpiry: 30
   },
   {
     id: 6,
-    company: { id: 1, name: 'Bar Le Premium', country: 'Gabon', plan: 'Premium' },
+    company: { id: 1, name: 'Bar Le Premium', country: 'Gabon', plan: 'Premium', server: 'Gabon' },
     plan: { id: 1, name: 'Premium', code: 'PREMIUM', price: 11000, trialDays: 0 },
     status: 'cancelled',
     startDate: '2026-03-01',
@@ -174,16 +182,39 @@ const mockSubscriptions: Subscription[] = [
     ],
     createdAt: '2026-03-01',
     updatedAt: '2026-04-01',
-    notes: 'Annulé, client reparti sur Starter'
+    notes: 'Annulé, client reparti sur Starter',
+    daysUntilExpiry: 0
+  },
+  {
+    id: 7,
+    company: { id: 7, name: 'Le Petit Bistro', country: 'Cameroun', plan: 'Premium', server: 'Cameroun' },
+    plan: { id: 1, name: 'Premium', code: 'PREMIUM', price: 11000, trialDays: 0 },
+    status: 'suspended',
+    startDate: '2026-06-10',
+    endDate: '2026-07-10',
+    autoRenew: true,
+    paymentMethod: 'card',
+    amount: 11000,
+    currency: 'FCFA',
+    lastPaymentDate: '2026-06-10',
+    nextPaymentDate: '2026-07-10',
+    paymentHistory: [
+      { id: 11, date: '2026-06-10', amount: 11000, status: 'paid', method: 'Carte' }
+    ],
+    createdAt: '2026-06-10',
+    updatedAt: '2026-07-07',
+    notes: 'Compte suspendu pour non-paiement',
+    daysUntilExpiry: 10
   }
 ]
 
 const statusConfig = {
   active: { label: 'Actif', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.15)', icon: Check },
   trial: { label: 'Essai', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)', icon: Gift },
-  expired: { label: 'Expiré', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)', icon: X },
+  expired: { label: 'Expiré', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)', icon: AlertCircle },
   cancelled: { label: 'Annulé', color: '#64748b', bg: 'rgba(100, 116, 139, 0.15)', icon: X },
-  pending: { label: 'En attente', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)', icon: Clock }
+  pending: { label: 'En attente', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)', icon: Clock },
+  suspended: { label: 'Suspendu', color: '#7f1d1d', bg: 'rgba(127, 29, 29, 0.25)', icon: PauseCircle }
 }
 
 const planColors = {
@@ -202,6 +233,7 @@ const paymentMethodColors = {
 }
 
 export default function SuperAdminAbonnements() {
+  const { selectedServer } = useContext(ServerContext)
   const [subscriptions, setSubscriptions] = useState<Subscription[]>(mockSubscriptions)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('all')
@@ -217,11 +249,16 @@ export default function SuperAdminAbonnements() {
     return () => clearTimeout(timer)
   }, [])
 
-  const statuses = ['all', ...new Set(subscriptions.map(s => s.status))]
-  const plans = ['all', ...new Set(subscriptions.map(s => s.plan.name))]
-  const companies = ['all', ...new Set(subscriptions.map(s => s.company.name))]
+  // Filtrer par serveur si nécessaire
+  const filteredByServer = selectedServer?.id !== 'global' 
+    ? subscriptions.filter(s => s.company.server === selectedServer?.name)
+    : subscriptions
 
-  const filteredSubscriptions = subscriptions.filter(s => {
+  const statuses = ['all', ...new Set(filteredByServer.map(s => s.status))]
+  const plans = ['all', ...new Set(filteredByServer.map(s => s.plan.name))]
+  const companies = ['all', ...new Set(filteredByServer.map(s => s.company.name))]
+
+  const filteredSubscriptions = filteredByServer.filter(s => {
     const matchesSearch = s.company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          s.plan.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = selectedStatus === 'all' || s.status === selectedStatus
@@ -274,28 +311,55 @@ export default function SuperAdminAbonnements() {
     return amount.toLocaleString() + ' FCFA'
   }
 
+  // Actions
+  const handleRenew = (sub: Subscription) => {
+    alert(`✅ Abonnement "${sub.company.name}" renouvelé avec succès !\n\nPlan: ${sub.plan.name}\nMontant: ${formatCurrency(sub.amount)}\nNouvelle date d'expiration: ${sub.endDate}`)
+  }
+
+  const handleSuspend = (sub: Subscription) => {
+    if (confirm(`Suspendre l'abonnement de "${sub.company.name}" ?`)) {
+      setSubscriptions(subscriptions.map(s => 
+        s.id === sub.id ? { ...s, status: 'suspended' as const } : s
+      ))
+      alert(`⚠️ Abonnement de "${sub.company.name}" suspendu.`)
+    }
+  }
+
+  const handleReactivate = (sub: Subscription) => {
+    if (confirm(`Réactiver l'abonnement de "${sub.company.name}" ?`)) {
+      setSubscriptions(subscriptions.map(s => 
+        s.id === sub.id ? { ...s, status: 'active' as const } : s
+      ))
+      alert(`✅ Abonnement de "${sub.company.name}" réactivé.`)
+    }
+  }
+
+  const handleRelance = (sub: Subscription) => {
+    alert(`📧 Email de relance envoyé à ${sub.company.name}\n\nSujet: Votre abonnement a expiré\nMessage: Bonjour, votre abonnement ${sub.plan.name} a expiré le ${sub.endDate}. Veuillez procéder au renouvellement.`)
+  }
+
   // Stats
-  const totalSubscriptions = subscriptions.length
-  const activeSubscriptions = subscriptions.filter(s => s.status === 'active').length
-  const trialSubscriptions = subscriptions.filter(s => s.status === 'trial').length
-  const expiredSubscriptions = subscriptions.filter(s => s.status === 'expired').length
-  const totalMRR = subscriptions
+  const totalSubscriptions = filteredByServer.length
+  const activeSubscriptions = filteredByServer.filter(s => s.status === 'active').length
+  const trialSubscriptions = filteredByServer.filter(s => s.status === 'trial').length
+  const expiredSubscriptions = filteredByServer.filter(s => s.status === 'expired').length
+  const suspendedSubscriptions = filteredByServer.filter(s => s.status === 'suspended').length
+  const totalMRR = filteredByServer
     .filter(s => s.status === 'active' || s.status === 'trial')
     .reduce((acc, s) => acc + s.amount, 0)
 
-  const planDistribution = subscriptions.reduce((acc, s) => {
-    acc[s.plan.name] = (acc[s.plan.name] || 0) + 1
-    return acc
-  }, {} as Record<string, number>)
+  const serverName = selectedServer?.id === 'global' ? 'Global' : selectedServer?.name || 'Global'
 
   return (
     <div className={`space-y-6 transition-opacity duration-500 ${isAnimating ? 'opacity-0' : 'opacity-100'}`}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Abonnements</h1>
+          <h1 className="text-2xl font-bold text-white">
+            {selectedServer?.id === 'global' ? '🌍 Abonnements (Global)' : `Abonnements - ${selectedServer?.flag} ${selectedServer?.name}`}
+          </h1>
           <p className="text-sm" style={{ color: '#94a3b8' }}>
-            Vue globale des abonnements de toutes les entreprises
+            {totalSubscriptions} abonnements • {activeSubscriptions} actifs • {trialSubscriptions} essais • {expiredSubscriptions} expirés
           </p>
         </div>
         <div className="flex gap-2">
@@ -324,9 +388,9 @@ export default function SuperAdminAbonnements() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
         <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Total abonnements</p>
+          <p className="text-xs" style={{ color: '#94a3b8' }}>Total</p>
           <p className="text-xl font-bold text-white">{totalSubscriptions}</p>
         </div>
         <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
@@ -340,6 +404,10 @@ export default function SuperAdminAbonnements() {
         <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
           <p className="text-xs" style={{ color: '#94a3b8' }}>Expirés</p>
           <p className="text-xl font-bold" style={{ color: '#ef4444' }}>{expiredSubscriptions}</p>
+        </div>
+        <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
+          <p className="text-xs" style={{ color: '#94a3b8' }}>Suspendus</p>
+          <p className="text-xl font-bold" style={{ color: '#7f1d1d' }}>{suspendedSubscriptions}</p>
         </div>
         <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
           <p className="text-xs" style={{ color: '#94a3b8' }}>MRR</p>
@@ -378,6 +446,7 @@ export default function SuperAdminAbonnements() {
           <option value="expired">Expiré</option>
           <option value="cancelled">Annulé</option>
           <option value="pending">En attente</option>
+          <option value="suspended">Suspendu</option>
         </select>
         <select
           value={selectedPlan}
@@ -389,7 +458,7 @@ export default function SuperAdminAbonnements() {
           }}
         >
           <option value="all">Tous les plans</option>
-          {Object.keys(planDistribution).map(p => (
+          {Object.keys(planColors).map(p => (
             <option key={p} value={p}>{p}</option>
           ))}
         </select>
@@ -426,7 +495,6 @@ export default function SuperAdminAbonnements() {
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Montant</th>
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Statut</th>
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Période</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Paiement</th>
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Actions</th>
               </tr>
             </thead>
@@ -438,7 +506,14 @@ export default function SuperAdminAbonnements() {
                       <Building2 className="w-3 h-3" style={{ color: '#64748b' }} />
                       <span className="text-white">{sub.company.name}</span>
                     </div>
-                    <span className="text-xs" style={{ color: '#64748b' }}>{sub.company.country}</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs" style={{ color: '#64748b' }}>{sub.company.country}</span>
+                      {selectedServer?.id === 'global' && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
+                          {sub.company.server}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     {getPlanBadge(sub.plan.name)}
@@ -450,29 +525,29 @@ export default function SuperAdminAbonnements() {
                   </td>
                   <td className="px-4 py-3">
                     {getStatusBadge(sub.status)}
+                    {sub.daysUntilExpiry !== undefined && sub.daysUntilExpiry > 0 && sub.daysUntilExpiry <= 7 && sub.status === 'active' && (
+                      <p className="text-[10px] mt-0.5" style={{ color: '#f59e0b' }}>
+                        ⚠️ Expire dans {sub.daysUntilExpiry}j
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3">
-                    <div>
+                    <div className="flex flex-col">
                       <p className="text-xs" style={{ color: '#94a3b8' }}>
                         {sub.startDate} → {sub.endDate}
                       </p>
                       {sub.trialEnd && (
                         <p className="text-xs" style={{ color: '#3b82f6' }}>
-                          Essai jusqu'au {sub.trialEnd}
+                          Essai: {sub.trialEnd}
                         </p>
                       )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div>
-                      {getPaymentMethodBadge(sub.paymentMethod)}
                       <p className="text-xs" style={{ color: '#64748b' }}>
-                        Prochain: {sub.nextPaymentDate}
+                        {getPaymentMethodBadge(sub.paymentMethod)} • {sub.autoRenew ? 'Auto' : 'Manuel'}
                       </p>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-wrap">
                       <button 
                         onClick={() => { setSelectedSubscription(sub); setIsModalOpen(true) }}
                         className="p-1.5 rounded transition hover:bg-white/10"
@@ -481,12 +556,39 @@ export default function SuperAdminAbonnements() {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button className="p-1.5 rounded transition hover:bg-white/10" style={{ color: '#94a3b8' }} title="Modifier">
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button className="p-1.5 rounded transition hover:bg-red-500/20" style={{ color: '#f87171' }} title="Supprimer">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      
+                      {sub.status === 'expired' && (
+                        <button 
+                          onClick={() => handleRelance(sub)}
+                          className="p-1.5 rounded transition hover:bg-blue-500/20"
+                          style={{ color: '#3b82f6' }}
+                          title="Relancer l'entreprise"
+                        >
+                          <Mail className="w-4 h-4" />
+                        </button>
+                      )}
+                      
+                      {sub.status === 'active' && (
+                        <button 
+                          onClick={() => handleSuspend(sub)}
+                          className="p-1.5 rounded transition hover:bg-red-500/20"
+                          style={{ color: '#f87171' }}
+                          title="Suspendre l'abonnement"
+                        >
+                          <PauseCircle className="w-4 h-4" />
+                        </button>
+                      )}
+                      
+                      {sub.status === 'suspended' && (
+                        <button 
+                          onClick={() => handleReactivate(sub)}
+                          className="p-1.5 rounded transition hover:bg-green-500/20"
+                          style={{ color: '#22c55e' }}
+                          title="Réactiver l'abonnement"
+                        >
+                          <PlayCircle className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -498,6 +600,9 @@ export default function SuperAdminAbonnements() {
           <div className="p-8 text-center">
             <CreditCard className="w-12 h-12 mx-auto mb-2" style={{ color: '#334155' }} />
             <p className="text-sm" style={{ color: '#64748b' }}>Aucun abonnement trouvé</p>
+            {selectedServer?.id !== 'global' && (
+              <p className="text-xs" style={{ color: '#334155' }}>Sélectionnez "Global" pour voir tous les abonnements</p>
+            )}
           </div>
         )}
       </div>
@@ -531,12 +636,21 @@ export default function SuperAdminAbonnements() {
                     <span className="text-xs" style={{ color: '#64748b' }}>ID: #{selectedSubscription.id}</span>
                     <span className="text-xs" style={{ color: '#64748b' }}>•</span>
                     <span className="text-xs" style={{ color: '#64748b' }}>{selectedSubscription.company.country}</span>
+                    {selectedSubscription.company.server && (
+                      <>
+                        <span className="text-xs" style={{ color: '#64748b' }}>•</span>
+                        <span className="text-xs" style={{ color: '#818cf8' }}>{selectedSubscription.company.server}</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-1 rounded hover:bg-white/10" style={{ color: '#94a3b8' }}>
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                {getStatusBadge(selectedSubscription.status)}
+                <button onClick={() => setIsModalOpen(false)} className="p-1 rounded hover:bg-white/10" style={{ color: '#94a3b8' }}>
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-4">
@@ -551,14 +665,14 @@ export default function SuperAdminAbonnements() {
                   <p className="text-lg font-bold" style={{ color: '#22c55e' }}>{formatCurrency(selectedSubscription.amount)}</p>
                 </div>
                 <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Statut</p>
-                  <div className="mt-1">{getStatusBadge(selectedSubscription.status)}</div>
-                </div>
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
                   <p className="text-xs" style={{ color: '#94a3b8' }}>Renouvellement</p>
                   <p className="text-sm font-medium text-white">
                     {selectedSubscription.autoRenew ? '✅ Automatique' : '❌ Manuel'}
                   </p>
+                </div>
+                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
+                  <p className="text-xs" style={{ color: '#94a3b8' }}>Méthode</p>
+                  <div className="mt-1">{getPaymentMethodBadge(selectedSubscription.paymentMethod)}</div>
                 </div>
               </div>
 
@@ -581,7 +695,7 @@ export default function SuperAdminAbonnements() {
               </div>
 
               {/* Paiements */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
                   <p className="text-xs" style={{ color: '#94a3b8' }}>Dernier paiement</p>
                   <p className="text-sm font-medium text-white">{selectedSubscription.lastPaymentDate}</p>
@@ -589,10 +703,6 @@ export default function SuperAdminAbonnements() {
                 <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
                   <p className="text-xs" style={{ color: '#94a3b8' }}>Prochain paiement</p>
                   <p className="text-sm font-medium text-white">{selectedSubscription.nextPaymentDate}</p>
-                </div>
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Méthode</p>
-                  <div className="mt-1">{getPaymentMethodBadge(selectedSubscription.paymentMethod)}</div>
                 </div>
               </div>
 
@@ -634,25 +744,48 @@ export default function SuperAdminAbonnements() {
               >
                 Fermer
               </button>
-              <button
-                className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition flex items-center justify-center gap-2"
-                style={{ 
-                  background: '#4f46e5',
-                  boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
-                }}
-              >
-                <Mail className="w-4 h-4" />
-                Relancer
-              </button>
-              <button
-                className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition"
-                style={{ 
-                  background: '#22c55e',
-                  boxShadow: '0 10px 25px -5px rgba(34, 197, 94, 0.3)'
-                }}
-              >
-                Renouveler
-              </button>
+              
+              {selectedSubscription.status === 'expired' && (
+                <button
+                  onClick={() => handleRelance(selectedSubscription)}
+                  className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition flex items-center justify-center gap-2"
+                  style={{ 
+                    background: '#3b82f6',
+                    boxShadow: '0 10px 25px -5px rgba(59, 130, 246, 0.3)'
+                  }}
+                >
+                  <Mail className="w-4 h-4" />
+                  Relancer
+                </button>
+              )}
+              
+              {selectedSubscription.status === 'active' && (
+                <button
+                  onClick={() => handleSuspend(selectedSubscription)}
+                  className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition flex items-center justify-center gap-2"
+                  style={{ 
+                    background: '#ef4444',
+                    boxShadow: '0 10px 25px -5px rgba(239, 68, 68, 0.3)'
+                  }}
+                >
+                  <PauseCircle className="w-4 h-4" />
+                  Suspendre
+                </button>
+              )}
+              
+              {selectedSubscription.status === 'suspended' && (
+                <button
+                  onClick={() => handleReactivate(selectedSubscription)}
+                  className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition flex items-center justify-center gap-2"
+                  style={{ 
+                    background: '#22c55e',
+                    boxShadow: '0 10px 25px -5px rgba(34, 197, 94, 0.3)'
+                  }}
+                >
+                  <PlayCircle className="w-4 h-4" />
+                  Réactiver
+                </button>
+              )}
             </div>
           </div>
         </div>

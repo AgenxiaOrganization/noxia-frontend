@@ -6,7 +6,8 @@ import {
   Activity, AlertTriangle, CheckCircle, Clock, DollarSign,
   BarChart3, PieChart, Package, ShoppingBag, Calendar,
   ChevronRight, Download, Filter, MoreVertical, Eye,
-  Target, Zap, Award, Crown, Star, Gift
+  Target, Zap, Award, Crown, Star, Gift, Layers,
+  Server, Globe, Database, HardDrive, Cpu
 } from 'lucide-react'
 
 // Types
@@ -31,6 +32,13 @@ interface DashboardStats {
     business: number
     pro: number
   }
+  serversStats: {
+    id: string
+    name: string
+    companies: number
+    users: number
+    revenue: number
+  }[]
 }
 
 interface ExpiredTrial {
@@ -39,6 +47,7 @@ interface ExpiredTrial {
   expiryDate: string
   days: number
   company: string
+  server: string
 }
 
 interface RecentActivity {
@@ -48,9 +57,10 @@ interface RecentActivity {
   user: string
   time: string
   status: 'success' | 'warning' | 'error' | 'info'
+  server: string
 }
 
-// Données mockées
+// Données mockées (version GLOBALE - tout est réuni)
 const mockStats: DashboardStats = {
   totalCompanies: 238,
   activeCompanies: 47,
@@ -71,25 +81,33 @@ const mockStats: DashboardStats = {
     decouverte: 64,
     business: 92,
     pro: 8
-  }
+  },
+  serversStats: [
+    { id: 'ga', name: 'Gabon', companies: 89, users: 245, revenue: 2150000 },
+    { id: 'cm', name: 'Cameroun', companies: 56, users: 120, revenue: 1350000 },
+    { id: 'ci', name: "Côte d'Ivoire", companies: 43, users: 85, revenue: 980000 },
+    { id: 'sn', name: 'Sénégal', companies: 28, users: 45, revenue: 620000 },
+    { id: 'fr', name: 'France', companies: 12, users: 18, revenue: 380000 },
+    { id: 'za', name: 'Afrique du Sud', companies: 10, users: 12, revenue: 230000 },
+  ]
 }
 
-const mockExpiredTrials = [
-  { id: 1, name: 'Maison Kaly', expiryDate: '2026-05-28', days: 28, company: 'Maison Kaly' },
-  { id: 2, name: 'Awa Couture', expiryDate: '2026-05-25', days: 25, company: 'Awa Couture' },
-  { id: 3, name: 'Délices du Sahel', expiryDate: '2026-05-21', days: 21, company: 'Délices du Sahel' },
-  { id: 4, name: 'Tech Accessories', expiryDate: '2026-05-18', days: 18, company: 'Tech Accessories' },
-  { id: 5, name: 'Mode Express', expiryDate: '2026-05-15', days: 15, company: 'Mode Express' },
-  { id: 6, name: 'Saveurs d\'Afrique', expiryDate: '2026-05-12', days: 12, company: 'Saveurs d\'Afrique' },
-  { id: 7, name: 'Digital Store', expiryDate: '2026-05-09', days: 9, company: 'Digital Store' },
+const mockExpiredTrials: ExpiredTrial[] = [
+  { id: 1, name: 'Maison Kaly', expiryDate: '2026-05-28', days: 28, company: 'Maison Kaly', server: 'Gabon' },
+  { id: 2, name: 'Awa Couture', expiryDate: '2026-05-25', days: 25, company: 'Awa Couture', server: 'Cameroun' },
+  { id: 3, name: 'Délices du Sahel', expiryDate: '2026-05-21', days: 21, company: 'Délices du Sahel', server: "Côte d'Ivoire" },
+  { id: 4, name: 'Tech Accessories', expiryDate: '2026-05-18', days: 18, company: 'Tech Accessories', server: 'Sénégal' },
+  { id: 5, name: 'Mode Express', expiryDate: '2026-05-15', days: 15, company: 'Mode Express', server: 'Gabon' },
+  { id: 6, name: "Saveurs d'Afrique", expiryDate: '2026-05-12', days: 12, company: "Saveurs d'Afrique", server: 'France' },
+  { id: 7, name: 'Digital Store', expiryDate: '2026-05-09', days: 9, company: 'Digital Store', server: 'Afrique du Sud' },
 ]
 
 const mockRecentActivities: RecentActivity[] = [
-  { id: 1, action: 'Nouvelle entreprise inscrite', company: 'Bar Le Premium', user: 'Jean M.', time: 'Il y a 5 min', status: 'success' },
-  { id: 2, action: 'Abonnement Premium activé', company: 'Snack Le Délice', user: 'Marie K.', time: 'Il y a 15 min', status: 'success' },
-  { id: 3, action: 'Tentative de connexion suspecte', company: 'Boîte VIP', user: 'Inconnu', time: 'Il y a 30 min', status: 'warning' },
-  { id: 4, action: 'Paiement échoué', company: 'Restaurant La Terrasse', user: 'François T.', time: 'Il y a 1h', status: 'error' },
-  { id: 5, action: 'Nouvel utilisateur ajouté', company: 'Bar Le Soleil', user: 'Admin', time: 'Il y a 2h', status: 'success' },
+  { id: 1, action: 'Nouvelle entreprise inscrite', company: 'Bar Le Premium', user: 'Jean M.', time: 'Il y a 5 min', status: 'success', server: 'Gabon' },
+  { id: 2, action: 'Abonnement Premium activé', company: 'Snack Le Délice', user: 'Marie K.', time: 'Il y a 15 min', status: 'success', server: 'Cameroun' },
+  { id: 3, action: 'Tentative de connexion suspecte', company: 'Boîte VIP', user: 'Inconnu', time: 'Il y a 30 min', status: 'warning', server: "Côte d'Ivoire" },
+  { id: 4, action: 'Paiement échoué', company: 'Restaurant La Terrasse', user: 'François T.', time: 'Il y a 1h', status: 'error', server: 'Sénégal' },
+  { id: 5, action: 'Nouvel utilisateur ajouté', company: 'Bar Le Soleil', user: 'Admin', time: 'Il y a 2h', status: 'success', server: 'Gabon' },
 ]
 
 export default function SuperAdminDashboard() {
@@ -99,21 +117,13 @@ export default function SuperAdminDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState('month')
   const [isAnimating, setIsAnimating] = useState(false)
 
-  // Animation au chargement
   useEffect(() => {
     setIsAnimating(true)
     const timer = setTimeout(() => setIsAnimating(false), 1000)
     return () => clearTimeout(timer)
   }, [])
 
-  // Formatage des nombres
   const formatCurrency = (amount: number) => {
-    return amount.toLocaleString() + ' FCFA'
-  }
-
-  const formatCompactCurrency = (amount: number) => {
-    if (amount >= 1000000) return (amount / 1000000).toFixed(1) + 'M FCFA'
-    if (amount >= 1000) return (amount / 1000).toFixed(0) + 'k FCFA'
     return amount.toLocaleString() + ' FCFA'
   }
 
@@ -131,28 +141,28 @@ export default function SuperAdminDashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Tableau de bord</h1>
+          <h1 className="text-2xl font-bold text-white">🌍 Vue Globale</h1>
           <p className="text-sm" style={{ color: '#94a3b8' }}>
-            Vue d'ensemble de la plateforme NOXIA
+            Tous les serveurs • {stats.totalCompanies} entreprises • {stats.totalUsers} utilisateurs
           </p>
         </div>
         <div className="flex gap-2">
-          <select
-            value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
-            className="px-3 py-2 rounded-lg text-sm outline-none transition"
-            style={{ 
-              background: 'rgba(51, 65, 85, 0.5)',
-              border: '1px solid #334155',
-              color: '#94a3b8'
-            }}
-          >
-            <option value="today">Aujourd'hui</option>
-            <option value="week">Cette semaine</option>
-            <option value="month" selected>Ce mois</option>
-            <option value="quarter">Ce trimestre</option>
-            <option value="year">Cette année</option>
-          </select>
+         <select
+  value={selectedPeriod}
+  onChange={(e) => setSelectedPeriod(e.target.value)}
+  className="px-3 py-2 rounded-lg text-sm outline-none transition"
+  style={{ 
+    background: 'rgba(51, 65, 85, 0.5)',
+    border: '1px solid #334155',
+    color: '#94a3b8'
+  }}
+>
+  <option value="today">Aujourd'hui</option>
+  <option value="week">Cette semaine</option>
+  <option value="month">Ce mois</option>
+  <option value="quarter">Ce trimestre</option>
+  <option value="year">Cette année</option>
+</select>
           <button
             className="px-3 py-2 rounded-lg transition flex items-center gap-2"
             style={{ 
@@ -167,12 +177,30 @@ export default function SuperAdminDashboard() {
         </div>
       </div>
 
-      {/* KPIs Principaux */}
+      {/* Stats par serveur (nouveau) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        {stats.serversStats.map((server) => (
+          <div key={server.id} className="p-3 rounded-xl border hover:border-primary-500 transition cursor-pointer" style={{ background: '#1e293b', borderColor: '#334155' }}>
+            <div className="flex items-center gap-2 mb-1">
+              <Server className="w-3 h-3" style={{ color: '#818cf8' }} />
+              <span className="text-xs font-medium text-white">{server.name}</span>
+            </div>
+            <p className="text-lg font-bold text-white">{server.companies}</p>
+            <p className="text-xs" style={{ color: '#64748b' }}>entreprises</p>
+            <div className="flex justify-between mt-1 text-xs">
+              <span style={{ color: '#64748b' }}>{server.users} users</span>
+              <span style={{ color: '#22c55e' }}>{formatCurrency(server.revenue)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* KPIs Principaux (globaux) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* MRR */}
         <div className="p-4 rounded-xl border transition-all hover:border-primary-500" style={{ background: '#1e293b', borderColor: '#334155' }}>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-medium uppercase tracking-wider" style={{ color: '#94a3b8' }}>MRR</p>
+            <p className="text-xs font-medium uppercase tracking-wider" style={{ color: '#94a3b8' }}>MRR Global</p>
             <DollarSign className="w-4 h-4" style={{ color: '#22c55e' }} />
           </div>
           <p className="text-2xl font-bold text-white">{formatCurrency(stats.mrr)}</p>
@@ -344,7 +372,7 @@ export default function SuperAdminDashboard() {
         </div>
       </div>
 
-      {/* Essais expirés + Activités récentes */}
+      {/* Essais expirés + Activités récentes (avec serveur) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Essais expirés */}
         <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
@@ -359,7 +387,12 @@ export default function SuperAdminDashboard() {
               <div key={trial.id} className="flex items-center justify-between p-2 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
                 <div>
                   <p className="text-sm font-medium text-white">{trial.name}</p>
-                  <p className="text-xs" style={{ color: '#64748b' }}>Expire le {trial.expiryDate}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs" style={{ color: '#64748b' }}>{trial.company}</span>
+                    <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
+                      {trial.server}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
@@ -374,7 +407,7 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
 
-        {/* Activités récentes */}
+        {/* Activités récentes (avec serveur) */}
         <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-sm text-white">Activités récentes</h3>
@@ -390,9 +423,12 @@ export default function SuperAdminDashboard() {
                   {getStatusIcon(activity.status)}
                   <div>
                     <p className="text-sm text-white">{activity.action}</p>
-                    <p className="text-xs" style={{ color: '#64748b' }}>
-                      {activity.company} • {activity.user}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs" style={{ color: '#64748b' }}>{activity.company} • {activity.user}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
+                        {activity.server}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <span className="text-xs" style={{ color: '#64748b' }}>{activity.time}</span>

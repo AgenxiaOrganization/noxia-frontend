@@ -1,24 +1,28 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
+import { ServerContext } from '../layout'
 import {
   Building2, Search, Plus, Edit, Trash2, Eye, MoreVertical,
   Check, X, Users, CreditCard, Calendar, MapPin, Phone,
   Mail, Globe, FileText, Clock, AlertTriangle, CheckCircle,
   Download, Filter, ChevronDown, Activity, Shield, Award,
   Star, Crown, Gift, Zap, BarChart3, TrendingUp, TrendingDown,
-  DollarSign, Package, ShoppingBag, Truck, Settings
+  DollarSign, Package, ShoppingBag, Truck, Settings,
+  Hash, Server, Database, HardDrive, Cpu, Copy, Key
 } from 'lucide-react'
 
 // Types
 interface Company {
   id: number
+  uuid: string
   name: string
   email: string
   phone: string
   address: string
   city: string
   country: string
+  server: string
   plan: string
   status: 'active' | 'suspended' | 'pending' | 'trial' | 'expired'
   users: number
@@ -38,141 +42,407 @@ interface Company {
   avatar?: string
 }
 
-// Données mockées
-const mockCompanies: Company[] = [
-  {
-    id: 1,
-    name: 'Bar Le Premium',
-    email: 'contact@lepremium.ga',
-    phone: '+241 77 00 00 01',
-    address: 'Avenue de l\'Indépendance',
-    city: 'Libreville',
-    country: 'Gabon',
-    plan: 'Premium',
-    status: 'active',
-    users: 8,
-    products: 127,
-    revenue: 450000,
-    orders: 127,
-    subscriptionStart: '2026-06-01',
-    subscriptionEnd: '2026-07-01',
-    createdAt: '2026-06-01',
-    updatedAt: '2026-07-10',
-    lastActivity: '2026-07-10 14:30',
-    documents: { status: 'verified', count: 3 },
-    notifications: 5
-  },
-  {
-    id: 2,
-    name: 'Snack Le Délice',
-    email: 'contact@ledelice.ga',
-    phone: '+241 77 00 00 02',
-    address: 'Boulevard du Commerce',
-    city: 'Port-Gentil',
-    country: 'Gabon',
-    plan: 'Starter',
-    status: 'active',
-    users: 3,
-    products: 45,
-    revenue: 120000,
-    orders: 89,
-    subscriptionStart: '2026-06-15',
-    subscriptionEnd: '2026-07-15',
-    createdAt: '2026-06-15',
-    updatedAt: '2026-07-09',
-    lastActivity: '2026-07-09 18:15',
-    documents: { status: 'pending', count: 2 },
-    notifications: 3
-  },
-  {
-    id: 3,
-    name: 'Boîte VIP',
-    email: 'contact@vip.ga',
-    phone: '+241 77 00 00 03',
-    address: 'Rue des Ambassades',
-    city: 'Libreville',
-    country: 'Gabon',
-    plan: 'Business',
-    status: 'active',
-    users: 12,
-    products: 234,
-    revenue: 820000,
-    orders: 245,
-    subscriptionStart: '2026-05-20',
-    subscriptionEnd: '2026-06-20',
-    createdAt: '2026-05-20',
-    updatedAt: '2026-07-08',
-    lastActivity: '2026-07-08 23:45',
-    documents: { status: 'verified', count: 5 },
-    notifications: 8
-  },
-  {
-    id: 4,
-    name: 'Restaurant La Terrasse',
-    email: 'contact@laterrasse.ga',
-    phone: '+241 77 00 00 04',
-    address: 'Quartier des Affaires',
-    city: 'Douala',
-    country: 'Cameroun',
-    plan: 'Premium',
-    status: 'suspended',
-    users: 5,
-    products: 78,
-    revenue: 280000,
-    orders: 156,
-    subscriptionStart: '2026-04-10',
-    subscriptionEnd: '2026-05-10',
-    createdAt: '2026-04-10',
-    updatedAt: '2026-07-05',
-    lastActivity: '2026-07-05 10:00',
-    documents: { status: 'rejected', count: 1 },
-    notifications: 12
-  },
-  {
-    id: 5,
-    name: 'Bar Le Soleil',
-    email: 'contact@lesoleil.ga',
-    phone: '+241 77 00 00 05',
-    address: 'Avenue du Bord de Mer',
-    city: 'Dakar',
-    country: 'Sénégal',
-    plan: 'Essai',
-    status: 'trial',
-    users: 1,
-    products: 12,
-    revenue: 0,
-    orders: 0,
-    subscriptionStart: '2026-07-08',
-    subscriptionEnd: '2026-08-08',
-    createdAt: '2026-07-08',
-    updatedAt: '2026-07-08',
-    lastActivity: '2026-07-08 12:00',
-    documents: { status: 'pending', count: 1 },
-    notifications: 2
-  },
-  {
-    id: 6,
-    name: 'Gourmet Express',
-    email: 'contact@gourmet.ga',
-    phone: '+241 77 00 00 06',
-    address: 'Rue des Gourmets',
-    city: 'Libreville',
-    country: 'Gabon',
-    plan: 'Starter',
-    status: 'expired',
-    users: 2,
-    products: 23,
-    revenue: 45000,
-    orders: 34,
-    subscriptionStart: '2026-03-01',
-    subscriptionEnd: '2026-04-01',
-    createdAt: '2026-03-01',
-    updatedAt: '2026-07-01',
-    lastActivity: '2026-07-01 08:30',
-    documents: { status: 'none', count: 0 },
-    notifications: 6
-  },
-]
+// Données mockées par serveur
+const serverCompaniesMap: Record<string, Company[]> = {
+  global: [
+    {
+      id: 1,
+      uuid: 'NOX-1234567890',
+      name: 'Bar Le Premium',
+      email: 'contact@lepremium.ga',
+      phone: '+241 77 00 00 01',
+      address: 'Avenue de l\'Indépendance',
+      city: 'Libreville',
+      country: 'Gabon',
+      server: 'Gabon',
+      plan: 'Premium',
+      status: 'active',
+      users: 8,
+      products: 127,
+      revenue: 450000,
+      orders: 127,
+      subscriptionStart: '2026-06-01',
+      subscriptionEnd: '2026-07-01',
+      createdAt: '2026-06-01',
+      updatedAt: '2026-07-10',
+      lastActivity: '2026-07-10 14:30',
+      documents: { status: 'verified', count: 3 },
+      notifications: 5
+    },
+    {
+      id: 2,
+      uuid: 'NOX-0987654321',
+      name: 'Snack Le Délice',
+      email: 'contact@ledelice.ga',
+      phone: '+241 77 00 00 02',
+      address: 'Boulevard du Commerce',
+      city: 'Port-Gentil',
+      country: 'Gabon',
+      server: 'Gabon',
+      plan: 'Starter',
+      status: 'active',
+      users: 3,
+      products: 45,
+      revenue: 120000,
+      orders: 89,
+      subscriptionStart: '2026-06-15',
+      subscriptionEnd: '2026-07-15',
+      createdAt: '2026-06-15',
+      updatedAt: '2026-07-09',
+      lastActivity: '2026-07-09 18:15',
+      documents: { status: 'pending', count: 2 },
+      notifications: 3
+    },
+    {
+      id: 3,
+      uuid: 'NOX-1122334455',
+      name: 'Boîte VIP',
+      email: 'contact@vip.ga',
+      phone: '+241 77 00 00 03',
+      address: 'Rue des Ambassades',
+      city: 'Libreville',
+      country: 'Gabon',
+      server: 'Gabon',
+      plan: 'Business',
+      status: 'active',
+      users: 12,
+      products: 234,
+      revenue: 820000,
+      orders: 245,
+      subscriptionStart: '2026-05-20',
+      subscriptionEnd: '2026-06-20',
+      createdAt: '2026-05-20',
+      updatedAt: '2026-07-08',
+      lastActivity: '2026-07-08 23:45',
+      documents: { status: 'verified', count: 5 },
+      notifications: 8
+    },
+    {
+      id: 4,
+      uuid: 'NOX-5566778899',
+      name: 'Restaurant La Terrasse',
+      email: 'contact@laterrasse.ga',
+      phone: '+241 77 00 00 04',
+      address: 'Quartier des Affaires',
+      city: 'Douala',
+      country: 'Cameroun',
+      server: 'Cameroun',
+      plan: 'Premium',
+      status: 'suspended',
+      users: 5,
+      products: 78,
+      revenue: 280000,
+      orders: 156,
+      subscriptionStart: '2026-04-10',
+      subscriptionEnd: '2026-05-10',
+      createdAt: '2026-04-10',
+      updatedAt: '2026-07-05',
+      lastActivity: '2026-07-05 10:00',
+      documents: { status: 'rejected', count: 1 },
+      notifications: 12
+    },
+    {
+      id: 5,
+      uuid: 'NOX-9988776655',
+      name: 'Bar Le Soleil',
+      email: 'contact@lesoleil.ga',
+      phone: '+241 77 00 00 05',
+      address: 'Avenue du Bord de Mer',
+      city: 'Dakar',
+      country: 'Sénégal',
+      server: 'Sénégal',
+      plan: 'Essai',
+      status: 'trial',
+      users: 1,
+      products: 12,
+      revenue: 0,
+      orders: 0,
+      subscriptionStart: '2026-07-08',
+      subscriptionEnd: '2026-08-08',
+      createdAt: '2026-07-08',
+      updatedAt: '2026-07-08',
+      lastActivity: '2026-07-08 12:00',
+      documents: { status: 'pending', count: 1 },
+      notifications: 2
+    },
+    {
+      id: 6,
+      uuid: 'NOX-4433221100',
+      name: 'Gourmet Express',
+      email: 'contact@gourmet.ga',
+      phone: '+241 77 00 00 06',
+      address: 'Rue des Gourmets',
+      city: 'Libreville',
+      country: 'Gabon',
+      server: 'Gabon',
+      plan: 'Starter',
+      status: 'expired',
+      users: 2,
+      products: 23,
+      revenue: 45000,
+      orders: 34,
+      subscriptionStart: '2026-03-01',
+      subscriptionEnd: '2026-04-01',
+      createdAt: '2026-03-01',
+      updatedAt: '2026-07-01',
+      lastActivity: '2026-07-01 08:30',
+      documents: { status: 'none', count: 0 },
+      notifications: 6
+    },
+    {
+      id: 7,
+      uuid: 'NOX-7788990011',
+      name: 'Le Petit Bistro',
+      email: 'contact@petitbistro.cm',
+      phone: '+237 77 00 00 07',
+      address: 'Rue des Saveurs',
+      city: 'Yaoundé',
+      country: 'Cameroun',
+      server: 'Cameroun',
+      plan: 'Premium',
+      status: 'active',
+      users: 4,
+      products: 56,
+      revenue: 180000,
+      orders: 67,
+      subscriptionStart: '2026-06-10',
+      subscriptionEnd: '2026-07-10',
+      createdAt: '2026-06-10',
+      updatedAt: '2026-07-07',
+      lastActivity: '2026-07-07 20:00',
+      documents: { status: 'verified', count: 2 },
+      notifications: 4
+    },
+    {
+      id: 8,
+      uuid: 'NOX-6655443322',
+      name: 'Chez Nous',
+      email: 'contact@cheznous.ci',
+      phone: '+225 77 00 00 08',
+      address: 'Boulevard de la Paix',
+      city: 'Abidjan',
+      country: "Côte d'Ivoire",
+      server: "Côte d'Ivoire",
+      plan: 'Business',
+      status: 'active',
+      users: 6,
+      products: 89,
+      revenue: 320000,
+      orders: 134,
+      subscriptionStart: '2026-05-01',
+      subscriptionEnd: '2026-06-01',
+      createdAt: '2026-05-01',
+      updatedAt: '2026-07-06',
+      lastActivity: '2026-07-06 19:30',
+      documents: { status: 'pending', count: 3 },
+      notifications: 7
+    },
+  ],
+  ga: [
+    {
+      id: 1,
+      uuid: 'NOX-1234567890',
+      name: 'Bar Le Premium',
+      email: 'contact@lepremium.ga',
+      phone: '+241 77 00 00 01',
+      address: 'Avenue de l\'Indépendance',
+      city: 'Libreville',
+      country: 'Gabon',
+      server: 'Gabon',
+      plan: 'Premium',
+      status: 'active',
+      users: 8,
+      products: 127,
+      revenue: 450000,
+      orders: 127,
+      subscriptionStart: '2026-06-01',
+      subscriptionEnd: '2026-07-01',
+      createdAt: '2026-06-01',
+      updatedAt: '2026-07-10',
+      lastActivity: '2026-07-10 14:30',
+      documents: { status: 'verified', count: 3 },
+      notifications: 5
+    },
+    {
+      id: 2,
+      uuid: 'NOX-0987654321',
+      name: 'Snack Le Délice',
+      email: 'contact@ledelice.ga',
+      phone: '+241 77 00 00 02',
+      address: 'Boulevard du Commerce',
+      city: 'Port-Gentil',
+      country: 'Gabon',
+      server: 'Gabon',
+      plan: 'Starter',
+      status: 'active',
+      users: 3,
+      products: 45,
+      revenue: 120000,
+      orders: 89,
+      subscriptionStart: '2026-06-15',
+      subscriptionEnd: '2026-07-15',
+      createdAt: '2026-06-15',
+      updatedAt: '2026-07-09',
+      lastActivity: '2026-07-09 18:15',
+      documents: { status: 'pending', count: 2 },
+      notifications: 3
+    },
+    {
+      id: 3,
+      uuid: 'NOX-1122334455',
+      name: 'Boîte VIP',
+      email: 'contact@vip.ga',
+      phone: '+241 77 00 00 03',
+      address: 'Rue des Ambassades',
+      city: 'Libreville',
+      country: 'Gabon',
+      server: 'Gabon',
+      plan: 'Business',
+      status: 'active',
+      users: 12,
+      products: 234,
+      revenue: 820000,
+      orders: 245,
+      subscriptionStart: '2026-05-20',
+      subscriptionEnd: '2026-06-20',
+      createdAt: '2026-05-20',
+      updatedAt: '2026-07-08',
+      lastActivity: '2026-07-08 23:45',
+      documents: { status: 'verified', count: 5 },
+      notifications: 8
+    },
+    {
+      id: 6,
+      uuid: 'NOX-4433221100',
+      name: 'Gourmet Express',
+      email: 'contact@gourmet.ga',
+      phone: '+241 77 00 00 06',
+      address: 'Rue des Gourmets',
+      city: 'Libreville',
+      country: 'Gabon',
+      server: 'Gabon',
+      plan: 'Starter',
+      status: 'expired',
+      users: 2,
+      products: 23,
+      revenue: 45000,
+      orders: 34,
+      subscriptionStart: '2026-03-01',
+      subscriptionEnd: '2026-04-01',
+      createdAt: '2026-03-01',
+      updatedAt: '2026-07-01',
+      lastActivity: '2026-07-01 08:30',
+      documents: { status: 'none', count: 0 },
+      notifications: 6
+    },
+  ],
+  cm: [
+    {
+      id: 4,
+      uuid: 'NOX-5566778899',
+      name: 'Restaurant La Terrasse',
+      email: 'contact@laterrasse.ga',
+      phone: '+241 77 00 00 04',
+      address: 'Quartier des Affaires',
+      city: 'Douala',
+      country: 'Cameroun',
+      server: 'Cameroun',
+      plan: 'Premium',
+      status: 'suspended',
+      users: 5,
+      products: 78,
+      revenue: 280000,
+      orders: 156,
+      subscriptionStart: '2026-04-10',
+      subscriptionEnd: '2026-05-10',
+      createdAt: '2026-04-10',
+      updatedAt: '2026-07-05',
+      lastActivity: '2026-07-05 10:00',
+      documents: { status: 'rejected', count: 1 },
+      notifications: 12
+    },
+    {
+      id: 7,
+      uuid: 'NOX-7788990011',
+      name: 'Le Petit Bistro',
+      email: 'contact@petitbistro.cm',
+      phone: '+237 77 00 00 07',
+      address: 'Rue des Saveurs',
+      city: 'Yaoundé',
+      country: 'Cameroun',
+      server: 'Cameroun',
+      plan: 'Premium',
+      status: 'active',
+      users: 4,
+      products: 56,
+      revenue: 180000,
+      orders: 67,
+      subscriptionStart: '2026-06-10',
+      subscriptionEnd: '2026-07-10',
+      createdAt: '2026-06-10',
+      updatedAt: '2026-07-07',
+      lastActivity: '2026-07-07 20:00',
+      documents: { status: 'verified', count: 2 },
+      notifications: 4
+    },
+  ],
+  ci: [
+    {
+      id: 8,
+      uuid: 'NOX-6655443322',
+      name: 'Chez Nous',
+      email: 'contact@cheznous.ci',
+      phone: '+225 77 00 00 08',
+      address: 'Boulevard de la Paix',
+      city: 'Abidjan',
+      country: "Côte d'Ivoire",
+      server: "Côte d'Ivoire",
+      plan: 'Business',
+      status: 'active',
+      users: 6,
+      products: 89,
+      revenue: 320000,
+      orders: 134,
+      subscriptionStart: '2026-05-01',
+      subscriptionEnd: '2026-06-01',
+      createdAt: '2026-05-01',
+      updatedAt: '2026-07-06',
+      lastActivity: '2026-07-06 19:30',
+      documents: { status: 'pending', count: 3 },
+      notifications: 7
+    },
+  ],
+  sn: [
+    {
+      id: 5,
+      uuid: 'NOX-9988776655',
+      name: 'Bar Le Soleil',
+      email: 'contact@lesoleil.ga',
+      phone: '+241 77 00 00 05',
+      address: 'Avenue du Bord de Mer',
+      city: 'Dakar',
+      country: 'Sénégal',
+      server: 'Sénégal',
+      plan: 'Essai',
+      status: 'trial',
+      users: 1,
+      products: 12,
+      revenue: 0,
+      orders: 0,
+      subscriptionStart: '2026-07-08',
+      subscriptionEnd: '2026-08-08',
+      createdAt: '2026-07-08',
+      updatedAt: '2026-07-08',
+      lastActivity: '2026-07-08 12:00',
+      documents: { status: 'pending', count: 1 },
+      notifications: 2
+    },
+  ],
+  fr: [],
+  za: [],
+  cg: [],
+  ml: [],
+}
 
 const planColors = {
   Essai: '#22c55e',
@@ -198,7 +468,8 @@ const docStatusConfig = {
 }
 
 export default function SuperAdminEntreprises() {
-  const [companies, setCompanies] = useState<Company[]>(mockCompanies)
+  const { selectedServer } = useContext(ServerContext)
+  const [companies, setCompanies] = useState<Company[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedPlan, setSelectedPlan] = useState('all')
@@ -206,12 +477,20 @@ export default function SuperAdminEntreprises() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
+  const [copiedUuid, setCopiedUuid] = useState<string | null>(null)
+
+  // Charger les entreprises en fonction du serveur sélectionné
+  useEffect(() => {
+    const serverId = selectedServer?.id || 'global'
+    const data = serverCompaniesMap[serverId] || serverCompaniesMap.global
+    setCompanies(data)
+  }, [selectedServer])
 
   useEffect(() => {
     setIsAnimating(true)
     const timer = setTimeout(() => setIsAnimating(false), 500)
     return () => clearTimeout(timer)
-  }, [])
+  }, [companies])
 
   const statuses = ['all', ...new Set(companies.map(c => c.status))]
   const plans = ['all', ...new Set(companies.map(c => c.plan))]
@@ -220,7 +499,8 @@ export default function SuperAdminEntreprises() {
   const filteredCompanies = companies.filter(c => {
     const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         c.city.toLowerCase().includes(searchTerm.toLowerCase())
+                         c.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         c.uuid.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = selectedStatus === 'all' || c.status === selectedStatus
     const matchesPlan = selectedPlan === 'all' || c.plan === selectedPlan
     const matchesCountry = selectedCountry === 'all' || c.country === selectedCountry
@@ -259,6 +539,12 @@ export default function SuperAdminEntreprises() {
     return amount.toLocaleString() + ' FCFA'
   }
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopiedUuid(text)
+    setTimeout(() => setCopiedUuid(null), 2000)
+  }
+
   // Stats
   const totalCompanies = companies.length
   const activeCompanies = companies.filter(c => c.status === 'active' || c.status === 'trial').length
@@ -266,14 +552,18 @@ export default function SuperAdminEntreprises() {
   const totalUsers = companies.reduce((acc, c) => acc + c.users, 0)
   const totalProducts = companies.reduce((acc, c) => acc + c.products, 0)
 
+  const serverName = selectedServer?.name || 'Global'
+
   return (
     <div className={`space-y-6 transition-opacity duration-500 ${isAnimating ? 'opacity-0' : 'opacity-100'}`}>
-      {/* Header */}
+      {/* Header avec info serveur */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Entreprises</h1>
+          <h1 className="text-2xl font-bold text-white">
+            {selectedServer?.id === 'global' ? '🌍 Entreprises (Global)' : `Entreprises - ${selectedServer?.flag} ${selectedServer?.name}`}
+          </h1>
           <p className="text-sm" style={{ color: '#94a3b8' }}>
-            {totalCompanies} entreprises inscrites • {activeCompanies} actives
+            {totalCompanies} entreprises • {activeCompanies} actives • {selectedServer?.id !== 'global' ? `Serveur: ${selectedServer?.url}` : 'Tous les serveurs'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -331,7 +621,7 @@ export default function SuperAdminEntreprises() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
           <input
             type="text"
-            placeholder="Rechercher une entreprise (nom, email, ville)..."
+            placeholder="Rechercher une entreprise (nom, email, ville, UUID)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
@@ -398,12 +688,11 @@ export default function SuperAdminEntreprises() {
             <thead>
               <tr className="border-b" style={{ borderColor: '#334155' }}>
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Entreprise</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Contact</th>
+                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>UUID</th>
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Plan</th>
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Statut</th>
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Utilisateurs</th>
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Revenus</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Documents</th>
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Actions</th>
               </tr>
             </thead>
@@ -424,12 +713,30 @@ export default function SuperAdminEntreprises() {
                           <MapPin className="w-3 h-3" style={{ color: '#64748b' }} />
                           <span className="text-xs" style={{ color: '#64748b' }}>{company.city}, {company.country}</span>
                         </div>
+                        {selectedServer?.id === 'global' && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
+                            {company.server}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-xs" style={{ color: '#94a3b8' }}>{company.email}</p>
-                    <p className="text-xs" style={{ color: '#64748b' }}>{company.phone}</p>
+                    <div className="flex items-center gap-1">
+                      <code className="text-xs font-mono" style={{ color: '#94a3b8' }}>{company.uuid}</code>
+                      <button
+                        onClick={() => copyToClipboard(company.uuid)}
+                        className="p-0.5 rounded hover:bg-white/10 transition"
+                        style={{ color: '#64748b' }}
+                        title="Copier l'UUID"
+                      >
+                        {copiedUuid === company.uuid ? (
+                          <Check className="w-3 h-3" style={{ color: '#22c55e' }} />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </button>
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <span 
@@ -458,12 +765,6 @@ export default function SuperAdminEntreprises() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      {getDocStatusBadge(company.documents.status)}
-                      <span className="text-xs" style={{ color: '#64748b' }}>({company.documents.count})</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
                     <div className="flex gap-1">
                       <button 
                         onClick={() => { setSelectedCompany(company); setIsModalOpen(true) }}
@@ -489,12 +790,15 @@ export default function SuperAdminEntreprises() {
         {filteredCompanies.length === 0 && (
           <div className="p-8 text-center">
             <Building2 className="w-12 h-12 mx-auto mb-2" style={{ color: '#334155' }} />
-            <p className="text-sm" style={{ color: '#64748b' }}>Aucune entreprise trouvée</p>
+            <p className="text-sm" style={{ color: '#64748b' }}>Aucune entreprise trouvée sur ce serveur</p>
+            {selectedServer?.id !== 'global' && (
+              <p className="text-xs" style={{ color: '#334155' }}>Sélectionnez "Global" pour voir toutes les entreprises</p>
+            )}
           </div>
         )}
       </div>
 
-      {/* MODAL DÉTAILS ENTREPRISE */}
+      {/* MODAL DÉTAILS ENTREPRISE AVEC UUID */}
       {isModalOpen && selectedCompany && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -531,9 +835,33 @@ export default function SuperAdminEntreprises() {
               </button>
             </div>
 
+            {/* UUID en évidence */}
+            <div className="p-3 rounded-lg mb-4" style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Key className="w-4 h-4" style={{ color: '#818cf8' }} />
+                  <span className="text-xs" style={{ color: '#94a3b8' }}>UUID Entreprise</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <code className="text-sm font-mono font-bold" style={{ color: '#818cf8' }}>{selectedCompany.uuid}</code>
+                  <button
+                    onClick={() => copyToClipboard(selectedCompany.uuid)}
+                    className="p-1 rounded hover:bg-white/10 transition"
+                    style={{ color: '#94a3b8' }}
+                  >
+                    {copiedUuid === selectedCompany.uuid ? (
+                      <Check className="w-4 h-4" style={{ color: '#22c55e' }} />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-4">
               {/* Informations générales */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
                   <p className="text-xs" style={{ color: '#94a3b8' }}>Statut</p>
                   <div className="mt-1">{getStatusBadge(selectedCompany.status)}</div>
@@ -554,6 +882,13 @@ export default function SuperAdminEntreprises() {
                   <div className="flex items-center gap-2 mt-1">
                     <MapPin className="w-4 h-4" style={{ color: '#64748b' }} />
                     <span className="text-sm text-white">{selectedCompany.city}, {selectedCompany.country}</span>
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
+                  <p className="text-xs" style={{ color: '#94a3b8' }}>Serveur</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Server className="w-4 h-4" style={{ color: '#818cf8' }} />
+                    <span className="text-sm text-white">{selectedCompany.server}</span>
                   </div>
                 </div>
               </div>

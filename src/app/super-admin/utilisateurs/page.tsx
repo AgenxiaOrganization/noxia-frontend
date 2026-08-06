@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
+import { ServerContext } from '../layout'
 import {
   Users, Search, Plus, Edit, Trash2, Eye, MoreVertical,
   Check, X, Mail, Phone, Calendar, MapPin, Shield,
   UserCheck, UserX, UserPlus, Clock, AlertTriangle,
   Download, Filter, ChevronDown, Activity, Award,
   Star, Crown, Gift, Zap, BarChart3, TrendingUp, TrendingDown,
-  DollarSign, Building2, Smartphone, Key, Copy, CheckCircle
+  DollarSign, Building2, Smartphone, Key, Copy, CheckCircle,
+  RefreshCw, Sparkles, Hash, BadgeCheck
 } from 'lucide-react'
 
 // Types
@@ -22,6 +24,7 @@ interface User {
     id: number
     name: string
     country: string
+    server?: string
   }
   employeeId: string
   lastLogin: string
@@ -32,7 +35,7 @@ interface User {
   permissions: string[]
 }
 
-// Données mockées
+// Données mockées enrichies
 const mockUsers: User[] = [
   {
     id: 1,
@@ -41,7 +44,7 @@ const mockUsers: User[] = [
     phone: '+241 77 00 00 01',
     role: 'admin',
     status: 'active',
-    company: { id: 1, name: 'Bar Le Premium', country: 'Gabon' },
+    company: { id: 1, name: 'Bar Le Premium', country: 'Gabon', server: 'Gabon' },
     employeeId: 'EMP-001',
     lastLogin: '2026-07-10 14:30',
     createdAt: '2026-06-01',
@@ -56,7 +59,7 @@ const mockUsers: User[] = [
     phone: '+241 77 00 00 02',
     role: 'gerant',
     status: 'active',
-    company: { id: 2, name: 'Snack Le Délice', country: 'Gabon' },
+    company: { id: 2, name: 'Snack Le Délice', country: 'Gabon', server: 'Gabon' },
     employeeId: 'EMP-002',
     lastLogin: '2026-07-09 18:15',
     createdAt: '2026-06-15',
@@ -71,7 +74,7 @@ const mockUsers: User[] = [
     phone: '+241 77 00 00 03',
     role: 'admin',
     status: 'active',
-    company: { id: 3, name: 'Boîte VIP', country: 'Gabon' },
+    company: { id: 3, name: 'Boîte VIP', country: 'Gabon', server: 'Gabon' },
     employeeId: 'EMP-003',
     lastLogin: '2026-07-08 23:45',
     createdAt: '2026-05-20',
@@ -86,7 +89,7 @@ const mockUsers: User[] = [
     phone: '+241 77 00 00 04',
     role: 'comptable',
     status: 'suspended',
-    company: { id: 4, name: 'Restaurant La Terrasse', country: 'Cameroun' },
+    company: { id: 4, name: 'Restaurant La Terrasse', country: 'Cameroun', server: 'Cameroun' },
     employeeId: 'EMP-004',
     lastLogin: '2026-07-05 10:00',
     createdAt: '2026-04-10',
@@ -101,7 +104,7 @@ const mockUsers: User[] = [
     phone: '+241 77 00 00 05',
     role: 'admin',
     status: 'pending',
-    company: { id: 5, name: 'Bar Le Soleil', country: 'Sénégal' },
+    company: { id: 5, name: 'Bar Le Soleil', country: 'Sénégal', server: 'Sénégal' },
     employeeId: 'EMP-005',
     lastLogin: '2026-07-08 12:00',
     createdAt: '2026-07-08',
@@ -116,7 +119,7 @@ const mockUsers: User[] = [
     phone: '+241 77 00 00 06',
     role: 'serveur',
     status: 'active',
-    company: { id: 1, name: 'Bar Le Premium', country: 'Gabon' },
+    company: { id: 1, name: 'Bar Le Premium', country: 'Gabon', server: 'Gabon' },
     employeeId: 'EMP-006',
     lastLogin: '2026-07-10 13:20',
     createdAt: '2026-06-10',
@@ -131,7 +134,7 @@ const mockUsers: User[] = [
     phone: '+241 77 00 00 07',
     role: 'magasinier',
     status: 'inactive',
-    company: { id: 2, name: 'Snack Le Délice', country: 'Gabon' },
+    company: { id: 2, name: 'Snack Le Délice', country: 'Gabon', server: 'Gabon' },
     employeeId: 'EMP-007',
     lastLogin: '2026-07-01 08:30',
     createdAt: '2026-03-01',
@@ -169,6 +172,7 @@ const statusConfig = {
 }
 
 export default function SuperAdminUtilisateurs() {
+  const { selectedServer } = useContext(ServerContext)
   const [users, setUsers] = useState<User[]>(mockUsers)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedRole, setSelectedRole] = useState('all')
@@ -178,6 +182,7 @@ export default function SuperAdminUtilisateurs() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [generatingId, setGeneratingId] = useState<number | null>(null)
 
   useEffect(() => {
     setIsAnimating(true)
@@ -185,11 +190,16 @@ export default function SuperAdminUtilisateurs() {
     return () => clearTimeout(timer)
   }, [])
 
-  const roles = ['all', ...new Set(users.map(u => u.role))]
-  const statuses = ['all', ...new Set(users.map(u => u.status))]
-  const companies = ['all', ...new Set(users.map(u => u.company.name))]
+  // Filtrer par serveur
+  const filteredByServer = selectedServer?.id !== 'global'
+    ? users.filter(u => u.company.server === selectedServer?.name)
+    : users
 
-  const filteredUsers = users.filter(u => {
+  const roles = ['all', ...new Set(filteredByServer.map(u => u.role))]
+  const statuses = ['all', ...new Set(filteredByServer.map(u => u.status))]
+  const companies = ['all', ...new Set(filteredByServer.map(u => u.company.name))]
+
+  const filteredUsers = filteredByServer.filter(u => {
     const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          u.employeeId.toLowerCase().includes(searchTerm.toLowerCase())
@@ -233,20 +243,47 @@ export default function SuperAdminUtilisateurs() {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
+  // Générer un ID employé
+  const generateEmployeeId = (userId: number) => {
+    setGeneratingId(userId)
+    const prefix = 'EMP'
+    const random = Math.random().toString(36).substring(2, 8).toUpperCase()
+    const newId = `${prefix}-${random}`
+    
+    setTimeout(() => {
+      setUsers(users.map(u => 
+        u.id === userId ? { ...u, employeeId: newId } : u
+      ))
+      setGeneratingId(null)
+      copyToClipboard(newId)
+    }, 500)
+  }
+
+  // Générer un ID pour un nouvel utilisateur (simulation)
+  const generateNewUserId = () => {
+    const prefix = 'EMP'
+    const random = Math.random().toString(36).substring(2, 8).toUpperCase()
+    return `${prefix}-${random}`
+  }
+
   // Stats
-  const totalUsers = users.length
-  const activeUsers = users.filter(u => u.status === 'active').length
-  const pendingUsers = users.filter(u => u.status === 'pending').length
-  const suspendedUsers = users.filter(u => u.status === 'suspended').length
+  const totalUsers = filteredByServer.length
+  const activeUsers = filteredByServer.filter(u => u.status === 'active').length
+  const pendingUsers = filteredByServer.filter(u => u.status === 'pending').length
+  const suspendedUsers = filteredByServer.filter(u => u.status === 'suspended').length
+
+  const serverName = selectedServer?.id === 'global' ? 'Global' : selectedServer?.name || 'Global'
 
   return (
     <div className={`space-y-6 transition-opacity duration-500 ${isAnimating ? 'opacity-0' : 'opacity-100'}`}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Utilisateurs</h1>
+          <h1 className="text-2xl font-bold text-white">
+            {selectedServer?.id === 'global' ? '🌍 Utilisateurs (Global)' : `Utilisateurs - ${selectedServer?.flag} ${selectedServer?.name}`}
+          </h1>
           <p className="text-sm" style={{ color: '#94a3b8' }}>
-            {totalUsers} utilisateurs • {activeUsers} actifs
+            {totalUsers} utilisateurs • {activeUsers} actifs • {pendingUsers} en attente • {suspendedUsers} suspendus
           </p>
         </div>
         <div className="flex gap-2">
@@ -403,6 +440,11 @@ export default function SuperAdminUtilisateurs() {
                       <span className="text-xs" style={{ color: '#94a3b8' }}>{user.company.name}</span>
                     </div>
                     <span className="text-xs" style={{ color: '#64748b' }}>{user.company.country}</span>
+                    {selectedServer?.id === 'global' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded ml-1" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
+                        {user.company.server}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
@@ -417,6 +459,19 @@ export default function SuperAdminUtilisateurs() {
                           <CheckCircle className="w-3 h-3" style={{ color: '#22c55e' }} />
                         ) : (
                           <Copy className="w-3 h-3" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => generateEmployeeId(user.id)}
+                        disabled={generatingId === user.id}
+                        className="p-0.5 rounded hover:bg-white/10 transition disabled:opacity-50"
+                        style={{ color: '#f59e0b' }}
+                        title="Régénérer l'ID"
+                      >
+                        {generatingId === user.id ? (
+                          <RefreshCw className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-3 h-3" />
                         )}
                       </button>
                     </div>
@@ -461,11 +516,14 @@ export default function SuperAdminUtilisateurs() {
           <div className="p-8 text-center">
             <Users className="w-12 h-12 mx-auto mb-2" style={{ color: '#334155' }} />
             <p className="text-sm" style={{ color: '#64748b' }}>Aucun utilisateur trouvé</p>
+            {selectedServer?.id !== 'global' && (
+              <p className="text-xs" style={{ color: '#334155' }}>Sélectionnez "Global" pour voir tous les utilisateurs</p>
+            )}
           </div>
         )}
       </div>
 
-      {/* MODAL DÉTAILS UTILISATEUR */}
+      {/* MODAL DÉTAILS UTILISATEUR AVEC GÉNÉRATION D'ID */}
       {isModalOpen && selectedUser && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -505,6 +563,54 @@ export default function SuperAdminUtilisateurs() {
             </div>
 
             <div className="space-y-4">
+              {/* ID Employé avec génération */}
+              <div className="p-4 rounded-lg" style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Hash className="w-4 h-4" style={{ color: '#818cf8' }} />
+                    <span className="text-xs" style={{ color: '#94a3b8' }}>ID Employé</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="text-sm font-mono font-bold" style={{ color: '#818cf8' }}>{selectedUser.employeeId}</code>
+                    <button
+                      onClick={() => copyToClipboard(selectedUser.employeeId)}
+                      className="p-1 rounded hover:bg-white/10 transition"
+                      style={{ color: '#94a3b8' }}
+                    >
+                      {copiedId === selectedUser.employeeId ? (
+                        <CheckCircle className="w-4 h-4" style={{ color: '#22c55e' }} />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => generateEmployeeId(selectedUser.id)}
+                      disabled={generatingId === selectedUser.id}
+                      className="p-1 rounded hover:bg-white/10 transition disabled:opacity-50 flex items-center gap-1"
+                      style={{ 
+                        background: 'rgba(245,158,11,0.15)',
+                        color: '#f59e0b'
+                      }}
+                    >
+                      {generatingId === selectedUser.id ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span className="text-xs">Génération...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          <span className="text-xs">Régénérer</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-[10px] mt-1" style={{ color: '#64748b' }}>
+                  L'ID est unique et peut être régénéré à tout moment. Les anciens IDs sont automatiquement révoqués.
+                </p>
+              </div>
+
               {/* Informations générales */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
@@ -516,20 +622,10 @@ export default function SuperAdminUtilisateurs() {
                   <div className="mt-1">{getStatusBadge(selectedUser.status)}</div>
                 </div>
                 <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>ID Employé</p>
+                  <p className="text-xs" style={{ color: '#94a3b8' }}>Serveur</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <code className="text-sm font-mono" style={{ color: '#818cf8' }}>{selectedUser.employeeId}</code>
-                    <button
-                      onClick={() => copyToClipboard(selectedUser.employeeId)}
-                      className="p-0.5 rounded hover:bg-white/10 transition"
-                      style={{ color: '#94a3b8' }}
-                    >
-                      {copiedId === selectedUser.employeeId ? (
-                        <CheckCircle className="w-3 h-3" style={{ color: '#22c55e' }} />
-                      ) : (
-                        <Copy className="w-3 h-3" />
-                      )}
-                    </button>
+                    <Shield className="w-4 h-4" style={{ color: '#818cf8' }} />
+                    <span className="text-sm text-white">{selectedUser.company.server || 'Global'}</span>
                   </div>
                 </div>
               </div>
@@ -551,9 +647,10 @@ export default function SuperAdminUtilisateurs() {
                   {selectedUser.permissions.map((perm, i) => (
                     <span 
                       key={i}
-                      className="text-xs px-2 py-0.5 rounded-full"
+                      className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
                       style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}
                     >
+                      <BadgeCheck className="w-3 h-3" />
                       {perm}
                     </span>
                   ))}
@@ -600,12 +697,13 @@ export default function SuperAdminUtilisateurs() {
                 Fermer
               </button>
               <button
-                className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition"
+                className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition flex items-center justify-center gap-2"
                 style={{ 
                   background: '#4f46e5',
                   boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
                 }}
               >
+                <Edit className="w-4 h-4" />
                 Modifier l'utilisateur
               </button>
             </div>
