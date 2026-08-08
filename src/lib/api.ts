@@ -357,7 +357,9 @@ export async function refreshToken(refresh: string): Promise<{ access: string }>
 }
 
 /**
- * DEV ONLY Bypass login.
+ * Bypass de connexion réservé au développement local.
+ * Le backend renvoie 403 sur cet endpoint dès que DEBUG=False : ne jamais
+ * appeler cette fonction depuis un composant accessible en production.
  * POST /auth/dev-login/
  */
 export async function devLogin(email: string): Promise<AuthResponse> {

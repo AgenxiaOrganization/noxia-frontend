@@ -7,7 +7,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Image base64 requise' }, { status: 400 })
     }
 
-    const apiKey = process.env.OPENROUTER_KEY_API || process.env.NEXT_PUBLIC_OPENROUTER_KEY_API || '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'
+    const apiKey = process.env.OPENROUTER_KEY_API || process.env.NEXT_PUBLIC_OPENROUTER_KEY_API
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Clé API OpenRouter non configurée côté serveur' }, { status: 500 })
+    }
 
     // Appeler OpenRouter AI Vision pour analyser et certifier l'image
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -44,7 +47,8 @@ export async function POST(req: NextRequest) {
       analysis,
       enhanced: true
     })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Erreur lors du traitement par l\'IA' }, { status: 500 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Erreur lors du traitement par l\'IA'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

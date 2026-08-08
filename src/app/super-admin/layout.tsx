@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Building2, Users, CreditCard, FileText, Settings,
   LogOut, Menu, X, Bell, ChevronDown, Shield, Activity,
@@ -11,6 +11,7 @@ import {
   Layers, Zap, Target, Award, Crown, Star, Gift
 } from 'lucide-react'
 import React from 'react'
+import { useSessionGuard } from '@/lib/hooks/useSessionGuard'
 
 // Type pour un serveur
 interface ServerInstance {
@@ -67,6 +68,8 @@ export default function SuperAdminLayout({
 }: {
   children: React.ReactNode
 }) {
+  useSessionGuard()
+
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [servers] = useState<ServerInstance[]>(DEFAULT_SERVERS)
   const [selectedServer, setSelectedServer] = useState<ServerInstance>(DEFAULT_SERVERS[0])
