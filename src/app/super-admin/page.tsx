@@ -7,40 +7,11 @@ import {
   BarChart3, PieChart, Package, ShoppingBag, Calendar,
   ChevronRight, Download, Filter, MoreVertical, Eye,
   Target, Zap, Award, Crown, Star, Gift, Layers,
-  Server, Globe, Database, HardDrive, Cpu
+  Server, Globe, Database, HardDrive, Cpu, Loader2
 } from 'lucide-react'
+import { ControleApiError, fetchControleDashboard, type DashboardStats } from '@/lib/controleApi'
 
 // Types
-interface DashboardStats {
-  totalCompanies: number
-  activeCompanies: number
-  totalUsers: number
-  mrr: number
-  totalRevenue: number
-  revenueChange: number
-  conversionRate: number
-  activationRate: number
-  activeCompaniesWithOrders: number
-  monthlyOrders: number
-  monthlyOrdersChange: number
-  commission: number
-  commissionRate: number
-  monthlyRevenue: number
-  planDistribution: {
-    essai: number
-    decouverte: number
-    business: number
-    pro: number
-  }
-  serversStats: {
-    id: string
-    name: string
-    companies: number
-    users: number
-    revenue: number
-  }[]
-}
-
 interface ExpiredTrial {
   id: number
   name: string
@@ -60,38 +31,10 @@ interface RecentActivity {
   server: string
 }
 
-// Données mockées (version GLOBALE - tout est réuni)
-const mockStats: DashboardStats = {
-  totalCompanies: 238,
-  activeCompanies: 47,
-  totalUsers: 525,
-  mrr: 715600,
-  totalRevenue: 5710150,
-  revenueChange: 38,
-  conversionRate: 69,
-  activationRate: 91,
-  activeCompaniesWithOrders: 47,
-  monthlyOrders: 11,
-  monthlyOrdersChange: 38,
-  commission: 171305,
-  commissionRate: 3,
-  monthlyRevenue: 211500,
-  planDistribution: {
-    essai: 33,
-    decouverte: 64,
-    business: 92,
-    pro: 8
-  },
-  serversStats: [
-    { id: 'ga', name: 'Gabon', companies: 89, users: 245, revenue: 2150000 },
-    { id: 'cm', name: 'Cameroun', companies: 56, users: 120, revenue: 1350000 },
-    { id: 'ci', name: "Côte d'Ivoire", companies: 43, users: 85, revenue: 980000 },
-    { id: 'sn', name: 'Sénégal', companies: 28, users: 45, revenue: 620000 },
-    { id: 'fr', name: 'France', companies: 12, users: 18, revenue: 380000 },
-    { id: 'za', name: 'Afrique du Sud', companies: 10, users: 12, revenue: 230000 },
-  ]
-}
-
+// Essais expirés / activités récentes : pas d'équivalent côté
+// InstanceSummary (Noxia Contrôle n'a aucune donnée métier détaillée,
+// seulement des compteurs agrégés) — restent mockés jusqu'à ce qu'une
+// nouvelle source de données soit décidée pour ces deux listes.
 const mockExpiredTrials: ExpiredTrial[] = [
   { id: 1, name: 'Maison Kaly', expiryDate: '2026-05-28', days: 28, company: 'Maison Kaly', server: 'Gabon' },
   { id: 2, name: 'Awa Couture', expiryDate: '2026-05-25', days: 25, company: 'Awa Couture', server: 'Cameroun' },
@@ -111,7 +54,9 @@ const mockRecentActivities: RecentActivity[] = [
 ]
 
 export default function SuperAdminDashboard() {
-  const [stats] = useState<DashboardStats>(mockStats)
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [expiredTrials] = useState<ExpiredTrial[]>(mockExpiredTrials)
   const [recentActivities] = useState<RecentActivity[]>(mockRecentActivities)
   const [selectedPeriod, setSelectedPeriod] = useState('month')
@@ -121,6 +66,15 @@ export default function SuperAdminDashboard() {
     setIsAnimating(true)
     const timer = setTimeout(() => setIsAnimating(false), 1000)
     return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    fetchControleDashboard()
+      .then(setStats)
+      .catch((err) => {
+        setError(err instanceof ControleApiError ? err.message : 'Erreur de chargement du tableau de bord.')
+      })
+      .finally(() => setLoading(false))
   }, [])
 
   const formatCurrency = (amount: number) => {
@@ -134,6 +88,23 @@ export default function SuperAdminDashboard() {
       case 'error': return <AlertTriangle className="w-4 h-4" style={{ color: '#ef4444' }} />
       default: return <Activity className="w-4 h-4" style={{ color: '#818cf8' }} />
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#818cf8' }} />
+      </div>
+    )
+  }
+
+  if (error || !stats) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-2">
+        <AlertTriangle className="w-6 h-6" style={{ color: '#ef4444' }} />
+        <p className="text-sm" style={{ color: '#94a3b8' }}>{error ?? 'Impossible de charger le tableau de bord.'}</p>
+      </div>
+    )
   }
 
   return (

@@ -11,7 +11,8 @@ import {
   Layers, Zap, Target, Award, Crown, Star, Gift
 } from 'lucide-react'
 import React from 'react'
-import { useSessionGuard } from '@/lib/hooks/useSessionGuard'
+import { usePlatformSessionGuard } from '@/lib/hooks/usePlatformSessionGuard'
+import { clearPlatformSession, getPlatformUser } from '@/lib/platformAuth'
 
 // Type pour un serveur
 interface ServerInstance {
@@ -68,8 +69,9 @@ export default function SuperAdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  useSessionGuard()
+  usePlatformSessionGuard()
 
+  const platformUser = getPlatformUser()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [servers] = useState<ServerInstance[]>(DEFAULT_SERVERS)
   const [selectedServer, setSelectedServer] = useState<ServerInstance>(DEFAULT_SERVERS[0])
@@ -191,14 +193,19 @@ export default function SuperAdminLayout({
                 SA
               </div>
               <div>
-                <p className="text-sm font-medium text-white">Super Admin</p>
-                <p className="text-xs" style={{ color: '#64748b' }}>root@noxia.io</p>
+                <p className="text-sm font-medium text-white">
+                  {platformUser ? `${platformUser.first_name} ${platformUser.last_name}`.trim() || platformUser.email : 'Super Admin'}
+                </p>
+                <p className="text-xs" style={{ color: '#64748b' }}>{platformUser?.email ?? ''}</p>
               </div>
             </div>
             <button
               className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition hover:bg-red-500/10"
               style={{ color: '#94a3b8' }}
-              onClick={() => window.location.href = '/login'}
+              onClick={() => {
+                clearPlatformSession()
+                window.location.href = '/super-admin-login'
+              }}
             >
               <LogOut className="w-4 h-4" style={{ color: '#f87171' }} />
               <span style={{ color: '#f87171' }}>Déconnexion</span>
