@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { MessageCircle, Bot, CreditCard, Clock, Sparkles, Check, CheckCheck, ShoppingBag } from 'lucide-react'
+import { MessageCircle, Bot, CreditCard, Clock, Sparkles, Check, CheckCheck, ShoppingBag, FileCheck, FileX, ShieldCheck, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   getNotifications,
   getUnreadCount,
   markAsRead,
   markAllAsRead,
+  deleteNotification,
   type Notification,
 } from '@/lib/api/notifications'
 import { ensureArray } from '@/lib/api'
@@ -21,6 +22,9 @@ const notifTypeConfig: Record<string, { icon: typeof MessageCircle; color: strin
   sub_expiry: { icon: Clock, color: '#f43f5e', bgColor: 'rgba(244, 63, 94, 0.15)' },
   sub_reminder: { icon: Sparkles, color: '#a855f7', bgColor: 'rgba(168, 85, 247, 0.15)' },
   sale_completed: { icon: ShoppingBag, color: '#10b981', bgColor: 'rgba(16, 185, 129, 0.15)' },
+  doc_approved: { icon: FileCheck, color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.15)' },
+  doc_rejected: { icon: FileX, color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.15)' },
+  company_certified: { icon: ShieldCheck, color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.15)' },
 }
 
 // --- Formatage de la date relative ---
@@ -137,6 +141,18 @@ export function NotificationIcon() {
     }
   }
 
+  const handleDeleteNotif = async (e: React.MouseEvent, notif: Notification) => {
+    e.stopPropagation()
+    try {
+      await deleteNotification(notif.id)
+      setNotifications(prev => prev.filter(n => n.id !== notif.id))
+      if (!notif.is_read) setUnreadCount(prev => Math.max(0, prev - 1))
+      window.dispatchEvent(new Event('notifications_updated'))
+    } catch (err) {
+      console.error('Erreur suppression notification', err)
+    }
+  }
+
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Bouton notifications */}
@@ -216,32 +232,40 @@ export function NotificationIcon() {
                     const config = notifTypeConfig[notif.type] || notifTypeConfig.bot_linked
                     const Icon = config.icon
                     return (
-                      <button
+                      <div
                         key={notif.id}
-                        onClick={() => handleNotifClick(notif)}
-                        className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-all duration-150 hover:bg-white/[0.04] relative ${
+                        className={`group w-full flex items-start gap-3 px-4 py-3 transition-all duration-150 hover:bg-white/[0.04] relative ${
                           notif.is_read ? 'bg-transparent' : 'bg-indigo-500/[0.04]'
                         }`}
                       >
                         {!notif.is_read && (
                           <span className="absolute left-0 top-3 bottom-3 w-1 bg-indigo-500 rounded-r-full" />
                         )}
-                        <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 border border-white/5 shadow-sm"
-                          style={{ background: config.bgColor }}
-                        >
-                          <Icon className="w-4.5 h-4.5" style={{ color: config.color }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className={`text-sm truncate ${notif.is_read ? 'font-medium text-dark-200' : 'font-bold text-white'}`}>
-                              {notif.title}
-                            </p>
-                            <span className="text-[10px] text-dark-400 shrink-0 font-medium">{timeAgo(notif.created_at)}</span>
+                        <button onClick={() => handleNotifClick(notif)} className="flex items-start gap-3 flex-1 min-w-0 text-left">
+                          <div
+                            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 border border-white/5 shadow-sm"
+                            style={{ background: config.bgColor }}
+                          >
+                            <Icon className="w-4.5 h-4.5" style={{ color: config.color }} />
                           </div>
-                          <p className="text-xs text-dark-300 mt-1 line-clamp-2 leading-relaxed">{notif.message}</p>
-                        </div>
-                      </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className={`text-sm truncate ${notif.is_read ? 'font-medium text-dark-200' : 'font-bold text-white'}`}>
+                                {notif.title}
+                              </p>
+                              <span className="text-[10px] text-dark-400 shrink-0 font-medium">{timeAgo(notif.created_at)}</span>
+                            </div>
+                            <p className="text-xs text-dark-300 mt-1 line-clamp-2 leading-relaxed">{notif.message}</p>
+                          </div>
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteNotif(e, notif)}
+                          className="p-1.5 rounded-lg shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition hover:bg-red-500/10 text-dark-400 hover:text-red-400"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     )
                   })
                 )}

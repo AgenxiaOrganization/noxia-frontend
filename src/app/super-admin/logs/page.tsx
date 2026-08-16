@@ -1,532 +1,367 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useContext } from 'react'
 import {
-  FileText, Search, Filter, Download, ChevronDown,
-  Activity, User, Users, Building2, CreditCard, Package,
-  Truck, Bell, Settings, LogOut, Mail, Phone,
-  CheckCircle, AlertTriangle, XCircle, Clock,
-  Eye, MoreVertical, Calendar, BarChart3,
-  Shield, Zap, Target, Award, Gift, Crown,
-  TrendingUp, TrendingDown, DollarSign, ShoppingBag,
-  X
+  Activity, Search, Download, Trash2,
+  RefreshCw, CheckCircle2, AlertTriangle, XCircle, User, Terminal,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Globe, Building2,
 } from 'lucide-react'
-
-// Types
-interface Log {
-  id: number
-  action: string
-  actionType: 'auth' | 'company' | 'user' | 'subscription' | 'payment' | 'product' | 'stock' | 'sale' | 'supplier' | 'system' | 'security'
-  severity: 'info' | 'warning' | 'error' | 'critical'
-  user: {
-    id: number
-    name: string
-    email: string
-    role: string
-  }
-  company?: {
-    id: number
-    name: string
-    country: string
-  }
-  targetType: 'user' | 'company' | 'subscription' | 'product' | 'sale' | 'payment'
-  targetId?: number
-  targetName?: string
-  details: {
-    before?: any
-    after?: any
-    message: string
-    ip?: string
-    userAgent?: string
-  }
-  timestamp: string
-  createdAt: string
-}
-
-// Données mockées
-const mockLogs: Log[] = [
-  {
-    id: 1,
-    action: 'Connexion utilisateur',
-    actionType: 'auth',
-    severity: 'info',
-    user: { id: 1, name: 'Jean Dupont', email: 'jean@lepremium.ga', role: 'Admin' },
-    company: { id: 1, name: 'Bar Le Premium', country: 'Gabon' },
-    targetType: 'user',
-    targetId: 1,
-    targetName: 'Jean Dupont',
-    details: {
-      message: 'Connexion réussie depuis Chrome 150.0',
-      ip: '192.168.1.100',
-      userAgent: 'Chrome/150.0.0.0'
-    },
-    timestamp: '2026-07-10 14:30:00',
-    createdAt: '2026-07-10 14:30:00'
-  },
-  // ... le reste des logs
-]
-
-const actionTypeColors = {
-  auth: { label: 'Authentification', color: '#3b82f6', icon: User },
-  company: { label: 'Entreprise', color: '#8b5cf6', icon: Building2 },
-  user: { label: 'Utilisateur', color: '#22c55e', icon: Users },
-  subscription: { label: 'Abonnement', color: '#f59e0b', icon: CreditCard },
-  payment: { label: 'Paiement', color: '#22c55e', icon: DollarSign },
-  product: { label: 'Produit', color: '#818cf8', icon: Package },
-  stock: { label: 'Stock', color: '#f59e0b', icon: Package },
-  sale: { label: 'Vente', color: '#22c55e', icon: ShoppingBag },
-  supplier: { label: 'Fournisseur', color: '#64748b', icon: Truck },
-  system: { label: 'Système', color: '#64748b', icon: Settings },
-  security: { label: 'Sécurité', color: '#ef4444', icon: Shield }
-}
-
-const severityConfig = {
-  info: { label: 'Info', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)', icon: Activity },
-  warning: { label: 'Alerte', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)', icon: AlertTriangle },
-  error: { label: 'Erreur', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)', icon: XCircle },
-  critical: { label: 'Critique', color: '#7f1d1d', bg: 'rgba(127, 29, 29, 0.25)', icon: AlertTriangle }
-}
+import { ServerContext } from '../layout'
+import { createSuperAdminClient } from '@/lib/superAdminClient'
+import { createAuditApi, type AuditLogItem } from '@/lib/api/audit'
+import Loader from '@/components/ui/Loader'
+import { toast } from 'sonner'
 
 export default function SuperAdminLogs() {
-  const [logs, setLogs] = useState<Log[]>(mockLogs)
+  const { selectedServer, isGlobalMode, selectedCompany } = useContext(ServerContext)
+
+  const [logs, setLogs] = useState<AuditLogItem[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [selectedActionType, setSelectedActionType] = useState('all')
-  const [selectedSeverity, setSelectedSeverity] = useState('all')
-  const [selectedUser, setSelectedUser] = useState('all')
-  const [selectedLog, setSelectedLog] = useState<Log | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isAnimating, setIsAnimating] = useState(false)
+  const [selectedMethod, setSelectedMethod] = useState('all')
+  const [selectedStatus, setSelectedStatus] = useState('all')
 
-  useEffect(() => {
-    setIsAnimating(true)
-    const timer = setTimeout(() => setIsAnimating(false), 500)
-    return () => clearTimeout(timer)
-  }, [])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
 
-  const actionTypes = ['all', ...new Set(logs.map(l => l.actionType))]
-  const severities = ['all', ...new Set(logs.map(l => l.severity))]
-  const users = ['all', ...new Set(logs.map(l => l.user.name))]
+  const getApi = () => createAuditApi(createSuperAdminClient(selectedServer.id, selectedCompany!.id))
 
-  const filteredLogs = logs.filter(l => {
-    const matchesSearch = l.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         l.details.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         l.targetName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         l.user.name.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesActionType = selectedActionType === 'all' || l.actionType === selectedActionType
-    const matchesSeverity = selectedSeverity === 'all' || l.severity === selectedSeverity
-    const matchesUser = selectedUser === 'all' || l.user.name === selectedUser
-    return matchesSearch && matchesActionType && matchesSeverity && matchesUser
-  })
+  const loadData = () => {
+    if (isGlobalMode || !selectedCompany) {
+      setLogs([])
+      return
+    }
 
-  const getActionTypeBadge = (type: string) => {
-    const config = actionTypeColors[type as keyof typeof actionTypeColors]
-    if (!config) return null
-    const Icon = config.icon
+    let cancelled = false
+    setIsLoading(true)
+    setError(null)
+    getApi().getAuditLogs({ search: searchTerm, method: selectedMethod, status_code: selectedStatus })
+      .then((apiLogs) => {
+        if (cancelled) return
+        setLogs(apiLogs)
+      })
+      .catch((e) => {
+        if (cancelled) return
+        console.error('Erreur chargement logs (super-admin)', e)
+        setError('Impossible de charger les logs de cette entreprise.')
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }
+
+  useEffect(loadData, [selectedServer.id, selectedCompany, isGlobalMode, selectedMethod, selectedStatus])
+  useEffect(() => { setCurrentPage(1) }, [searchTerm, selectedMethod, selectedStatus, itemsPerPage])
+
+  const filteredLogs = useMemo(() => {
+    return logs.filter(log => {
+      const matchesSearch =
+        !searchTerm.trim() ||
+        log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        log.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        log.user_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        log.path.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        log.method.toLowerCase().includes(searchTerm.toLowerCase())
+
+      const matchesMethod = selectedMethod === 'all' || log.method.toUpperCase() === selectedMethod.toUpperCase()
+
+      let matchesStatus = true
+      if (selectedStatus === '2xx') matchesStatus = log.status_code >= 200 && log.status_code < 300
+      else if (selectedStatus === '4xx') matchesStatus = log.status_code >= 400 && log.status_code < 500
+      else if (selectedStatus === '5xx') matchesStatus = log.status_code >= 500
+      else if (selectedStatus !== 'all') matchesStatus = String(log.status_code) === selectedStatus
+
+      return matchesSearch && matchesMethod && matchesStatus
+    })
+  }, [logs, searchTerm, selectedMethod, selectedStatus])
+
+  const stats = useMemo(() => {
+    const total = logs.length
+    const success = logs.filter(l => l.status_code >= 200 && l.status_code < 300).length
+    const clientErr = logs.filter(l => l.status_code >= 400 && l.status_code < 500).length
+    const serverErr = logs.filter(l => l.status_code >= 500).length
+    return { total, success, clientErr, serverErr }
+  }, [logs])
+
+  const totalItems = filteredLogs.length
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems)
+  const paginatedLogs = useMemo(() => filteredLogs.slice(startIndex, endIndex), [filteredLogs, startIndex, endIndex])
+
+  const handleClearLogs = async () => {
+    if (!selectedCompany) return
+    if (confirm(`Êtes-vous sûr de vouloir effacer l'historique des logs d'audit de ${selectedCompany.name} ? Cette action est irréversible.`)) {
+      try {
+        await getApi().clearAuditLogs()
+        toast.success('Historique des logs effacé avec succès.')
+        setLogs([])
+        setCurrentPage(1)
+      } catch (err) {
+        console.error('Erreur lors de la suppression des logs (super-admin)', err)
+        toast.error("Impossible d'effacer les logs.")
+      }
+    }
+  }
+
+  if (isGlobalMode) {
     return (
-      <span 
-        className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
-        style={{ background: `${config.color}20`, color: config.color }}
-      >
-        <Icon className="w-3 h-3" />
-        {config.label}
-      </span>
+      <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+        <Globe className="w-10 h-10" style={{ color: '#334155' }} />
+        <p className="text-sm" style={{ color: '#94a3b8' }}>Sélectionnez une instance dans le menu pour voir ses logs.</p>
+      </div>
     )
   }
 
-  const getSeverityBadge = (severity: string) => {
-    const config = severityConfig[severity as keyof typeof severityConfig]
-    if (!config) return null
-    const Icon = config.icon
+  if (!selectedCompany) {
     return (
-      <span 
-        className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
-        style={{ background: config.bg, color: config.color }}
-      >
-        <Icon className="w-3 h-3" />
-        {config.label}
-      </span>
+      <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+        <Building2 className="w-10 h-10" style={{ color: '#334155' }} />
+        <p className="text-sm" style={{ color: '#94a3b8' }}>Sélectionnez une entreprise dans le menu pour voir ses logs.</p>
+      </div>
     )
   }
 
-  const formatDate = (date: string) => {
-    const d = new Date(date)
-    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-  }
-
-  // Stats
-  const totalLogs = logs.length
-  const infoLogs = logs.filter(l => l.severity === 'info').length
-  const warningLogs = logs.filter(l => l.severity === 'warning').length
-  const errorLogs = logs.filter(l => l.severity === 'error' || l.severity === 'critical').length
+  if (isLoading) return <Loader />
 
   return (
-    <div className={`space-y-6 transition-opacity duration-500 ${isAnimating ? 'opacity-0' : 'opacity-100'}`}>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Journal d'audit</h1>
-          <p className="text-sm" style={{ color: '#94a3b8' }}>
-            {totalLogs} événements enregistrés
-          </p>
+    <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 backdrop-blur-md shadow-lg">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+              <Activity className="w-6 h-6" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-white">Journal des Logs — {selectedCompany.name}</h1>
+              <p className="text-xs text-slate-400">Suivi des requêtes et actions effectuées par les employés de cet établissement.</p>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-2">
+
+        <div className="flex items-center gap-2">
           <button
-            className="px-3 py-2 rounded-lg transition flex items-center gap-2"
-            style={{ 
-              background: 'rgba(51, 65, 85, 0.3)',
-              border: '1px solid #334155',
-              color: '#94a3b8'
-            }}
+            onClick={loadData}
+            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition shadow-sm"
           >
-            <Filter className="w-4 h-4" />
-            <span className="hidden sm:inline">Filtrer</span>
+            <RefreshCw className="w-4 h-4" />
+            Rafraîchir
           </button>
           <button
-            className="px-3 py-2 rounded-lg transition flex items-center gap-2"
-            style={{ 
-              background: 'rgba(51, 65, 85, 0.3)',
-              border: '1px solid #334155',
-              color: '#94a3b8'
-            }}
+            onClick={handleClearLogs}
+            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1.5 transition"
           >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Exporter</span>
+            <Trash2 className="w-4 h-4" />
+            Vider
           </button>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Total événements</p>
-          <p className="text-xl font-bold text-white">{totalLogs}</p>
+      {error && (
+        <div className="p-3 rounded-lg text-sm" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#f87171' }}>
+          {error}
         </div>
-        <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Info</p>
-          <p className="text-xl font-bold" style={{ color: '#3b82f6' }}>{infoLogs}</p>
+      )}
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/80 flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"><Terminal className="w-5 h-5" /></div>
+          <div>
+            <p className="text-xs text-slate-400">Total des Requêtes</p>
+            <p className="text-lg font-bold text-white">{stats.total.toLocaleString('fr-FR')}</p>
+          </div>
         </div>
-        <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Alertes</p>
-          <p className="text-xl font-bold" style={{ color: '#f59e0b' }}>{warningLogs}</p>
+        <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/80 flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><CheckCircle2 className="w-5 h-5" /></div>
+          <div>
+            <p className="text-xs text-slate-400">Succès (2xx)</p>
+            <p className="text-lg font-bold text-emerald-400">{stats.success.toLocaleString('fr-FR')}</p>
+          </div>
         </div>
-        <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Erreurs / Critiques</p>
-          <p className="text-xl font-bold" style={{ color: '#ef4444' }}>{errorLogs}</p>
+        <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/80 flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20"><AlertTriangle className="w-5 h-5" /></div>
+          <div>
+            <p className="text-xs text-slate-400">Erreurs Client (4xx)</p>
+            <p className="text-lg font-bold text-amber-400">{stats.clientErr.toLocaleString('fr-FR')}</p>
+          </div>
+        </div>
+        <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800/80 flex items-center gap-3">
+          <div className="p-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20"><XCircle className="w-5 h-5" /></div>
+          <div>
+            <p className="text-xs text-slate-400">Erreurs Serveur (5xx)</p>
+            <p className="text-lg font-bold text-rose-400">{stats.serverErr.toLocaleString('fr-FR')}</p>
+          </div>
         </div>
       </div>
 
-      {/* Filtres */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
+      <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800 flex flex-col md:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full md:w-96">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
           <input
             type="text"
-            placeholder="Rechercher une action, un message, une cible..."
+            placeholder="Rechercher par utilisateur, action, endpoint..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
-            style={{ 
-              background: 'rgba(51, 65, 85, 0.5)',
-              border: '1px solid #334155'
-            }}
+            className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 outline-none focus:border-indigo-500 transition"
           />
         </div>
-        <select
-          value={selectedActionType}
-          onChange={(e) => setSelectedActionType(e.target.value)}
-          className="rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
-          style={{ 
-            background: 'rgba(51, 65, 85, 0.5)',
-            border: '1px solid #334155'
-          }}
-        >
-          <option value="all">Tous les types</option>
-          {Object.entries(actionTypeColors).map(([key, config]) => (
-            <option key={key} value={key}>{config.label}</option>
-          ))}
-        </select>
-        <select
-          value={selectedSeverity}
-          onChange={(e) => setSelectedSeverity(e.target.value)}
-          className="rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
-          style={{ 
-            background: 'rgba(51, 65, 85, 0.5)',
-            border: '1px solid #334155'
-          }}
-        >
-          <option value="all">Toutes les sévérités</option>
-          <option value="info">Info</option>
-          <option value="warning">Alerte</option>
-          <option value="error">Erreur</option>
-          <option value="critical">Critique</option>
-        </select>
-        <select
-          value={selectedUser}
-          onChange={(e) => setSelectedUser(e.target.value)}
-          className="rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
-          style={{ 
-            background: 'rgba(51, 65, 85, 0.5)',
-            border: '1px solid #334155'
-          }}
-        >
-          <option value="all">Tous les utilisateurs</option>
-          {users.filter(u => u !== 'all').map(u => (
-            <option key={u} value={u}>{u}</option>
-          ))}
-        </select>
+
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+            <span className="text-[11px] text-slate-500 px-2">Méthode :</span>
+            {['all', 'GET', 'POST', 'PUT', 'DELETE'].map(m => (
+              <button
+                key={m}
+                onClick={() => setSelectedMethod(m)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${selectedMethod === m ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+              >
+                {m === 'all' ? 'Toutes' : m}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+            <span className="text-[11px] text-slate-500 px-2">Statut :</span>
+            {[{ id: 'all', label: 'Tous' }, { id: '2xx', label: '2xx' }, { id: '4xx', label: '4xx' }, { id: '5xx', label: '5xx' }].map(s => (
+              <button
+                key={s.id}
+                onClick={() => setSelectedStatus(s.id)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${selectedStatus === s.id ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Tableau des logs */}
-      <div 
-        className="rounded-xl border overflow-hidden"
-        style={{ 
-          background: '#1e293b',
-          borderColor: '#334155'
-        }}
-      >
+      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden backdrop-blur-md shadow-xl flex flex-col">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b" style={{ borderColor: '#334155' }}>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Action</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Type</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Utilisateur</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Cible</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Sévérité</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Détails</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredLogs.map((log) => (
-                <tr key={log.id} className="border-b hover:bg-white/5 transition" style={{ borderColor: '#334155' }}>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col">
-                      <span className="text-xs font-medium text-white">{formatDate(log.timestamp)}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col">
-                      <span className="text-sm text-white">{log.action}</span>
-                      {log.company && (
-                        <span className="text-xs" style={{ color: '#64748b' }}>
-                          <Building2 className="w-3 h-3 inline mr-1" />
-                          {log.company.name}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {getActionTypeBadge(log.actionType)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col">
-                      <span className="text-sm text-white">{log.user.name}</span>
-                      <span className="text-xs" style={{ color: '#64748b' }}>{log.user.email}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {log.targetName ? (
-                      <div className="flex flex-col">
-                        <span className="text-sm text-white">{log.targetName}</span>
-                        <span className="text-xs" style={{ color: '#64748b' }}>ID: #{log.targetId}</span>
-                      </div>
-                    ) : (
-                      <span className="text-xs" style={{ color: '#64748b' }}>-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {getSeverityBadge(log.severity)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="max-w-[200px]">
-                      <p className="text-xs truncate" style={{ color: '#94a3b8' }}>
-                        {log.details.message}
-                      </p>
-                      {log.details.ip && (
-                        <span className="text-xs" style={{ color: '#64748b' }}>IP: {log.details.ip}</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button 
-                      onClick={() => { setSelectedLog(log); setIsModalOpen(true) }}
-                      className="p-1.5 rounded transition hover:bg-white/10"
-                      style={{ color: '#94a3b8' }}
-                      title="Voir les détails"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                  </td>
+          {filteredLogs.length === 0 ? (
+            <div className="text-center py-16 space-y-3">
+              <Activity className="w-10 h-10 text-slate-600 mx-auto" />
+              <p className="text-sm text-slate-400 font-medium">Aucun log d'audit ne correspond à vos filtres actuels.</p>
+            </div>
+          ) : (
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-800 bg-slate-950/80 text-slate-400 font-semibold uppercase tracking-wider">
+                  <th className="px-4 py-3.5">Horodatage</th>
+                  <th className="px-4 py-3.5">Utilisateur</th>
+                  <th className="px-4 py-3.5">Méthode</th>
+                  <th className="px-4 py-3.5">Action Effectuée</th>
+                  <th className="px-4 py-3.5">Endpoint API</th>
+                  <th className="px-4 py-3.5">Statut HTTP</th>
+                  <th className="px-4 py-3.5 text-right">Adresse IP</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 font-medium">
+                {paginatedLogs.map(log => {
+                  const formattedDate = new Date(log.created_at).toLocaleString('fr-FR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit',
+                  })
+                  const methodStyle =
+                    log.method === 'GET' ? 'bg-sky-500/15 text-sky-300 border-sky-500/30' :
+                    log.method === 'POST' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' :
+                    log.method === 'PUT' ? 'bg-purple-500/15 text-purple-300 border-purple-500/30' :
+                    log.method === 'PATCH' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' :
+                    'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                  const statusStyle =
+                    log.status_code >= 200 && log.status_code < 300 ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
+                    log.status_code >= 400 && log.status_code < 500 ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' :
+                    'bg-rose-500/15 text-rose-400 border-rose-500/30'
+
+                  return (
+                    <tr key={log.id} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{formattedDate}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 shrink-0">
+                            <User className="w-3.5 h-3.5" />
+                          </div>
+                          <div>
+                            <p className="text-white font-semibold flex items-center gap-1.5">
+                              {log.user_name}
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-indigo-300 border border-slate-700 font-normal">{log.user_role}</span>
+                            </p>
+                            <p className="text-[10px] text-slate-400">{log.user_email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-0.5 text-[11px] font-bold rounded-lg border ${methodStyle}`}>{log.method}</span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-200 font-semibold max-w-sm truncate" title={log.action}>{log.action}</td>
+                      <td className="px-4 py-3 font-mono text-[11px] text-slate-400 max-w-xs truncate" title={log.path}>
+                        <span className="px-2 py-0.5 rounded bg-slate-950 border border-slate-800">{log.path}</span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-0.5 text-[11px] font-bold rounded-lg border ${statusStyle}`}>{log.status_code}</span>
+                      </td>
+                      <td className="px-4 py-3 text-right text-slate-400 font-mono text-[11px] whitespace-nowrap">{log.ip_address || '127.0.0.1'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
-        {filteredLogs.length === 0 && (
-          <div className="p-8 text-center">
-            <FileText className="w-12 h-12 mx-auto mb-2" style={{ color: '#334155' }} />
-            <p className="text-sm" style={{ color: '#64748b' }}>Aucun log trouvé</p>
+
+        {filteredLogs.length > 0 && (
+          <div className="p-4 border-t border-slate-800 bg-slate-950/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3 text-xs text-slate-400">
+              <span>Afficher</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1 text-white outline-none focus:border-indigo-500 font-semibold transition"
+              >
+                <option value={10}>10 par page</option>
+                <option value={25}>25 par page</option>
+                <option value={50}>50 par page</option>
+                <option value={100}>100 par page</option>
+              </select>
+              <span>| Affichage de <strong className="text-white">{startIndex + 1}</strong> à <strong className="text-white">{endIndex}</strong> sur <strong className="text-indigo-400">{totalItems}</strong> logs</span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 disabled:opacity-40 transition">
+                <ChevronsLeft className="w-4 h-4" />
+              </button>
+              <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 disabled:opacity-40 transition">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <div className="flex items-center gap-1 px-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number
+                  if (totalPages <= 5) pageNum = i + 1
+                  else if (currentPage <= 3) pageNum = i + 1
+                  else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i
+                  else pageNum = currentPage - 2 + i
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-7 h-7 rounded-lg text-xs font-bold transition ${currentPage === pageNum ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800/80'}`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })}
+              </div>
+              <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 disabled:opacity-40 transition">
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 disabled:opacity-40 transition">
+                <ChevronsRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
       </div>
-
-      {/* MODAL DÉTAILS LOG */}
-      {isModalOpen && selectedLog && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.7)' }}
-          onClick={() => setIsModalOpen(false)}
-        >
-          <div 
-            className="w-full max-w-2xl rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
-            style={{ 
-              background: '#1e293b',
-              border: '1px solid #334155'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div 
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold text-white"
-                  style={{ 
-                    background: severityConfig[selectedLog.severity as keyof typeof severityConfig]?.bg || 'rgba(51,65,85,0.3)',
-                    color: severityConfig[selectedLog.severity as keyof typeof severityConfig]?.color || '#94a3b8'
-                  }}
-                >
-                  {(() => {
-                    const SeverityIcon = severityConfig[selectedLog.severity as keyof typeof severityConfig]?.icon || FileText
-                    return <SeverityIcon className="w-6 h-6" />
-                  })()}
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">Détails du log</h2>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs" style={{ color: '#64748b' }}>ID: #{selectedLog.id}</span>
-                    <span className="text-xs" style={{ color: '#64748b' }}>•</span>
-                    <span className="text-xs" style={{ color: '#64748b' }}>{formatDate(selectedLog.timestamp)}</span>
-                  </div>
-                </div>
-              </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-1 rounded hover:bg-white/10" style={{ color: '#94a3b8' }}>
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* Infos principales */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Action</p>
-                  <p className="text-sm font-medium text-white">{selectedLog.action}</p>
-                </div>
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Type</p>
-                  <div className="mt-1">{getActionTypeBadge(selectedLog.actionType)}</div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Sévérité</p>
-                  <div className="mt-1">{getSeverityBadge(selectedLog.severity)}</div>
-                </div>
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Utilisateur</p>
-                  <p className="text-sm font-medium text-white">{selectedLog.user.name}</p>
-                  <p className="text-xs" style={{ color: '#64748b' }}>{selectedLog.user.email}</p>
-                </div>
-              </div>
-
-              {/* Cible */}
-              {selectedLog.targetName && (
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Cible</p>
-                  <p className="text-sm font-medium text-white">{selectedLog.targetName}</p>
-                  <p className="text-xs" style={{ color: '#64748b' }}>Type: {selectedLog.targetType} • ID: #{selectedLog.targetId}</p>
-                </div>
-              )}
-
-              {/* Entreprise */}
-              {selectedLog.company && (
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Entreprise</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Building2 className="w-4 h-4" style={{ color: '#818cf8' }} />
-                    <span className="font-medium text-white">{selectedLog.company.name}</span>
-                    <span className="text-xs" style={{ color: '#64748b' }}>({selectedLog.company.country})</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Détails */}
-              <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                <p className="text-xs" style={{ color: '#94a3b8' }}>Message</p>
-                <p className="text-sm text-white">{selectedLog.details.message}</p>
-              </div>
-
-              {/* Avant/Après */}
-              {selectedLog && (selectedLog.details.before || selectedLog.details.after) && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {selectedLog.details.before && (
-                    <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                      <p className="text-xs" style={{ color: '#94a3b8' }}>Avant</p>
-                      <pre className="text-xs text-white mt-1 whitespace-pre-wrap">
-                        {JSON.stringify(selectedLog.details.before, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                  {selectedLog.details.after && (
-                    <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                      <p className="text-xs" style={{ color: '#94a3b8' }}>Après</p>
-                      <pre className="text-xs text-white mt-1 whitespace-pre-wrap">
-                        {JSON.stringify(selectedLog.details.after, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* IP */}
-              {selectedLog.details.ip && (
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Informations techniques</p>
-                  <p className="text-sm text-white">IP: {selectedLog.details.ip}</p>
-                  {selectedLog.details.userAgent && (
-                    <p className="text-xs" style={{ color: '#64748b' }}>User-Agent: {selectedLog.details.userAgent}</p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-3 mt-6 pt-4 border-t" style={{ borderColor: '#334155' }}>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium transition"
-                style={{ 
-                  background: 'transparent',
-                  border: '1px solid #334155',
-                  color: '#94a3b8'
-                }}
-              >
-                Fermer
-              </button>
-              <button
-                className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition flex items-center justify-center gap-2"
-                style={{ 
-                  background: '#4f46e5',
-                  boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
-                }}
-              >
-                <Download className="w-4 h-4" />
-                Exporter ce log
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

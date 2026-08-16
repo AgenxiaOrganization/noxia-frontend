@@ -1,0 +1,234 @@
+'use client'
+
+import { useState, useEffect, useContext } from 'react'
+import {
+  MessageCircle, Bot, CreditCard, Clock, Sparkles,
+  Check, CheckCheck, Calendar, ArrowRight, Globe, Building2,
+} from 'lucide-react'
+import { ServerContext } from '../layout'
+import { createSuperAdminClient } from '@/lib/superAdminClient'
+import { createNotificationsApi, type Notification } from '@/lib/api/notifications'
+import { ensureArray } from '@/lib/api'
+import Loader from '@/components/ui/Loader'
+import { toast } from 'sonner'
+
+const notifTypeConfig: Record<string, { icon: any; color: string; bgColor: string; label: string }> = {
+  bot_linked: { icon: Bot, color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.15)', label: 'Intégration Bot' },
+  sub_change: { icon: CreditCard, color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.15)', label: 'Abonnement' },
+  sub_expiry: { icon: Clock, color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.15)', label: 'Expiration' },
+  sub_reminder: { icon: Sparkles, color: '#a855f7', bgColor: 'rgba(168, 85, 247, 0.15)', label: 'Rappel' },
+}
+
+function formatFullDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+function getGroupLabel(dateString: string): string {
+  const today = new Date()
+  const date = new Date(dateString)
+  if (today.toDateString() === date.toDateString()) return "Aujourd'hui"
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+  if (yesterday.toDateString() === date.toDateString()) return 'Hier'
+  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+}
+
+export default function SuperAdminNotifications() {
+  const { selectedServer, isGlobalMode, selectedCompany } = useContext(ServerContext)
+
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all')
+
+  const getApi = () => createNotificationsApi(createSuperAdminClient(selectedServer.id, selectedCompany!.id))
+
+  const loadNotifications = () => {
+    if (isGlobalMode || !selectedCompany) {
+      setNotifications([])
+      return
+    }
+    let cancelled = false
+    setIsLoading(true)
+    setError(null)
+    getApi().getNotifications(1, 'notification')
+      .then((response) => { if (!cancelled) setNotifications(ensureArray<Notification>(response)) })
+      .catch((e) => {
+        if (cancelled) return
+        console.error('Erreur chargement notifications (super-admin)', e)
+        setError('Impossible de charger les notifications de cette entreprise.')
+      })
+      .finally(() => { if (!cancelled) setIsLoading(false) })
+    return () => { cancelled = true }
+  }
+
+  useEffect(loadNotifications, [selectedServer.id, selectedCompany, isGlobalMode])
+
+  const handleMarkRead = async (id: number) => {
+    if (!selectedCompany) return
+    try {
+      await getApi().markAsRead(id)
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
+      toast.success('Notification marquée comme lue')
+    } catch (err) {
+      console.error(err)
+      toast.error('Impossible de marquer la notification comme lue.')
+    }
+  }
+
+  const handleMarkAllRead = async () => {
+    if (!selectedCompany) return
+    try {
+      const markPromise = getApi().markAllAsRead('notification')
+      toast.promise(markPromise, {
+        loading: 'Marquage en cours...',
+        success: 'Toutes les notifications ont été marquées comme lues.',
+        error: 'Erreur lors du marquage des notifications.',
+      })
+      await markPromise
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleNotificationClick = async (notif: Notification) => {
+    if (!notif.is_read) await handleMarkRead(notif.id)
+  }
+
+  const filteredNotifs = notifications.filter(n => {
+    if (filter === 'unread') return !n.is_read
+    if (filter === 'read') return n.is_read
+    return true
+  })
+
+  const groups: Record<string, Notification[]> = {}
+  filteredNotifs.forEach(n => {
+    const label = getGroupLabel(n.created_at)
+    if (!groups[label]) groups[label] = []
+    groups[label].push(n)
+  })
+
+  const unreadCount = notifications.filter(n => !n.is_read).length
+
+  if (isGlobalMode) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+        <Globe className="w-10 h-10" style={{ color: '#334155' }} />
+        <p className="text-sm" style={{ color: '#94a3b8' }}>Sélectionnez une instance dans le menu pour voir ses notifications.</p>
+      </div>
+    )
+  }
+
+  if (!selectedCompany) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+        <Building2 className="w-10 h-10" style={{ color: '#334155' }} />
+        <p className="text-sm" style={{ color: '#94a3b8' }}>Sélectionnez une entreprise dans le menu pour voir ses notifications.</p>
+      </div>
+    )
+  }
+
+  if (isLoading) return <Loader />
+
+  return (
+    <div className="p-4 sm:p-6 space-y-6 max-w-4xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-primary-500 flex items-center gap-2">
+            <MessageCircle className="w-6 h-6 text-primary-400" />
+            Notifications — {selectedCompany.name}
+          </h1>
+          <p className="text-sm mt-1 text-dark-400">Suivez l'activité de cet établissement (abonnements, bots, et intégrations)</p>
+        </div>
+        {unreadCount > 0 && (
+          <button onClick={handleMarkAllRead} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-primary-500/10 border border-primary-500/20 text-primary-400 hover:bg-primary-500/20">
+            <CheckCheck className="w-4 h-4" />
+            Tout marquer comme lu
+          </button>
+        )}
+      </div>
+
+      {error && (
+        <div className="p-3 rounded-lg text-sm" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#f87171' }}>{error}</div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-xl border border-dark-800/40 glass-card">
+        <div className="flex gap-2">
+          {(['all', 'unread', 'read'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setFilter(tab)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${filter === tab ? 'bg-primary-500/15 border border-primary-500/30 text-primary-400 font-bold' : 'text-dark-300 hover:text-white hover:bg-white/5'}`}
+            >
+              {tab === 'all' && 'Toutes'}
+              {tab === 'unread' && `Non lues (${unreadCount})`}
+              {tab === 'read' && 'Déjà lues'}
+            </button>
+          ))}
+        </div>
+        <div className="text-xs text-dark-400">Total : {notifications.length} notification{notifications.length > 1 ? 's' : ''}</div>
+      </div>
+
+      {filteredNotifs.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 border border-dark-800/40 glass-card">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3 bg-dark-950/40 border border-dark-800/60">
+            <MessageCircle className="w-6 h-6 text-dark-400" />
+          </div>
+          <p className="text-sm font-semibold text-white">Aucune notification</p>
+          <p className="text-xs mt-1 text-dark-400">Aucune notification ne correspond à votre filtre actuel.</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(groups).map(([groupLabel, notifs]) => (
+            <div key={groupLabel} className="space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 px-1">
+                <Calendar className="w-3.5 h-3.5" />
+                {groupLabel}
+              </div>
+              <div className="rounded-xl border border-dark-800/40 overflow-hidden divide-y divide-dark-800/20 bg-dark-900">
+                {notifs.map((notif) => {
+                  const config = notifTypeConfig[notif.type] || { icon: MessageCircle, color: '#818cf8', bgColor: 'rgba(129, 140, 248, 0.15)', label: 'Système' }
+                  const Icon = config.icon
+                  return (
+                    <div
+                      key={notif.id}
+                      onClick={() => handleNotificationClick(notif)}
+                      className={`group p-4 flex gap-4 transition cursor-pointer hover:bg-white/5 ${notif.is_read ? 'bg-transparent' : 'bg-primary-500/2'}`}
+                    >
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: config.bgColor }}>
+                        <Icon className="w-5 h-5" style={{ color: config.color }} />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-dark-950/40 text-dark-400 border border-dark-800/40">{config.label}</span>
+                          <span className="text-[10px] text-dark-400">{formatFullDate(notif.created_at)}</span>
+                          {!notif.is_read && <span className="w-1.5 h-1.5 rounded-full bg-primary-400 animate-pulse" />}
+                        </div>
+                        <h3 className={`text-sm ${notif.is_read ? 'font-medium text-dark-300' : 'font-bold text-white'}`}>{notif.title}</h3>
+                        <p className="text-xs text-dark-400 leading-relaxed">{notif.message}</p>
+                      </div>
+                      <div className="flex items-center shrink-0">
+                        {notif.link ? (
+                          <div className="p-2 rounded-lg transition opacity-60 group-hover:opacity-100 bg-white/5 hover:bg-white/10" title="Lien associé">
+                            <ArrowRight className="w-4 h-4 text-dark-400 group-hover:text-white transition" />
+                          </div>
+                        ) : (
+                          !notif.is_read && (
+                            <button onClick={(e) => { e.stopPropagation(); handleMarkRead(notif.id) }} className="p-2 rounded-lg transition hover:bg-white/5 text-dark-400 hover:text-white" title="Marquer comme lu">
+                              <Check className="w-4 h-4" />
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

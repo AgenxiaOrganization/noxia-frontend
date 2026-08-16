@@ -2,14 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { 
-  Plus, Search, Edit, Trash2, Package, Coffee, Utensils, Sparkles, 
+  Plus, Search, Trash2, Package, Coffee, Utensils, Sparkles,
   X, Save, AlertCircle, Check, PlusCircle, MinusCircle 
 } from 'lucide-react'
-import { getProducts, createProduct, updateProduct, deleteProduct as deleteProductApi, getCategories, createCategory, createCategoryCharacteristic } from '../../../lib/api/catalog'
+import { getProducts, createProduct, updateProduct, deleteProduct as deleteProductApi, getCategories, createCategory, createCategoryCharacteristic, uploadProductPhoto } from '../../../lib/api/catalog'
 import { getSuppliers, createSupplier, Supplier } from '../../../lib/api/inventory'
 import { ensureArray } from '@/lib/api'
 import { useWebSockets } from '../../../lib/hooks/useWebSockets'
 import Loader from '@/components/ui/Loader'
+import { FeatureLockedScreen, isFeatureNotIncludedError } from '@/components/ui/FeatureLockedScreen'
+import ProductGrid from '@/components/products/ProductGrid'
+import ProductFormModal from '@/components/products/ProductFormModal'
 import { toast } from 'sonner'
 
 // --- Types ---
@@ -27,6 +30,7 @@ interface Product {
   supplierId?: number | null
   minStock?: number
   characteristics?: Record<string, string>
+  photo?: string | null
 }
 
 export default function ProductsPage() {
@@ -34,6 +38,7 @@ export default function ProductsPage() {
   const [categoriesData, setCategoriesData] = useState<any[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isFeatureLocked, setIsFeatureLocked] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
 
@@ -41,41 +46,8 @@ export default function ProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCharacteristicsModalOpen, setIsCharacteristicsModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
-  
-  // Modale Catégorie
-  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
-  const [newCatName, setNewCatName] = useState('')
-  const [newCatType, setNewCatType] = useState<'boisson' | 'nourriture' | 'service'>('boisson')
-  
-  // Modale Caractéristiques
-  const [isCharModalOpen, setIsCharModalOpen] = useState(false)
-  const [selectedCatForChar, setSelectedCatForChar] = useState<any | null>(null)
-  const [charModelName, setCharModelName] = useState('')
-  const [charAttributesList, setCharAttributesList] = useState<{ key: string, value: string }[]>([
-    { key: '', value: '' }
-  ])
-
-  // Modale Fournisseur
-  const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false)
-  const [supplierForm, setSupplierForm] = useState({ name: '', phone: '', email: '', address: '' })
 
   const [isSaving, setIsSaving] = useState(false)
-
-  // Form State Produit
-  const [formData, setFormData] = useState({
-    name: '',
-    category: 'boisson',
-    categoryId: undefined as number | undefined,
-    subCategory: 'unite',
-    pricePerUnit: 0,
-    cratePrice: '' as string | number,
-    unitsPerPackage: 12,
-    stock: 0,
-    unit: 'unite',
-    supplierId: null as number | null,
-    minStock: 10,
-    characteristics: {} as Record<string, string>
-  })
 
   // Websocket pour les alertes de stock faible en temps réel
   useWebSockets('/ws/notifications/', (data: any) => {
@@ -173,11 +145,18 @@ export default function ProductsPage() {
   const loadData = async (silent = false) => {
     try {
       if (!silent) setIsLoading(true)
-      const [rawCats, rawSuppliers, rawProds] = await Promise.all([
+      // Les fournisseurs (inventory.suppliers) sont une fonctionnalite
+      // separee du catalogue (catalog.products) — un plan peut autoriser
+      // l'une sans l'autre (ex: Starter), donc on isole cet appel pour
+      // qu'un 403 dessus ne bloque pas toute la page produits.
+      const [rawCats, rawProds] = await Promise.all([
         getCategories(),
-        getSuppliers(),
         getProducts()
       ])
+      const rawSuppliers = await getSuppliers().catch((e) => {
+        if (!isFeatureNotIncludedError(e)) console.error('Erreur chargement fournisseurs', e)
+        return []
+      })
 
       let apiCategories = ensureArray<any>(rawCats)
       let apiSuppliers = ensureArray<Supplier>(rawSuppliers)
@@ -185,11 +164,11 @@ export default function ProductsPage() {
 
       if (apiCategories.length === 0 && apiProducts.length === 0) {
         await seedDefaultData()
-        const [freshCats, freshSuppliers, freshProds] = await Promise.all([
+        const [freshCats, freshProds] = await Promise.all([
           getCategories(),
-          getSuppliers(),
           getProducts()
         ])
+        const freshSuppliers = await getSuppliers().catch(() => [])
         apiCategories = ensureArray<any>(freshCats)
         apiSuppliers = ensureArray<Supplier>(freshSuppliers)
         apiProducts = ensureArray<any>(freshProds)
@@ -197,6 +176,7 @@ export default function ProductsPage() {
 
       setCategoriesData(apiCategories)
       setSuppliers(apiSuppliers)
+      setIsFeatureLocked(false)
 
       if (apiProducts.length > 0) {
         setProducts(apiProducts.map((p: any) => {
@@ -214,14 +194,19 @@ export default function ProductsPage() {
             unit: p.unit,
             supplierId: p.supplier || null,
             minStock: p.min_stock !== undefined ? p.min_stock : 10,
-            characteristics: p.attributes || {}
+            characteristics: p.attributes || {},
+            photo: p.photo ?? null,
           }
         }))
       } else {
         setProducts([])
       }
     } catch (e) {
-      console.error('Erreur chargement catalogue', e)
+      if (isFeatureNotIncludedError(e)) {
+        setIsFeatureLocked(true)
+      } else {
+        console.error('Erreur chargement catalogue', e)
+      }
     } finally {
       if (!silent) setIsLoading(false)
     }
@@ -231,15 +216,6 @@ export default function ProductsPage() {
     loadData()
   }, [])
 
-  // États pour les champs flexibles
-  const [charKey, setCharKey] = useState('')
-  const [charValue, setCharValue] = useState('')
-  const [isTemplateDropdownOpen, setIsTemplateDropdownOpen] = useState(false)
-  const [templateSearchTerm, setTemplateSearchTerm] = useState('')
-
-  const currentCategory = categoriesData.find(c => Number(c.id) === Number(formData.categoryId))
-  const currentCategoryCharacteristics = currentCategory?.characteristics || []
-
   const categories = ['all', ...categoriesData.map(c => c.name)]
 
   const filteredProducts = products.filter(p => {
@@ -248,124 +224,13 @@ export default function ProductsPage() {
     return matchesSearch && matchesCategory
   })
 
-  // La sélection d'un modèle (article) de caractéristique se fait manuellement dans le formulaire
-
-  // --- Logique du formulaire ---
   const openModal = (product: Product | null = null) => {
-    if (product) {
-      setFormData({
-        name: product.name,
-        category: product.category,
-        categoryId: product.categoryId,
-        subCategory: product.subCategory || 'casier',
-        pricePerUnit: product.pricePerUnit,
-        cratePrice: product.cratePrice !== null && product.cratePrice !== undefined ? product.cratePrice : '',
-        unitsPerPackage: product.unitsPerPackage || 1,
-        stock: product.subCategory === 'casier'
-          ? Math.floor(product.stock / (product.unitsPerPackage || 1))
-          : product.stock,
-        unit: product.unit || 'unite',
-        supplierId: product.supplierId ?? null,
-        minStock: product.minStock || 10,
-        characteristics: product.characteristics || {},
-      })
-      setEditingProduct(product)
-    } else {
-      setFormData({
-        name: '',
-        category: categoriesData.length > 0 ? categoriesData[0].name : 'boisson',
-        categoryId: categoriesData.length > 0 ? categoriesData[0].id : undefined,
-        subCategory: 'casier',
-        pricePerUnit: 0,
-        cratePrice: '',
-        unitsPerPackage: 1,
-        stock: 0,
-        unit: 'unité',
-        supplierId: null,
-        minStock: 10,
-        characteristics: {},
-      })
-      setEditingProduct(null)
-      setCharKey('')
-      setCharValue('')
-    }
-    setIsTemplateDropdownOpen(false)
-    setTemplateSearchTerm('')
+    setEditingProduct(product)
     setIsModalOpen(true)
   }
 
-  // Ajouter une caractéristique
-  const addCharacteristic = () => {
-    if (charKey.trim() && charValue.trim()) {
-      setFormData({
-        ...formData,
-        characteristics: {
-          ...formData.characteristics,
-          [charKey.trim()]: charValue.trim()
-        }
-      })
-      setCharKey('')
-      setCharValue('')
-    }
-  }
-
-  // Supprimer une caractéristique
-  const removeCharacteristic = (key: string) => {
-    const newChars = { ...formData.characteristics }
-    delete newChars[key]
-    setFormData({
-      ...formData,
-      characteristics: newChars
-    })
-  }
-
-  // Mise à jour du champ "Sous-catégorie" quand la catégorie change
-  useEffect(() => {
-    const isBoisson = categoriesData.find(c => c.id === formData.categoryId)?.type === 'boisson' || formData.category?.toLowerCase().includes('boisson');
-    if (isBoisson) {
-      if (!['casier', 'unite'].includes(formData.subCategory)) {
-        setFormData(prev => ({ ...prev, subCategory: 'casier' }))
-      }
-    } else {
-      setFormData(prev => ({ ...prev, subCategory: 'unite' }))
-    }
-  }, [formData.categoryId, formData.category, categoriesData])
-
   // Sauvegarder le produit
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    const categoryType = categoriesData.find(c => c.id === formData.categoryId)?.type;
-    const isService = categoryType === 'service' || formData.category?.toLowerCase().includes('service');
-
-    let unitVal: 'unite' | 'bouteille' | 'casier' | 'plat' | 'portion' | 'service' = 'unite';
-    if (isService) {
-      unitVal = 'service';
-    } else if (categoryType === 'nourriture') {
-      unitVal = 'plat';
-    } else if (formData.unit && ['unite', 'bouteille', 'casier', 'plat', 'portion', 'service'].includes(formData.unit)) {
-      unitVal = formData.unit as any;
-    }
-
-    const apiData: any = {
-      name: formData.name,
-      category: formData.categoryId,
-      price: formData.pricePerUnit?.toString() || "0",
-      crate_price: formData.cratePrice !== '' && formData.cratePrice !== null && formData.cratePrice !== undefined ? formData.cratePrice.toString() : null,
-      unit: unitVal,
-      is_active: true,
-      brand: '',
-      alcohol_percentage: null,
-      volume_cl: null,
-      attributes: formData.characteristics,
-      initial_stock: isService ? -1 : (formData.subCategory === 'casier'
-        ? formData.stock * formData.unitsPerPackage
-        : formData.stock),
-      initial_min_stock: isService ? 0 : formData.minStock,
-      units_per_package: formData.subCategory === 'casier' ? formData.unitsPerPackage : 1,
-      supplier: formData.supplierId
-    }
-
+  const handleSubmit = async (apiData: Record<string, unknown>, photoFile: File | null) => {
     try {
       setIsSaving(true)
       const savePromise = editingProduct
@@ -378,7 +243,15 @@ export default function ProductsPage() {
         error: "❌ Erreur lors de la sauvegarde."
       })
 
-      await savePromise
+      const saved = await savePromise
+      if (photoFile) {
+        try {
+          await uploadProductPhoto(saved.id, photoFile)
+        } catch (photoErr) {
+          console.error('Erreur upload photo produit', photoErr)
+          toast.error("Le produit a été enregistré, mais l'envoi de la photo a échoué.")
+        }
+      }
       setIsModalOpen(false)
       await loadData(true)
     } catch (e) {
@@ -405,6 +278,9 @@ export default function ProductsPage() {
   // --- Rendu ---
   if (isLoading) {
     return <Loader />
+  }
+  if (isFeatureLocked) {
+    return <FeatureLockedScreen featureLabel="Catalogue produits" />
   }
 
   return (
@@ -479,518 +355,18 @@ export default function ProductsPage() {
       </div>
 
       {/* LISTE DES PRODUITS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {filteredProducts.map((product) => {
-          const isServiceUnit = product.unit === 'service' || product.category?.toLowerCase().includes('service')
-          const isInfinite = product.stock < 0 || isServiceUnit
-          const isLowStock = !isInfinite && product.stock >= 0 && product.stock <= (product.minStock ?? 10)
-          const isOutOfStock = !isInfinite && product.stock === 0
-
-          return (
-            <div
-              key={product.id}
-              className="rounded-xl p-4 border transition-all hover:border-primary-500"
-              style={{
-                background: '#1e293b',
-                borderColor: isOutOfStock ? '#ef4444' : isLowStock ? '#f59e0b' : '#334155'
-              }}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div>
-                  <h3 className="font-medium text-sm text-white truncate max-w-[150px]">{product.name}</h3>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>
-                    {product.category} • {product.subCategory === 'casier' ? 'Par casier' : 'À l\'unité'}
-                  </p>
-                </div>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${isOutOfStock ? 'bg-red-500/20 text-red-400' :
-                    isLowStock ? 'bg-orange-500/20 text-orange-400' :
-                      isInfinite ? 'bg-indigo-500/20 text-indigo-300' :
-                        'bg-green-500/20 text-green-400'
-                    }`}
-                >
-                  {isOutOfStock ? 'Rupture' : isLowStock ? 'Stock faible' : isInfinite ? 'Illimité' : 'OK'}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between text-sm mb-2">
-                <div>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Prix unitaire</p>
-                  <p className="font-semibold text-white">{product.pricePerUnit.toLocaleString()} F</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Stock</p>
-                  <p className={`font-semibold ${isLowStock && !isInfinite ? 'text-orange-400' : 'text-white'}`}>
-                    {isInfinite ? 'Illimité' : `${product.stock} ${product.unit}s`}
-                  </p>
-                </div>
-              </div>
-
-              {/* Seuil d'alerte */}
-              {!isInfinite && (
-                <p className="text-xs" style={{ color: '#64748b' }}>
-                  Seuil alerte: {product.minStock} {product.unit}s
-                </p>
-              )}
-
-              {/* Caractéristiques */}
-              {product.characteristics && Object.keys(product.characteristics).length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2 pt-2 border-t" style={{ borderColor: '#334155' }}>
-                  {Object.entries(product.characteristics).map(([key, value]) => (
-                    <span
-                      key={key}
-                      className="text-xs px-2 py-0.5 rounded-full"
-                      style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#94a3b8' }}
-                    >
-                      {key}: {value}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex gap-2 mt-3 pt-3 border-t" style={{ borderColor: '#334155' }}>
-                <button
-                  onClick={() => openModal(product)}
-                  className="flex-1 py-1.5 rounded text-xs font-medium transition flex items-center justify-center gap-1"
-                  style={{
-                    background: 'rgba(51, 65, 85, 0.5)',
-                    color: '#94a3b8'
-                  }}
-                >
-                  <Edit className="w-3 h-3" />
-                  Modifier
-                </button>
-                <button
-                  onClick={() => deleteProduct(product.id)}
-                  className="flex-1 py-1.5 rounded text-xs font-medium transition flex items-center justify-center gap-1"
-                  style={{
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    color: '#f87171'
-                  }}
-                >
-                  <Trash2 className="w-3 h-3" />
-                  Supprimer
-                </button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+      <ProductGrid products={filteredProducts} onEdit={openModal} onDelete={deleteProduct} />
 
       {/* MODAL D'AJOUT / MODIFICATION */}
       {isModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.7)' }}
-          onClick={() => setIsModalOpen(false)}
-        >
-          <div
-            className="w-full max-w-2xl rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
-            style={{
-              background: '#1e293b',
-              border: '1px solid #334155'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-semibold text-white mb-4">
-              {editingProduct ? 'Modifier le produit' : 'Ajouter un produit'}
-            </h2>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Nom */}
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nom du produit *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                  style={{
-                    background: 'rgba(51, 65, 85, 0.5)',
-                    border: '1px solid #334155'
-                  }}
-                  required
-                />
-                <p className="text-xs mt-1" style={{ color: '#64748b' }}>
-                  💡 Les caractéristiques seront automatiquement suggérées en fonction du nom
-                </p>
-              </div>
-
-              {/* Catégorie */}
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Catégorie *</label>
-                <select
-                  value={formData.categoryId || ''}
-                  onChange={(e) => {
-                    const catId = parseInt(e.target.value);
-                    const catName = categoriesData.find(c => c.id === catId)?.name || 'boisson';
-                    setFormData({ ...formData, categoryId: catId, category: catName })
-                  }}
-                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                  style={{
-                    background: 'rgba(51, 65, 85, 0.5)',
-                    border: '1px solid #334155'
-                  }}
-                >
-                  <option value="" disabled>Sélectionner une catégorie</option>
-                  {categoriesData.map(c => (
-                     <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Sous-catégorie */}
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
-                  Type de vente *
-                </label>
-                {(categoriesData.find(c => c.id === formData.categoryId)?.type === 'boisson' || formData.category?.toLowerCase().includes('boisson')) ? (
-                  <select
-                    value={formData.subCategory}
-                    onChange={(e) => setFormData({ ...formData, subCategory: e.target.value })}
-                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                    style={{
-                      background: 'rgba(51, 65, 85, 0.5)',
-                      border: '1px solid #334155'
-                    }}
-                  >
-                    <option value="casier">Par Casier</option>
-                    <option value="unite">À l'Unité</option>
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    value="À l'unité"
-                    disabled
-                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition opacity-60"
-                    style={{
-                      background: 'rgba(51, 65, 85, 0.5)',
-                      border: '1px solid #334155'
-                    }}
-                  />
-                )}
-              </div>
-
-              {/* Prix, Quantité, Stock, Seuil */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                <div>
-                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Prix unitaire (F) *</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="50"
-                    value={formData.pricePerUnit}
-                    onChange={(e) => setFormData({ ...formData, pricePerUnit: parseFloat(e.target.value) || 0 })}
-                    className="w-full rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
-                    style={{
-                      background: 'rgba(51, 65, 85, 0.5)',
-                      border: '1px solid #334155'
-                    }}
-                    required
-                  />
-                </div>
-
-                {formData.subCategory === 'casier' && (
-                  <div>
-                    <label className="block text-xs mb-1" style={{ color: '#818cf8' }}>
-                      Prix du casier (F) <span className="text-[10px] text-slate-400 font-normal">(Opt.)</span>
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="100"
-                      placeholder="ex: 4000"
-                      value={formData.cratePrice}
-                      onChange={(e) => setFormData({ ...formData, cratePrice: e.target.value })}
-                      className="w-full rounded-lg px-3 py-2.5 text-white text-sm outline-none transition border border-indigo-500/40 focus:border-indigo-400"
-                      style={{
-                        background: 'rgba(99, 102, 241, 0.1)',
-                      }}
-                    />
-                  </div>
-                )}
-
-                {(categoriesData.find(c => c.id === formData.categoryId)?.type === 'service' || formData.category?.toLowerCase().includes('service')) ? (
-                  <div className="col-span-1 sm:col-span-4 p-3 rounded-xl flex items-center gap-2.5" style={{ background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
-                    <Sparkles className="w-5 h-5 text-indigo-400 shrink-0" />
-                    <div>
-                      <p className="text-xs font-semibold text-white">Produit de type Service (Chicha, VIP, Pass...)</p>
-                      <p className="text-xs text-slate-300">Le stock est automatiquement géré comme <strong>Illimité</strong> (aucun décompte physique d'unités à la caisse).</p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {formData.subCategory === 'casier' ? (
-                      <>
-                        <div>
-                          <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nb unités/casier *</label>
-                          <input
-                            type="number"
-                            min="1"
-                            step="1"
-                            value={formData.unitsPerPackage}
-                            onChange={(e) => setFormData({ ...formData, unitsPerPackage: parseInt(e.target.value) || 1 })}
-                            className="w-full rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
-                            style={{
-                              background: 'rgba(51, 65, 85, 0.5)',
-                              border: '1px solid #334155'
-                            }}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nombre de casiers</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={formData.stock}
-                            onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
-                            className="w-full rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
-                            style={{
-                              background: 'rgba(51, 65, 85, 0.5)',
-                              border: '1px solid #334155'
-                            }}
-                          />
-                        </div>
-                      </>
-                    ) : (
-                      <div>
-                        <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Quantité en stock</label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={formData.stock < 0 ? 0 : formData.stock}
-                          onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })}
-                          className="w-full rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
-                          style={{
-                            background: 'rgba(51, 65, 85, 0.5)',
-                            border: '1px solid #334155'
-                          }}
-                          required
-                        />
-                      </div>
-                    )}
-
-                    <div>
-                      <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Seuil alerte</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={formData.minStock}
-                        onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value) || 0 })}
-                        className="w-full rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
-                        style={{
-                          background: 'rgba(51, 65, 85, 0.5)',
-                          border: '1px solid #334155'
-                        }}
-                      />
-                    </div>
-                  </>
-                )}
-              </div>
-
-              {formData.subCategory === 'casier' && (
-                <p className="text-xs" style={{ color: '#22c55e' }}>
-                  Total en stock : {formData.unitsPerPackage * formData.stock} unités
-                </p>
-              )}
-
-              {/* Fournisseur */}
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Fournisseur</label>
-                <select
-                  value={formData.supplierId || ''}
-                  onChange={(e) => setFormData({ ...formData, supplierId: e.target.value ? parseInt(e.target.value) : null })}
-                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                  style={{
-                    background: 'rgba(51, 65, 85, 0.5)',
-                    border: '1px solid #334155'
-                  }}
-                >
-                  <option value="">Aucun</option>
-                  {suppliers.map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Caractéristiques avec modèles */}
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Caractéristiques</label>
-                
-                {/* Sélecteur de modèle custom avec recherche */}
-                {formData.categoryId && currentCategoryCharacteristics.length > 0 && (
-                  <div className="mb-3 relative">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsTemplateDropdownOpen(!isTemplateDropdownOpen)
-                        setTemplateSearchTerm('')
-                      }}
-                      className="w-full flex items-center justify-between rounded-lg px-4 py-2.5 text-left text-sm outline-none transition"
-                      style={{
-                        background: 'rgba(51, 65, 85, 0.5)',
-                        border: '1px dashed #6366f1',
-                        color: '#818cf8'
-                      }}
-                    >
-                      <span>+ Charger depuis un modèle existant...</span>
-                      <Search className="w-4 h-4 opacity-60" />
-                    </button>
-
-                    {isTemplateDropdownOpen && (
-                      <div
-                        className="absolute left-0 right-0 mt-1 rounded-lg border z-50 overflow-hidden shadow-2xl"
-                        style={{
-                          background: '#1e293b',
-                          borderColor: '#334155'
-                        }}
-                      >
-                        {/* Barre de recherche */}
-                        <div className="p-2 border-b" style={{ borderColor: '#334155' }}>
-                          <input
-                            type="text"
-                            placeholder="Rechercher un modèle..."
-                            value={templateSearchTerm}
-                            onChange={(e) => setTemplateSearchTerm(e.target.value)}
-                            className="w-full rounded-md px-3 py-1.5 bg-slate-900 border border-slate-700 text-white text-xs outline-none focus:border-indigo-500"
-                            autoFocus
-                          />
-                        </div>
-
-                        {/* Liste des modèles */}
-                        <div className="max-h-48 overflow-y-auto py-1">
-                          {currentCategoryCharacteristics
-                            .filter((char: any) => char.name.toLowerCase().includes(templateSearchTerm.toLowerCase()))
-                            .map((char: any) => (
-                              <button
-                                key={char.id}
-                                type="button"
-                                onClick={() => {
-                                  if (char.attributes) {
-                                    setFormData(prev => ({
-                                      ...prev,
-                                      characteristics: { ...prev.characteristics, ...char.attributes }
-                                    }))
-                                  }
-                                  setIsTemplateDropdownOpen(false)
-                                }}
-                                className="w-full text-left px-4 py-2 text-sm text-white hover:bg-indigo-600 transition"
-                              >
-                                {char.name}
-                              </button>
-                            ))}
-                          {currentCategoryCharacteristics
-                            .filter((char: any) => char.name.toLowerCase().includes(templateSearchTerm.toLowerCase())).length === 0 && (
-                              <p className="px-4 py-2 text-xs text-slate-500 italic">Aucun modèle trouvé</p>
-                            )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <p className="text-xs mb-2" style={{ color: '#64748b' }}>
-                  Tapez une clé (ex: Volume) et sa valeur (ex: 75cl), ou chargez un modèle ci-dessus.
-                </p>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={charKey}
-                    onChange={(e) => setCharKey(e.target.value)}
-                    placeholder="Clé (ex: Taux d'alcool)"
-                    className="flex-1 rounded-lg px-4 py-2 text-white text-sm outline-none transition"
-                    style={{
-                      background: 'rgba(51, 65, 85, 0.5)',
-                      border: '1px solid #334155'
-                    }}
-                  />
-                  <input
-                    type="text"
-                    value={charValue}
-                    onChange={(e) => setCharValue(e.target.value)}
-                    placeholder="Valeur (ex: 40%)"
-                    className="flex-1 rounded-lg px-4 py-2 text-white text-sm outline-none transition"
-                    style={{
-                      background: 'rgba(51, 65, 85, 0.5)',
-                      border: '1px solid #334155'
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={addCharacteristic}
-                    disabled={!charKey.trim() || !charValue.trim()}
-                    className="px-3 py-2 rounded-lg text-xs font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{
-                      background: 'rgba(99, 102, 241, 0.15)',
-                      color: '#818cf8'
-                    }}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="flex flex-wrap gap-1">
-                  {Object.entries(formData.characteristics || {}).map(([key, value]) => (
-                    <span
-                      key={key}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
-                      style={{ background: 'rgba(51, 65, 85, 0.5)', color: '#94a3b8' }}
-                    >
-                      {key}: {value}
-                      <button
-                        type="button"
-                        onClick={() => removeCharacteristic(key)}
-                        className="hover:text-red-400"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                {(!formData.characteristics || Object.keys(formData.characteristics).length === 0) && (
-                  <p className="text-xs mt-1" style={{ color: '#64748b' }}>Aucune caractéristique ajoutée</p>
-                )}
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t" style={{ borderColor: '#334155' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-[1.02] hover:bg-slate-700/50 active:scale-[0.98]"
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid #334155',
-                    color: '#94a3b8'
-                  }}
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
-                  style={{
-                    background: '#4f46e5',
-                    boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
-                  }}
-                >
-                  {isSaving ? (
-                    <>
-                      <img src="/logos/NOXIA_Orbit_Logo.svg" alt="NOXIA" className="w-4 h-4 animate-spin" />
-                      Enregistrement...
-                    </>
-                  ) : (
-                    editingProduct ? 'Modifier' : 'Ajouter'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <ProductFormModal
+          product={editingProduct}
+          categories={categoriesData}
+          suppliers={suppliers}
+          isSaving={isSaving}
+          onSubmit={handleSubmit}
+          onClose={() => setIsModalOpen(false)}
+        />
       )}
 
       {/* MODAL GESTION DES CARACTERISTIQUES PAR CATEGORIE */}

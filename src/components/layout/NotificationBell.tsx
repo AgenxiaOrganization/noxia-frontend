@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Bell, Package, AlertTriangle, CheckCheck } from 'lucide-react'
+import { Bell, Package, AlertTriangle, CheckCheck, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   getNotifications,
   getUnreadCount,
   markAsRead,
   markAllAsRead,
+  deleteNotification,
   type Notification,
 } from '@/lib/api/notifications'
 import { ensureArray } from '@/lib/api'
@@ -134,6 +135,18 @@ export function NotificationBell() {
     }
   }
 
+  const handleDeleteAlert = async (e: React.MouseEvent, alert: Notification) => {
+    e.stopPropagation()
+    try {
+      await deleteNotification(alert.id)
+      setAlerts(prev => prev.filter(a => a.id !== alert.id))
+      if (!alert.is_read) setUnreadCount(prev => Math.max(0, prev - 1))
+      window.dispatchEvent(new Event('notifications_updated'))
+    } catch (err) {
+      console.error('Erreur suppression alerte', err)
+    }
+  }
+
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Bouton cloche alertes */}
@@ -213,32 +226,40 @@ export function NotificationBell() {
                     const config = alertTypeConfig[alert.type] || alertTypeConfig.stock_low
                     const Icon = config.icon
                     return (
-                      <button
+                      <div
                         key={alert.id}
-                        onClick={() => handleAlertClick(alert)}
-                        className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-all duration-150 hover:bg-white/[0.04] relative ${
+                        className={`group w-full flex items-start gap-3 px-4 py-3 transition-all duration-150 hover:bg-white/[0.04] relative ${
                           alert.is_read ? 'bg-transparent' : 'bg-amber-500/[0.04]'
                         }`}
                       >
                         {!alert.is_read && (
                           <span className="absolute left-0 top-3 bottom-3 w-1 bg-amber-500 rounded-r-full" />
                         )}
-                        <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 border border-white/5 shadow-sm"
-                          style={{ background: config.bgColor }}
-                        >
-                          <Icon className="w-4.5 h-4.5" style={{ color: config.color }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className={`text-sm truncate ${alert.is_read ? 'font-medium text-dark-200' : 'font-bold text-white'}`}>
-                              {alert.title}
-                            </p>
-                            <span className="text-[10px] text-dark-400 shrink-0 font-medium">{timeAgo(alert.created_at)}</span>
+                        <button onClick={() => handleAlertClick(alert)} className="flex items-start gap-3 flex-1 min-w-0 text-left">
+                          <div
+                            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 border border-white/5 shadow-sm"
+                            style={{ background: config.bgColor }}
+                          >
+                            <Icon className="w-4.5 h-4.5" style={{ color: config.color }} />
                           </div>
-                          <p className="text-xs text-dark-300 mt-1 line-clamp-2 leading-relaxed">{alert.message}</p>
-                        </div>
-                      </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className={`text-sm truncate ${alert.is_read ? 'font-medium text-dark-200' : 'font-bold text-white'}`}>
+                                {alert.title}
+                              </p>
+                              <span className="text-[10px] text-dark-400 shrink-0 font-medium">{timeAgo(alert.created_at)}</span>
+                            </div>
+                            <p className="text-xs text-dark-300 mt-1 line-clamp-2 leading-relaxed">{alert.message}</p>
+                          </div>
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteAlert(e, alert)}
+                          className="p-1.5 rounded-lg shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition hover:bg-red-500/10 text-dark-400 hover:text-red-400"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     )
                   })
                 )}

@@ -1,4 +1,10 @@
-import { get, post, put, del } from '../api'
+import { get, post, put, patch, del } from '../api'
+import { getAuthHeaders } from '../auth'
+import { getPlatformAuthHeaders } from '../platformAuth'
+import type { ApiClient } from '../superAdminClient'
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api/v1'
+const CONTROLE_BASE_URL = process.env.NEXT_PUBLIC_CONTROLE_API_URL ?? 'http://127.0.0.1:8001/api/v1'
 
 export interface CategoryCharacteristic {
   id: number
@@ -29,6 +35,7 @@ export interface Product {
   alcohol_percentage: string | null
   volume_cl: number | null
   attributes: Record<string, any>
+  photo?: string | null
   stock?: number
   min_stock?: number
   initial_stock?: number
@@ -55,31 +62,93 @@ export interface ProductPackaging {
   is_default: boolean
 }
 
-// Categories
-export const getCategories = () => get<Category[]>('/catalog/categories/')
-export const createCategory = (data: Partial<Category>) => post<Category>('/catalog/categories/', data)
-export const updateCategory = (id: number, data: Partial<Category>) => put<Category>(`/catalog/categories/${id}/`, data)
-export const deleteCategory = (id: number) => del(`/catalog/categories/${id}/`)
+/**
+ * Toutes les operations du catalogue, parametrees par le client HTTP a
+ * utiliser. `(dashboard)` utilise le client par defaut (`lib/api.ts`, scope
+ * a l'etablissement du gerant connecte) via les exports nommes ci-dessous ;
+ * `super-admin` injecte `createSuperAdminClient(instanceCode)` pour cibler
+ * l'etablissement choisi sans dupliquer cette logique.
+ */
+export function createCatalogApi(client: ApiClient) {
+  return {
+    // Categories
+    getCategories: () => client.get<Category[]>('/catalog/categories/'),
+    createCategory: (data: Partial<Category>) => client.post<Category>('/catalog/categories/', data),
+    updateCategory: (id: number, data: Partial<Category>) => client.put<Category>(`/catalog/categories/${id}/`, data),
+    deleteCategory: (id: number) => client.del(`/catalog/categories/${id}/`),
 
-// Category Characteristics
-export const getCategoryCharacteristics = (categoryId: number) => get<CategoryCharacteristic[]>(`/catalog/categories/${categoryId}/characteristics/`)
-export const createCategoryCharacteristic = (categoryId: number, data: Partial<CategoryCharacteristic>) => post<CategoryCharacteristic>(`/catalog/categories/${categoryId}/characteristics/`, data)
-export const deleteCategoryCharacteristic = (categoryId: number, charId: number) => del(`/catalog/categories/${categoryId}/characteristics/${charId}/`)
+    // Category Characteristics
+    getCategoryCharacteristics: (categoryId: number) => client.get<CategoryCharacteristic[]>(`/catalog/categories/${categoryId}/characteristics/`),
+    createCategoryCharacteristic: (categoryId: number, data: Partial<CategoryCharacteristic>) => client.post<CategoryCharacteristic>(`/catalog/categories/${categoryId}/characteristics/`, data),
+    deleteCategoryCharacteristic: (categoryId: number, charId: number) => client.del(`/catalog/categories/${categoryId}/characteristics/${charId}/`),
 
-// Products
-export const getProducts = () => get<Product[]>('/catalog/products/')
-export const createProduct = (data: Partial<Product>) => post<Product>('/catalog/products/', data)
-export const updateProduct = (id: number, data: Partial<Product>) => put<Product>(`/catalog/products/${id}/`, data)
-export const deleteProduct = (id: number) => del<void>(`/catalog/products/${id}/`)
+    // Products
+    getProducts: () => client.get<Product[]>('/catalog/products/'),
+    createProduct: (data: Partial<Product>) => client.post<Product>('/catalog/products/', data),
+    updateProduct: (id: number, data: Partial<Product>) => client.put<Product>(`/catalog/products/${id}/`, data),
+    deleteProduct: (id: number) => client.del<void>(`/catalog/products/${id}/`),
 
-// Variants
-export const getProductVariants = (productId: number) => get<ProductVariant[]>(`/catalog/products/${productId}/variants/`)
-export const createProductVariant = (productId: number, data: Partial<ProductVariant>) => post<ProductVariant>(`/catalog/products/${productId}/variants/`, data)
-export const updateProductVariant = (productId: number, variantId: number, data: Partial<ProductVariant>) => put<ProductVariant>(`/catalog/products/${productId}/variants/${variantId}/`, data)
-export const deleteProductVariant = (productId: number, variantId: number) => del<void>(`/catalog/products/${productId}/variants/${variantId}/`)
+    // Variants
+    getProductVariants: (productId: number) => client.get<ProductVariant[]>(`/catalog/products/${productId}/variants/`),
+    createProductVariant: (productId: number, data: Partial<ProductVariant>) => client.post<ProductVariant>(`/catalog/products/${productId}/variants/`, data),
+    updateProductVariant: (productId: number, variantId: number, data: Partial<ProductVariant>) => client.put<ProductVariant>(`/catalog/products/${productId}/variants/${variantId}/`, data),
+    deleteProductVariant: (productId: number, variantId: number) => client.del<void>(`/catalog/products/${productId}/variants/${variantId}/`),
 
-// Packagings
-export const getProductPackagings = (productId: number) => get<ProductPackaging[]>(`/catalog/products/${productId}/packagings/`)
-export const createProductPackaging = (productId: number, data: Partial<ProductPackaging>) => post<ProductPackaging>(`/catalog/products/${productId}/packagings/`, data)
-export const updateProductPackaging = (productId: number, packagingId: number, data: Partial<ProductPackaging>) => put<ProductPackaging>(`/catalog/products/${productId}/packagings/${packagingId}/`, data)
-export const deleteProductPackaging = (productId: number, packagingId: number) => del<void>(`/catalog/products/${productId}/packagings/${packagingId}/`)
+    // Packagings
+    getProductPackagings: (productId: number) => client.get<ProductPackaging[]>(`/catalog/products/${productId}/packagings/`),
+    createProductPackaging: (productId: number, data: Partial<ProductPackaging>) => client.post<ProductPackaging>(`/catalog/products/${productId}/packagings/`, data),
+    updateProductPackaging: (productId: number, packagingId: number, data: Partial<ProductPackaging>) => client.put<ProductPackaging>(`/catalog/products/${productId}/packagings/${packagingId}/`, data),
+    deleteProductPackaging: (productId: number, packagingId: number) => client.del<void>(`/catalog/products/${productId}/packagings/${packagingId}/`),
+  }
+}
+
+const defaultCatalogApi = createCatalogApi({ get, post, put, patch, del })
+
+export const {
+  getCategories, createCategory, updateCategory, deleteCategory,
+  getCategoryCharacteristics, createCategoryCharacteristic, deleteCategoryCharacteristic,
+  getProducts, createProduct, updateProduct, deleteProduct,
+  getProductVariants, createProductVariant, updateProductVariant, deleteProductVariant,
+  getProductPackagings, createProductPackaging, updateProductPackaging, deleteProductPackaging,
+} = defaultCatalogApi
+
+async function parsePhotoResponse<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    const message = (data as Record<string, unknown>)?.detail as string
+      ?? Object.values(data as Record<string, string[]>).flat().join(' ')
+      ?? "Erreur lors de l'envoi de la photo."
+    throw new Error(message || "Erreur lors de l'envoi de la photo.")
+  }
+  return res.json()
+}
+
+/**
+ * Upload/remplacement de la photo d'un produit — multipart (ImageField cote
+ * backend, incompatible avec le client JSON `ApiClient`), meme principe que
+ * uploadVerificationDocument dans lib/api/companies.ts. `photo: null` (pas
+ * de fichier joint) reste possible via updateProduct classique pour les
+ * autres champs, cette fonction ne gere que le remplacement de l'image.
+ */
+export async function uploadProductPhoto(productId: number, file: File): Promise<Product> {
+  const formData = new FormData()
+  formData.append('photo', file)
+  const res = await fetch(`${API_BASE_URL}/catalog/products/${productId}/`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: formData,
+  })
+  return parsePhotoResponse<Product>(res)
+}
+
+export async function uploadInstanceProductPhoto(
+  instanceCode: string, companyId: number, productId: number, file: File,
+): Promise<Product> {
+  const formData = new FormData()
+  formData.append('photo', file)
+  const res = await fetch(
+    `${CONTROLE_BASE_URL}/proxy/${instanceCode}/catalog/products/${productId}/?company_id=${companyId}`,
+    { method: 'PATCH', headers: getPlatformAuthHeaders(), body: formData },
+  )
+  return parsePhotoResponse<Product>(res)
+}

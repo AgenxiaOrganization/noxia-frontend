@@ -1,795 +1,350 @@
 'use client'
 
-import { useState, useEffect, useContext } from 'react'
-import { ServerContext } from '../layout'
+import { useContext, useEffect, useState } from 'react'
 import {
-  CreditCard, Search, Eye, Edit, Trash2, MoreVertical,
-  Check, X, Building2, Calendar, Clock, DollarSign,
-  Download, Filter, ChevronDown, Activity, Award,
-  TrendingUp, TrendingDown, BarChart3, Users,
-  ShoppingBag, AlertTriangle, Crown, Star, Gift,
-  Zap, Target, RefreshCw, Mail, Send,
-  Plus, PauseCircle, PlayCircle, AlertCircle
+  CreditCard, Check, X, Crown, Star,
+  Package, BarChart, Globe as GlobeIcon,
+  Headphones, Calendar, Gift,
+  Globe, Building2, Loader2,
 } from 'lucide-react'
+import React from 'react'
+import { toast } from 'sonner'
+import { ServerContext } from '../layout'
+import { createSuperAdminClient } from '@/lib/superAdminClient'
+import { createSubscriptionApi, type Subscription } from '@/lib/api/subscription'
+import { listInstancePlans, listInstanceFeatureRegistry, type InstancePlan, type FeatureRegistryEntry } from '@/lib/api/plans'
+import Loader from '@/components/ui/Loader'
 
-// Types
-interface Subscription {
-  id: number
-  company: {
-    id: number
-    name: string
-    country: string
-    plan: string
-    server?: string
-  }
-  plan: {
-    id: number
-    name: string
-    code: string
-    price: number
-    trialDays: number
-  }
-  status: 'active' | 'trial' | 'expired' | 'cancelled' | 'pending' | 'suspended'
-  startDate: string
-  endDate: string
-  trialEnd?: string
-  autoRenew: boolean
-  paymentMethod: 'cash' | 'mobile_money' | 'card' | 'bank_transfer'
-  amount: number
-  currency: string
-  lastPaymentDate: string
-  nextPaymentDate: string
-  paymentHistory: {
-    id: number
-    date: string
-    amount: number
-    status: 'paid' | 'pending' | 'failed'
-    method: string
-  }[]
-  createdAt: string
-  updatedAt: string
-  notes?: string
-  daysUntilExpiry?: number
-}
-
-// Données mockées enrichies
-const mockSubscriptions: Subscription[] = [
-  {
-    id: 1,
-    company: { id: 1, name: 'Bar Le Premium', country: 'Gabon', plan: 'Premium', server: 'Gabon' },
-    plan: { id: 1, name: 'Premium', code: 'PREMIUM', price: 11000, trialDays: 0 },
-    status: 'active',
-    startDate: '2026-06-01',
-    endDate: '2026-07-01',
-    autoRenew: true,
-    paymentMethod: 'mobile_money',
-    amount: 11000,
-    currency: 'FCFA',
-    lastPaymentDate: '2026-06-01',
-    nextPaymentDate: '2026-07-01',
-    paymentHistory: [
-      { id: 1, date: '2026-06-01', amount: 11000, status: 'paid', method: 'Mobile Money' },
-      { id: 2, date: '2026-05-01', amount: 11000, status: 'paid', method: 'Mobile Money' },
-      { id: 3, date: '2026-04-01', amount: 11000, status: 'paid', method: 'Carte' }
-    ],
-    createdAt: '2026-06-01',
-    updatedAt: '2026-07-10',
-    notes: 'Client fidèle, paiement ponctuel',
-    daysUntilExpiry: 15
-  },
-  {
-    id: 2,
-    company: { id: 2, name: 'Snack Le Délice', country: 'Gabon', plan: 'Starter', server: 'Gabon' },
-    plan: { id: 2, name: 'Starter', code: 'STARTER', price: 5000, trialDays: 5 },
-    status: 'active',
-    startDate: '2026-06-15',
-    endDate: '2026-07-15',
-    trialEnd: '2026-06-20',
-    autoRenew: false,
-    paymentMethod: 'cash',
-    amount: 5000,
-    currency: 'FCFA',
-    lastPaymentDate: '2026-06-15',
-    nextPaymentDate: '2026-07-15',
-    paymentHistory: [
-      { id: 4, date: '2026-06-15', amount: 5000, status: 'paid', method: 'Espèces' }
-    ],
-    createdAt: '2026-06-15',
-    updatedAt: '2026-07-09',
-    notes: 'Essai gratuit terminé, passage en Starter',
-    daysUntilExpiry: 5
-  },
-  {
-    id: 3,
-    company: { id: 3, name: 'Boîte VIP', country: 'Cameroun', plan: 'Business', server: 'Cameroun' },
-    plan: { id: 3, name: 'Business', code: 'BUSINESS', price: 14000, trialDays: 0 },
-    status: 'active',
-    startDate: '2026-05-20',
-    endDate: '2026-06-20',
-    autoRenew: true,
-    paymentMethod: 'card',
-    amount: 14000,
-    currency: 'FCFA',
-    lastPaymentDate: '2026-05-20',
-    nextPaymentDate: '2026-06-20',
-    paymentHistory: [
-      { id: 5, date: '2026-05-20', amount: 14000, status: 'paid', method: 'Carte bancaire' },
-      { id: 6, date: '2026-04-20', amount: 14000, status: 'paid', method: 'Carte bancaire' }
-    ],
-    createdAt: '2026-05-20',
-    updatedAt: '2026-07-08',
-    notes: 'Premium client, paiement automatique',
-    daysUntilExpiry: 20
-  },
-  {
-    id: 4,
-    company: { id: 4, name: 'Restaurant La Terrasse', country: 'Côte d\'Ivoire', plan: 'Premium', server: 'Côte d\'Ivoire' },
-    plan: { id: 1, name: 'Premium', code: 'PREMIUM', price: 11000, trialDays: 0 },
-    status: 'expired',
-    startDate: '2026-04-10',
-    endDate: '2026-05-10',
-    autoRenew: false,
-    paymentMethod: 'bank_transfer',
-    amount: 11000,
-    currency: 'FCFA',
-    lastPaymentDate: '2026-04-10',
-    nextPaymentDate: '2026-05-10',
-    paymentHistory: [
-      { id: 7, date: '2026-04-10', amount: 11000, status: 'paid', method: 'Virement' },
-      { id: 8, date: '2026-03-10', amount: 11000, status: 'paid', method: 'Virement' }
-    ],
-    createdAt: '2026-04-10',
-    updatedAt: '2026-07-05',
-    notes: 'Abonnement expiré, relance en cours',
-    daysUntilExpiry: 0
-  },
-  {
-    id: 5,
-    company: { id: 5, name: 'Bar Le Soleil', country: 'Sénégal', plan: 'Essai', server: 'Sénégal' },
-    plan: { id: 4, name: 'Essai', code: 'TRIAL', price: 0, trialDays: 30 },
-    status: 'trial',
-    startDate: '2026-07-08',
-    endDate: '2026-08-08',
-    trialEnd: '2026-08-08',
-    autoRenew: false,
-    paymentMethod: 'cash',
-    amount: 0,
-    currency: 'FCFA',
-    lastPaymentDate: '2026-07-08',
-    nextPaymentDate: '2026-08-08',
-    paymentHistory: [],
-    createdAt: '2026-07-08',
-    updatedAt: '2026-07-08',
-    notes: 'Nouvel essai, à suivre',
-    daysUntilExpiry: 30
-  },
-  {
-    id: 6,
-    company: { id: 1, name: 'Bar Le Premium', country: 'Gabon', plan: 'Premium', server: 'Gabon' },
-    plan: { id: 1, name: 'Premium', code: 'PREMIUM', price: 11000, trialDays: 0 },
-    status: 'cancelled',
-    startDate: '2026-03-01',
-    endDate: '2026-04-01',
-    autoRenew: false,
-    paymentMethod: 'mobile_money',
-    amount: 11000,
-    currency: 'FCFA',
-    lastPaymentDate: '2026-03-01',
-    nextPaymentDate: '2026-04-01',
-    paymentHistory: [
-      { id: 9, date: '2026-03-01', amount: 11000, status: 'paid', method: 'Mobile Money' },
-      { id: 10, date: '2026-02-01', amount: 11000, status: 'paid', method: 'Mobile Money' }
-    ],
-    createdAt: '2026-03-01',
-    updatedAt: '2026-04-01',
-    notes: 'Annulé, client reparti sur Starter',
-    daysUntilExpiry: 0
-  },
-  {
-    id: 7,
-    company: { id: 7, name: 'Le Petit Bistro', country: 'Cameroun', plan: 'Premium', server: 'Cameroun' },
-    plan: { id: 1, name: 'Premium', code: 'PREMIUM', price: 11000, trialDays: 0 },
-    status: 'suspended',
-    startDate: '2026-06-10',
-    endDate: '2026-07-10',
-    autoRenew: true,
-    paymentMethod: 'card',
-    amount: 11000,
-    currency: 'FCFA',
-    lastPaymentDate: '2026-06-10',
-    nextPaymentDate: '2026-07-10',
-    paymentHistory: [
-      { id: 11, date: '2026-06-10', amount: 11000, status: 'paid', method: 'Carte' }
-    ],
-    createdAt: '2026-06-10',
-    updatedAt: '2026-07-07',
-    notes: 'Compte suspendu pour non-paiement',
-    daysUntilExpiry: 10
-  }
+const featureCategories = [
+  { id: 'base', label: 'Fonctionnalités de base', icon: Package },
+  { id: 'advanced', label: 'Fonctionnalités avancées', icon: BarChart },
+  { id: 'integration', label: 'Intégrations & API', icon: GlobeIcon },
+  { id: 'support', label: 'Support & Assistance', icon: Headphones },
 ]
 
-const statusConfig = {
-  active: { label: 'Actif', color: '#22c55e', bg: 'rgba(34, 197, 94, 0.15)', icon: Check },
-  trial: { label: 'Essai', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)', icon: Gift },
-  expired: { label: 'Expiré', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)', icon: AlertCircle },
-  cancelled: { label: 'Annulé', color: '#64748b', bg: 'rgba(100, 116, 139, 0.15)', icon: X },
-  pending: { label: 'En attente', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)', icon: Clock },
-  suspended: { label: 'Suspendu', color: '#7f1d1d', bg: 'rgba(127, 29, 29, 0.25)', icon: PauseCircle }
+/**
+ * Categorisation purement visuelle pour regrouper le tableau comparatif —
+ * les labels viennent du vrai `Plan.features` de l'instance (voir
+ * lib/api/plans.ts), ce mapping ne fait que trier des libelles connus dans
+ * une colonne plutot qu'une autre. Doit rester aligne avec les `label` de
+ * subscriptions.feature_registry.FEATURE_REGISTRY cote noxia-backend. Un
+ * libelle absent de la liste (ex: fonctionnalite decorative libre ajoutee
+ * par le super-admin) tombe dans "base" par defaut.
+ */
+const FEATURE_CATEGORY_KEYWORDS: Record<string, string> = {
+  'catalogue produits': 'base',
+  'gestion des stocks': 'base',
+  'caisse enregistreuse (pos)': 'base',
+  'fournisseurs & commandes': 'advanced',
+  'export des rapports de ventes': 'advanced',
+  'charges & dépenses': 'advanced',
+  'fiches de paie': 'advanced',
+  'synthèse financière': 'advanced',
+  'export des bilans financiers': 'advanced',
+  'tableau de bord avancé': 'advanced',
+  "journal d'audit": 'support',
+  'multi-utilisateurs': 'advanced',
+  'multi-caisses': 'advanced',
+  'assistant ia': 'integration',
+  'multi-établissements': 'advanced',
+  'api publique': 'integration',
+  'whatsapp & telegram': 'integration',
+  'alertes automatiques': 'integration',
+  'support prioritaire 24/7': 'support',
+  'formation équipe': 'support',
+  'déploiement personnalisé': 'support',
+  'intégrations sur mesure': 'integration',
+  'sla garanti': 'support',
 }
 
-const planColors = {
-  'Premium': '#f59e0b',
-  'Starter': '#818cf8',
-  'Business': '#8b5cf6',
-  'Essai': '#22c55e',
-  'Pro': '#ec4899'
-}
-
-const paymentMethodColors = {
-  cash: { label: 'Espèces', color: '#f59e0b' },
-  mobile_money: { label: 'Mobile Money', color: '#3b82f6' },
-  card: { label: 'Carte bancaire', color: '#8b5cf6' },
-  bank_transfer: { label: 'Virement', color: '#22c55e' }
+function featureCategoryOf(label: string): string {
+  return FEATURE_CATEGORY_KEYWORDS[label.trim().toLowerCase()] ?? 'base'
 }
 
 export default function SuperAdminAbonnements() {
-  const { selectedServer } = useContext(ServerContext)
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>(mockSubscriptions)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('all')
-  const [selectedPlan, setSelectedPlan] = useState('all')
-  const [selectedCompany, setSelectedCompany] = useState('all')
-  const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isAnimating, setIsAnimating] = useState(false)
+  const { isGlobalMode, selectedServer, selectedCompany } = useContext(ServerContext)
+
+  const [plans, setPlans] = useState<InstancePlan[]>([])
+  const [featureRegistry, setFeatureRegistry] = useState<FeatureRegistryEntry[]>([])
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [changingPlanCode, setChangingPlanCode] = useState<string | null>(null)
 
   useEffect(() => {
-    setIsAnimating(true)
-    const timer = setTimeout(() => setIsAnimating(false), 500)
-    return () => clearTimeout(timer)
-  }, [])
+    if (isGlobalMode || !selectedCompany) return
+    let cancelled = false
+    setIsLoading(true)
+    setError(null)
 
-  // Filtrer par serveur si nécessaire
-  const filteredByServer = selectedServer?.id !== 'global' 
-    ? subscriptions.filter(s => s.company.server === selectedServer?.name)
-    : subscriptions
+    const subscriptionApi = createSubscriptionApi(createSuperAdminClient(selectedServer.id, selectedCompany.id))
 
-  const statuses = ['all', ...new Set(filteredByServer.map(s => s.status))]
-  const plans = ['all', ...new Set(filteredByServer.map(s => s.plan.name))]
-  const companies = ['all', ...new Set(filteredByServer.map(s => s.company.name))]
+    Promise.all([
+      listInstancePlans(selectedServer.id),
+      listInstanceFeatureRegistry(selectedServer.id),
+      subscriptionApi.getMySubscription(),
+    ])
+      .then(([planList, registry, sub]) => {
+        if (cancelled) return
+        setPlans([...planList].filter((p) => p.is_active).sort((a, b) => a.display_order - b.display_order))
+        setFeatureRegistry(registry)
+        setSubscription(sub)
+      })
+      .catch((e) => {
+        console.error('Erreur chargement abonnement', e)
+        if (!cancelled) setError("Impossible de charger l'abonnement de cette entreprise.")
+      })
+      .finally(() => { if (!cancelled) setIsLoading(false) })
 
-  const filteredSubscriptions = filteredByServer.filter(s => {
-    const matchesSearch = s.company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         s.plan.name.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = selectedStatus === 'all' || s.status === selectedStatus
-    const matchesPlan = selectedPlan === 'all' || s.plan.name === selectedPlan
-    const matchesCompany = selectedCompany === 'all' || s.company.name === selectedCompany
-    return matchesSearch && matchesStatus && matchesPlan && matchesCompany
-  })
+    return () => { cancelled = true }
+  }, [selectedServer.id, selectedCompany, isGlobalMode])
 
-  const getStatusBadge = (status: string) => {
-    const config = statusConfig[status as keyof typeof statusConfig]
-    if (!config) return null
-    const Icon = config.icon
-    return (
-      <span 
-        className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1"
-        style={{ background: config.bg, color: config.color }}
-      >
-        <Icon className="w-3 h-3" />
-        {config.label}
-      </span>
-    )
-  }
-
-  const getPlanBadge = (planName: string) => {
-    const color = planColors[planName as keyof typeof planColors] || '#6366f1'
-    return (
-      <span 
-        className="text-xs px-2 py-0.5 rounded-full font-medium"
-        style={{ background: `${color}20`, color: color }}
-      >
-        {planName}
-      </span>
-    )
-  }
-
-  const getPaymentMethodBadge = (method: string) => {
-    const config = paymentMethodColors[method as keyof typeof paymentMethodColors]
-    if (!config) return null
-    return (
-      <span 
-        className="text-xs px-2 py-0.5 rounded-full"
-        style={{ background: `${config.color}20`, color: config.color }}
-      >
-        {config.label}
-      </span>
-    )
-  }
-
-  const formatCurrency = (amount: number) => {
-    return amount.toLocaleString() + ' FCFA'
-  }
-
-  // Actions
-  const handleRenew = (sub: Subscription) => {
-    alert(`✅ Abonnement "${sub.company.name}" renouvelé avec succès !\n\nPlan: ${sub.plan.name}\nMontant: ${formatCurrency(sub.amount)}\nNouvelle date d'expiration: ${sub.endDate}`)
-  }
-
-  const handleSuspend = (sub: Subscription) => {
-    if (confirm(`Suspendre l'abonnement de "${sub.company.name}" ?`)) {
-      setSubscriptions(subscriptions.map(s => 
-        s.id === sub.id ? { ...s, status: 'suspended' as const } : s
-      ))
-      alert(`⚠️ Abonnement de "${sub.company.name}" suspendu.`)
+  const handlePlanChange = async (planCode: string) => {
+    if (!selectedCompany) return
+    try {
+      setChangingPlanCode(planCode)
+      const subscriptionApi = createSubscriptionApi(createSuperAdminClient(selectedServer.id, selectedCompany.id))
+      const updated = await subscriptionApi.subscribeToPlan(planCode)
+      setSubscription(updated)
+      toast.success(`Plan changé pour ${updated.plan.name} — activé pour 30 jours.`)
+    } catch (err) {
+      console.error(err)
+      toast.error(err instanceof Error ? err.message : 'Erreur lors du changement de plan.')
+    } finally {
+      setChangingPlanCode(null)
     }
   }
 
-  const handleReactivate = (sub: Subscription) => {
-    if (confirm(`Réactiver l'abonnement de "${sub.company.name}" ?`)) {
-      setSubscriptions(subscriptions.map(s => 
-        s.id === sub.id ? { ...s, status: 'active' as const } : s
-      ))
-      alert(`✅ Abonnement de "${sub.company.name}" réactivé.`)
-    }
+  if (isGlobalMode) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+        <Globe className="w-10 h-10" style={{ color: '#334155' }} />
+        <p className="text-sm" style={{ color: '#94a3b8' }}>Sélectionnez une instance dans le menu pour voir son abonnement.</p>
+      </div>
+    )
   }
 
-  const handleRelance = (sub: Subscription) => {
-    alert(`📧 Email de relance envoyé à ${sub.company.name}\n\nSujet: Votre abonnement a expiré\nMessage: Bonjour, votre abonnement ${sub.plan.name} a expiré le ${sub.endDate}. Veuillez procéder au renouvellement.`)
+  if (!selectedCompany) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+        <Building2 className="w-10 h-10" style={{ color: '#334155' }} />
+        <p className="text-sm" style={{ color: '#94a3b8' }}>Sélectionnez une entreprise dans le menu pour voir son abonnement.</p>
+      </div>
+    )
   }
 
-  // Stats
-  const totalSubscriptions = filteredByServer.length
-  const activeSubscriptions = filteredByServer.filter(s => s.status === 'active').length
-  const trialSubscriptions = filteredByServer.filter(s => s.status === 'trial').length
-  const expiredSubscriptions = filteredByServer.filter(s => s.status === 'expired').length
-  const suspendedSubscriptions = filteredByServer.filter(s => s.status === 'suspended').length
-  const totalMRR = filteredByServer
-    .filter(s => s.status === 'active' || s.status === 'trial')
-    .reduce((acc, s) => acc + s.amount, 0)
+  if (isLoading) return <Loader />
 
-  const serverName = selectedServer?.id === 'global' ? 'Global' : selectedServer?.name || 'Global'
+  if (error) {
+    return (
+      <div className="p-4">
+        <div className="p-3 rounded-lg text-sm" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#f87171' }}>{error}</div>
+      </div>
+    )
+  }
+
+  if (!subscription) return null
+
+  const currentPlan = subscription.plan
+  // Fonctionnalites du registre (controle d'acces reel, modele deny-list —
+  // toujours affichees meme si aucun plan ne les mentionne explicitement)
+  // + fonctionnalites decoratives libres trouvees sur au moins un plan
+  // (modele allow-list — affichees seulement si un plan les liste).
+  const registryLabels = featureRegistry.map((f) => f.label)
+  const freeLabels = Array.from(
+    new Set(
+      plans.flatMap((p) => (Array.isArray(p.features) ? p.features.filter((f) => !f.key).map((f) => f.label) : [])),
+    ),
+  )
+  const allFeatureLabels = Array.from(new Set([...registryLabels, ...freeLabels]))
 
   return (
-    <div className={`space-y-6 transition-opacity duration-500 ${isAnimating ? 'opacity-0' : 'opacity-100'}`}>
-      {/* Header */}
+    <div className="p-4 space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">
-            {selectedServer?.id === 'global' ? '🌍 Abonnements (Global)' : `Abonnements - ${selectedServer?.flag} ${selectedServer?.name}`}
-          </h1>
-          <p className="text-sm" style={{ color: '#94a3b8' }}>
-            {totalSubscriptions} abonnements • {activeSubscriptions} actifs • {trialSubscriptions} essais • {expiredSubscriptions} expirés
-          </p>
+          <h1 className="text-xl font-bold text-white">Abonnement — {selectedCompany.name}</h1>
+          <p className="text-sm" style={{ color: '#94a3b8' }}>Gérez le plan de cet établissement sur l'instance {selectedServer.name}</p>
         </div>
-        <div className="flex gap-2">
-          <button
-            className="px-3 py-2 rounded-lg transition flex items-center gap-2"
-            style={{ 
-              background: 'rgba(51, 65, 85, 0.3)',
-              border: '1px solid #334155',
-              color: '#94a3b8'
+        <div className="flex items-center gap-2">
+          <span
+            className="text-xs px-3 py-1 rounded-full flex items-center gap-1"
+            style={{
+              background: subscription.status === 'active' ? 'rgba(34, 197, 94, 0.15)' : subscription.status === 'trialing' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+              color: subscription.status === 'active' ? '#22c55e' : subscription.status === 'trialing' ? '#818cf8' : '#ef4444',
             }}
           >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Exporter</span>
-          </button>
-          <button
-            className="px-4 py-2 rounded-lg text-white text-sm font-semibold transition flex items-center gap-2"
-            style={{ 
-              background: '#4f46e5',
-              boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
-            }}
-          >
-            <Plus className="w-4 h-4" />
-            Ajouter un abonnement
-          </button>
+            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+            {subscription.status === 'active' ? 'Actif' : subscription.status === 'trialing' ? 'Essai' : subscription.status === 'expired' ? 'Expiré' : 'Annulé'}
+          </span>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-        <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Total</p>
-          <p className="text-xl font-bold text-white">{totalSubscriptions}</p>
-        </div>
-        <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Actifs</p>
-          <p className="text-xl font-bold" style={{ color: '#22c55e' }}>{activeSubscriptions}</p>
-        </div>
-        <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Essais</p>
-          <p className="text-xl font-bold" style={{ color: '#3b82f6' }}>{trialSubscriptions}</p>
-        </div>
-        <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Expirés</p>
-          <p className="text-xl font-bold" style={{ color: '#ef4444' }}>{expiredSubscriptions}</p>
-        </div>
-        <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Suspendus</p>
-          <p className="text-xl font-bold" style={{ color: '#7f1d1d' }}>{suspendedSubscriptions}</p>
-        </div>
-        <div className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>MRR</p>
-          <p className="text-xl font-bold" style={{ color: '#22c55e' }}>{formatCurrency(totalMRR)}</p>
-        </div>
-      </div>
-
-      {/* Filtres */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
-          <input
-            type="text"
-            placeholder="Rechercher une entreprise ou un plan..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
-            style={{ 
-              background: 'rgba(51, 65, 85, 0.5)',
-              border: '1px solid #334155'
-            }}
-          />
-        </div>
-        <select
-          value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
-          className="rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
-          style={{ 
-            background: 'rgba(51, 65, 85, 0.5)',
-            border: '1px solid #334155'
-          }}
-        >
-          <option value="all">Tous les statuts</option>
-          <option value="active">Actif</option>
-          <option value="trial">Essai</option>
-          <option value="expired">Expiré</option>
-          <option value="cancelled">Annulé</option>
-          <option value="pending">En attente</option>
-          <option value="suspended">Suspendu</option>
-        </select>
-        <select
-          value={selectedPlan}
-          onChange={(e) => setSelectedPlan(e.target.value)}
-          className="rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
-          style={{ 
-            background: 'rgba(51, 65, 85, 0.5)',
-            border: '1px solid #334155'
-          }}
-        >
-          <option value="all">Tous les plans</option>
-          {Object.keys(planColors).map(p => (
-            <option key={p} value={p}>{p}</option>
-          ))}
-        </select>
-        <select
-          value={selectedCompany}
-          onChange={(e) => setSelectedCompany(e.target.value)}
-          className="rounded-lg px-3 py-2.5 text-white text-sm outline-none transition"
-          style={{ 
-            background: 'rgba(51, 65, 85, 0.5)',
-            border: '1px solid #334155'
-          }}
-        >
-          <option value="all">Toutes les entreprises</option>
-          {companies.filter(c => c !== 'all').map(c => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Tableau des abonnements */}
-      <div 
-        className="rounded-xl border overflow-hidden"
-        style={{ 
-          background: '#1e293b',
-          borderColor: '#334155'
-        }}
+      <div
+        className="rounded-xl border p-6"
+        style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(49, 46, 129, 0.15))', borderColor: '#6366f1' }}
       >
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b" style={{ borderColor: '#334155' }}>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Entreprise</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Plan</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Montant</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Statut</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Période</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredSubscriptions.map((sub) => (
-                <tr key={sub.id} className="border-b hover:bg-white/5 transition" style={{ borderColor: '#334155' }}>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-3 h-3" style={{ color: '#64748b' }} />
-                      <span className="text-white">{sub.company.name}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs" style={{ color: '#64748b' }}>{sub.company.country}</span>
-                      {selectedServer?.id === 'global' && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
-                          {sub.company.server}
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    {getPlanBadge(sub.plan.name)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="font-semibold" style={{ color: '#22c55e' }}>
-                      {formatCurrency(sub.amount)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    {getStatusBadge(sub.status)}
-                    {sub.daysUntilExpiry !== undefined && sub.daysUntilExpiry > 0 && sub.daysUntilExpiry <= 7 && sub.status === 'active' && (
-                      <p className="text-[10px] mt-0.5" style={{ color: '#f59e0b' }}>
-                        ⚠️ Expire dans {sub.daysUntilExpiry}j
-                      </p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col">
-                      <p className="text-xs" style={{ color: '#94a3b8' }}>
-                        {sub.startDate} → {sub.endDate}
-                      </p>
-                      {sub.trialEnd && (
-                        <p className="text-xs" style={{ color: '#3b82f6' }}>
-                          Essai: {sub.trialEnd}
-                        </p>
-                      )}
-                      <p className="text-xs" style={{ color: '#64748b' }}>
-                        {getPaymentMethodBadge(sub.paymentMethod)} • {sub.autoRenew ? 'Auto' : 'Manuel'}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1 flex-wrap">
-                      <button 
-                        onClick={() => { setSelectedSubscription(sub); setIsModalOpen(true) }}
-                        className="p-1.5 rounded transition hover:bg-white/10"
-                        style={{ color: '#94a3b8' }}
-                        title="Voir les détails"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      
-                      {sub.status === 'expired' && (
-                        <button 
-                          onClick={() => handleRelance(sub)}
-                          className="p-1.5 rounded transition hover:bg-blue-500/20"
-                          style={{ color: '#3b82f6' }}
-                          title="Relancer l'entreprise"
-                        >
-                          <Mail className="w-4 h-4" />
-                        </button>
-                      )}
-                      
-                      {sub.status === 'active' && (
-                        <button 
-                          onClick={() => handleSuspend(sub)}
-                          className="p-1.5 rounded transition hover:bg-red-500/20"
-                          style={{ color: '#f87171' }}
-                          title="Suspendre l'abonnement"
-                        >
-                          <PauseCircle className="w-4 h-4" />
-                        </button>
-                      )}
-                      
-                      {sub.status === 'suspended' && (
-                        <button 
-                          onClick={() => handleReactivate(sub)}
-                          className="p-1.5 rounded transition hover:bg-green-500/20"
-                          style={{ color: '#22c55e' }}
-                          title="Réactiver l'abonnement"
-                        >
-                          <PlayCircle className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {filteredSubscriptions.length === 0 && (
-          <div className="p-8 text-center">
-            <CreditCard className="w-12 h-12 mx-auto mb-2" style={{ color: '#334155' }} />
-            <p className="text-sm" style={{ color: '#64748b' }}>Aucun abonnement trouvé</p>
-            {selectedServer?.id !== 'global' && (
-              <p className="text-xs" style={{ color: '#334155' }}>Sélectionnez "Global" pour voir tous les abonnements</p>
-            )}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Crown className="w-5 h-5" style={{ color: '#f59e0b' }} />
+              <h2 className="text-lg font-bold text-white">Plan {currentPlan.name}</h2>
+            </div>
+            <p className="text-2xl font-bold text-white mt-1">
+              {parseFloat(currentPlan.price) === 0 ? 'Gratuit' : `${parseFloat(currentPlan.price).toLocaleString('fr-FR')} FCFA`}
+              {parseFloat(currentPlan.price) > 0 && (
+                <span className="text-sm font-normal" style={{ color: '#94a3b8' }}>/{currentPlan.period_label}</span>
+              )}
+            </p>
+            <div className="flex items-center gap-4 mt-2 text-sm">
+              {subscription.trial_end && (
+                <span style={{ color: '#94a3b8' }}><Calendar className="w-3 h-3 inline mr-1" />Fin d'essai : {new Date(subscription.trial_end).toLocaleDateString('fr-FR')}</span>
+              )}
+              {subscription.current_period_end && (
+                <span style={{ color: '#94a3b8' }}><Calendar className="w-3 h-3 inline mr-1" />Prochain paiement : {new Date(subscription.current_period_end).toLocaleDateString('fr-FR')}</span>
+              )}
+            </div>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* MODAL DÉTAILS ABONNEMENT */}
-      {isModalOpen && selectedSubscription && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.7)' }}
-          onClick={() => setIsModalOpen(false)}
-        >
-          <div 
-            className="w-full max-w-3xl rounded-2xl p-6 max-h-[90vh] overflow-y-auto"
-            style={{ 
-              background: '#1e293b',
-              border: '1px solid #334155'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div 
-                  className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold text-white"
-                  style={{ background: 'rgba(99, 102, 241, 0.2)' }}
-                >
-                  <CreditCard className="w-6 h-6" style={{ color: '#818cf8' }} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">{selectedSubscription.company.name}</h2>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs" style={{ color: '#64748b' }}>ID: #{selectedSubscription.id}</span>
-                    <span className="text-xs" style={{ color: '#64748b' }}>•</span>
-                    <span className="text-xs" style={{ color: '#64748b' }}>{selectedSubscription.company.country}</span>
-                    {selectedSubscription.company.server && (
-                      <>
-                        <span className="text-xs" style={{ color: '#64748b' }}>•</span>
-                        <span className="text-xs" style={{ color: '#818cf8' }}>{selectedSubscription.company.server}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {getStatusBadge(selectedSubscription.status)}
-                <button onClick={() => setIsModalOpen(false)} className="p-1 rounded hover:bg-white/10" style={{ color: '#94a3b8' }}>
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {/* Infos principales */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Plan</p>
-                  <div className="mt-1">{getPlanBadge(selectedSubscription.plan.name)}</div>
-                </div>
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Montant</p>
-                  <p className="text-lg font-bold" style={{ color: '#22c55e' }}>{formatCurrency(selectedSubscription.amount)}</p>
-                </div>
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Renouvellement</p>
-                  <p className="text-sm font-medium text-white">
-                    {selectedSubscription.autoRenew ? '✅ Automatique' : '❌ Manuel'}
-                  </p>
-                </div>
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Méthode</p>
-                  <div className="mt-1">{getPaymentMethodBadge(selectedSubscription.paymentMethod)}</div>
-                </div>
-              </div>
-
-              {/* Période */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Début</p>
-                  <p className="text-sm font-medium text-white">{selectedSubscription.startDate}</p>
-                </div>
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Fin</p>
-                  <p className="text-sm font-medium text-white">{selectedSubscription.endDate}</p>
-                </div>
-                {selectedSubscription.trialEnd && (
-                  <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                    <p className="text-xs" style={{ color: '#94a3b8' }}>Fin essai</p>
-                    <p className="text-sm font-medium" style={{ color: '#3b82f6' }}>{selectedSubscription.trialEnd}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Paiements */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Dernier paiement</p>
-                  <p className="text-sm font-medium text-white">{selectedSubscription.lastPaymentDate}</p>
-                </div>
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Prochain paiement</p>
-                  <p className="text-sm font-medium text-white">{selectedSubscription.nextPaymentDate}</p>
-                </div>
-              </div>
-
-              {/* Historique des paiements */}
-              <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                <p className="text-xs" style={{ color: '#94a3b8' }}>Historique des paiements</p>
-                <div className="space-y-1 mt-1">
-                  {selectedSubscription.paymentHistory.map((payment) => (
-                    <div key={payment.id} className="flex items-center justify-between text-sm p-1.5 rounded" style={{ background: 'rgba(51, 65, 85, 0.2)' }}>
-                      <span className="text-white">{payment.date}</span>
-                      <span style={{ color: '#22c55e' }}>{formatCurrency(payment.amount)}</span>
-                      <span className="text-xs" style={{ color: payment.status === 'paid' ? '#22c55e' : payment.status === 'pending' ? '#f59e0b' : '#ef4444' }}>
-                        {payment.status === 'paid' ? '✅ Payé' : payment.status === 'pending' ? '⏳ En attente' : '❌ Échoué'}
-                      </span>
-                      <span className="text-xs" style={{ color: '#64748b' }}>{payment.method}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Notes */}
-              {selectedSubscription.notes && (
-                <div className="p-3 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                  <p className="text-xs" style={{ color: '#94a3b8' }}>Notes</p>
-                  <p className="text-sm text-white">{selectedSubscription.notes}</p>
+      <h3 className="font-semibold text-sm text-white mt-2">Changer de plan</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {plans.map((plan) => {
+          const isCurrent = plan.code === currentPlan.code
+          const price = parseFloat(plan.price)
+          const isFree = plan.is_free || price === 0
+          const isChanging = changingPlanCode === plan.code
+          const planFeatures = Array.isArray(plan.features) ? plan.features.filter((f) => f.included) : []
+          return (
+            <div
+              key={plan.code}
+              className={`rounded-xl border p-5 transition-all relative ${isCurrent ? 'border-primary-500' : 'hover:border-primary-500'}`}
+              style={{
+                background: isCurrent ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(49, 46, 129, 0.1))' : '#1e293b',
+                borderColor: isCurrent ? '#6366f1' : '#334155',
+                transform: plan.is_featured ? 'translateY(-4px)' : 'none',
+              }}
+            >
+              {plan.is_featured && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-white text-xs font-bold" style={{ background: '#6366f1' }}>
+                  <Star className="w-3 h-3 inline mr-1" />{plan.badge_label || 'Recommandé'}
                 </div>
               )}
-            </div>
+              {isFree && !plan.is_featured && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-white text-xs font-bold" style={{ background: '#22c55e' }}>
+                  <Gift className="w-3 h-3 inline mr-1" />{plan.badge_label || 'Essai gratuit'}
+                </div>
+              )}
+              <h3 className="text-lg font-bold text-white">{plan.name}</h3>
+              <p className="text-sm" style={{ color: '#94a3b8' }}>{plan.description}</p>
+              <div className="my-3">
+                <span className={`text-3xl font-bold ${isFree ? 'text-green-400' : 'text-white'}`}>
+                  {price === 0 ? 'Gratuit' : price.toLocaleString('fr-FR') + ' FCFA'}
+                </span>
+                {price > 0 && <span className="text-sm" style={{ color: '#94a3b8' }}>/{plan.period_label}</span>}
+                {isFree && plan.trial_days > 0 && <p className="text-xs mt-1" style={{ color: '#22c55e' }}>{plan.trial_days} jours d'essai complet</p>}
+              </div>
 
-            <div className="flex gap-3 mt-6 pt-4 border-t" style={{ borderColor: '#334155' }}>
+              <ul className="space-y-1.5 mb-4 text-xs">
+                {planFeatures.slice(0, 4).map((feature, i) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <Check className="w-3 h-3" style={{ color: '#22c55e' }} />
+                    <span style={{ color: '#cbd5e1' }}>{feature.label}</span>
+                  </li>
+                ))}
+                {planFeatures.length > 4 && <li className="text-xs" style={{ color: '#64748b' }}>+{planFeatures.length - 4} autres fonctionnalités</li>}
+              </ul>
+
               <button
-                onClick={() => setIsModalOpen(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium transition"
-                style={{ 
-                  background: 'transparent',
-                  border: '1px solid #334155',
-                  color: '#94a3b8'
-                }}
+                onClick={() => handlePlanChange(plan.code)}
+                disabled={isCurrent || changingPlanCode !== null}
+                className={`w-full py-2 rounded-lg text-white text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
+                  isCurrent ? 'bg-dark-600 text-dark-400 cursor-default' : isFree ? 'bg-green-600 hover:bg-green-500' : 'bg-primary-600 hover:bg-primary-500'
+                } disabled:opacity-50`}
+                style={{ boxShadow: !isCurrent && changingPlanCode === null ? (isFree ? '0 10px 25px -5px rgba(34, 197, 94, 0.3)' : '0 10px 25px -5px rgba(99, 102, 241, 0.3)') : 'none' }}
               >
-                Fermer
+                {isChanging && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {isCurrent ? 'Plan actuel' : isChanging ? 'Changement...' : plan.cta_label || 'Choisir ce plan'}
               </button>
-              
-              {selectedSubscription.status === 'expired' && (
-                <button
-                  onClick={() => handleRelance(selectedSubscription)}
-                  className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition flex items-center justify-center gap-2"
-                  style={{ 
-                    background: '#3b82f6',
-                    boxShadow: '0 10px 25px -5px rgba(59, 130, 246, 0.3)'
-                  }}
-                >
-                  <Mail className="w-4 h-4" />
-                  Relancer
-                </button>
-              )}
-              
-              {selectedSubscription.status === 'active' && (
-                <button
-                  onClick={() => handleSuspend(selectedSubscription)}
-                  className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition flex items-center justify-center gap-2"
-                  style={{ 
-                    background: '#ef4444',
-                    boxShadow: '0 10px 25px -5px rgba(239, 68, 68, 0.3)'
-                  }}
-                >
-                  <PauseCircle className="w-4 h-4" />
-                  Suspendre
-                </button>
-              )}
-              
-              {selectedSubscription.status === 'suspended' && (
-                <button
-                  onClick={() => handleReactivate(selectedSubscription)}
-                  className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition flex items-center justify-center gap-2"
-                  style={{ 
-                    background: '#22c55e',
-                    boxShadow: '0 10px 25px -5px rgba(34, 197, 94, 0.3)'
-                  }}
-                >
-                  <PlayCircle className="w-4 h-4" />
-                  Réactiver
-                </button>
-              )}
             </div>
+          )
+        })}
+      </div>
+
+      {allFeatureLabels.length > 0 && (
+        <div className="rounded-xl border overflow-hidden" style={{ background: '#1e293b', borderColor: '#334155' }}>
+          <div className="p-4 border-b" style={{ borderColor: '#334155' }}>
+            <h3 className="font-semibold text-sm text-white">Comparaison des fonctionnalités</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b" style={{ borderColor: '#334155' }}>
+                  <th className="px-4 py-3 text-left text-xs" style={{ color: '#94a3b8' }}>Fonctionnalité</th>
+                  {plans.map((plan) => <th key={plan.code} className="px-4 py-3 text-center text-xs" style={{ color: '#94a3b8' }}>{plan.name}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {featureCategories.map((category) => {
+                  const features = allFeatureLabels.filter((label) => featureCategoryOf(label) === category.id)
+                  if (features.length === 0) return null
+                  return (
+                    <React.Fragment key={category.id}>
+                      <tr className="border-b" style={{ borderColor: '#334155' }}>
+                        <td colSpan={1 + plans.length} className="px-4 py-2 text-xs font-semibold" style={{ color: '#818cf8' }}>
+                          <category.icon className="w-3 h-3 inline mr-1" />{category.label}
+                        </td>
+                      </tr>
+                      {features.map((label) => {
+                        const isRegistryFeature = registryLabels.includes(label)
+                        return (
+                        <tr key={label} className="border-b" style={{ borderColor: '#334155' }}>
+                          <td className="px-4 py-2 text-xs" style={{ color: '#94a3b8' }}>{label}</td>
+                          {plans.map((plan) => {
+                            const entry = Array.isArray(plan.features) ? plan.features.find((f) => f.label === label) : undefined
+                            // Fonctionnalite du registre (controle d'acces
+                            // reel) : modele deny-list — absente du plan =
+                            // incluse par defaut, voir PlanFeaturePermission
+                            // cote backend. Fonctionnalite decorative libre :
+                            // modele allow-list classique — visible seulement
+                            // si le plan la liste avec included=true.
+                            const hasFeature = isRegistryFeature
+                              ? (entry ? entry.included : true)
+                              : Boolean(entry?.included)
+                            return (
+                              <td key={`${plan.code}-${label}`} className="px-4 py-2 text-center">
+                                {hasFeature ? <Check className="w-4 h-4 mx-auto" style={{ color: '#22c55e' }} /> : <X className="w-4 h-4 mx-auto" style={{ color: '#475569' }} />}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                        )
+                      })}
+                    </React.Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
+
+      <div className="rounded-xl border p-4" style={{ background: '#1e293b', borderColor: '#334155' }}>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'rgba(99, 102, 241, 0.15)' }}>
+              <CreditCard className="w-5 h-5" style={{ color: '#818cf8' }} />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white">Paiement</p>
+              <p className="text-xs" style={{ color: '#94a3b8' }}>
+                Phase 1 : la souscription active immédiatement le plan choisi, sans passerelle de paiement réelle.
+                Référence de paiement actuelle : {subscription.payment_reference || 'aucune'}.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

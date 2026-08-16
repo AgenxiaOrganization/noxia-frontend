@@ -1,4 +1,5 @@
-import { get } from '@/lib/api'
+import { get, post, put, patch, del } from '@/lib/api'
+import type { ApiClient } from '@/lib/superAdminClient'
 
 export interface DashboardStats {
   revenue: number
@@ -26,6 +27,17 @@ export interface DashboardStats {
   }[]
 }
 
-export async function getDashboardStats(period: 'day' | 'week' | 'month' | 'year'): Promise<DashboardStats> {
-  return get<DashboardStats>(`/sales/dashboard/?period=${period}`)
+/**
+ * Voir `catalog.ts` : meme principe d'injection de client, pour que
+ * `super-admin` reutilise ce dashboard (via le proxy) sans le dupliquer.
+ */
+export function createDashboardApi(client: ApiClient) {
+  return {
+    getDashboardStats: (period: 'day' | 'week' | 'month' | 'year') =>
+      client.get<DashboardStats>(`/sales/dashboard/?period=${period}`),
+  }
 }
+
+const defaultDashboardApi = createDashboardApi({ get, post, put, patch, del })
+
+export const { getDashboardStats } = defaultDashboardApi

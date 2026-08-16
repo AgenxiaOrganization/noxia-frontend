@@ -5,8 +5,25 @@ import { Menu, User, LogOut, Settings, Building2, FileText, CreditCard, ChevronD
 import Link from 'next/link'
 import { getUser, getCompany, getMembership, clearSession, saveSession } from '@/lib/auth'
 import { getMe } from '@/lib/api'
+import { getMySubscription, type Subscription } from '@/lib/api/subscription'
 import { NotificationBell } from './NotificationBell'
 import { NotificationIcon } from './NotificationIcon'
+
+const SUBSCRIPTION_STATUS_LABELS: Record<Subscription['status'], { label: string; color: string }> = {
+  trialing: { label: 'Essai', color: '#3b82f6' },
+  active: { label: 'Actif', color: '#22c55e' },
+  expired: { label: 'Expiré', color: '#ef4444' },
+  canceled: { label: 'Annulé', color: '#64748b' },
+}
+
+/** Jours restants avant `trial_end`/`current_period_end` — null si deja
+ * expire ou si aucune date de fin n'existe. */
+function daysRemaining(dateStr: string | null): number | null {
+  if (!dateStr) return null
+  const diffMs = new Date(dateStr).getTime() - Date.now()
+  if (diffMs <= 0) return 0
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+}
 
 
 
@@ -68,8 +85,9 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
     company: 'Chargement...',
     companyId: '---',    // ID de l'établissement (10 caractères, messaging_code)
     employeeId: '---',   // ID de l'employé (6 caractères, activation_code)
-    plan: 'Essai gratuit',
+    photoProfile: null as string | null,
   })
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
 
   useEffect(() => {
     const loadUser = async () => {
@@ -112,12 +130,26 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
           company: comp?.name || 'Mon Entreprise',
           companyId: comp?.messaging_code || '---',
           employeeId: memb?.activation_code || '---',
-          plan: comp?.verification_status === 'verified' ? 'Premium' : 'Essai 30j',
+          photoProfile: memb?.photo_profile ?? null,
         })
+      }
+
+      // La photo de profil peut avoir change depuis le dernier login (session
+      // en localStorage potentiellement ancienne) — un rafraichissement
+      // silencieux garantit qu'elle reste a jour sans attendre une
+      // reconnexion complete.
+      try {
+        const fresh = await getMe()
+        if (fresh.membership) {
+          setUserData((prev) => ({ ...prev, photoProfile: fresh.membership!.photo_profile ?? null }))
+        }
+      } catch {
+        // Silencieux : l'avatar reste sur la valeur de session si le rafraichissement echoue.
       }
     }
 
     loadUser()
+    getMySubscription().then(setSubscription).catch((e) => console.error('Erreur chargement abonnement (topbar)', e))
   }, [])
 
   useEffect(() => {
@@ -252,11 +284,15 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition hover:bg-white/[0.04] group"
           >
-            <div 
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white bg-gradient-to-br from-primary-500 to-indigo-600 shadow-md"
-            >
-              {userData.avatar}
-            </div>
+            {userData.photoProfile ? (
+              <img src={userData.photoProfile} alt={userData.name} className="w-8 h-8 rounded-full object-cover shadow-md" />
+            ) : (
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white bg-gradient-to-br from-primary-500 to-indigo-600 shadow-md"
+              >
+                {userData.avatar}
+              </div>
+            )}
             <ChevronDown className="w-4 h-4 text-dark-300 transition-transform duration-200 group-hover:text-white" />
           </button>
 
@@ -274,18 +310,45 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
                 <div 
                   className="p-5 border-b border-dark-800/60 text-center"
                 >
-                  <div 
-                    className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-white mx-auto mb-2.5 bg-gradient-to-br from-primary-500 to-indigo-600 shadow-lg"
-                  >
-                    {userData.avatar}
-                  </div>
+                  {userData.photoProfile ? (
+                    <img src={userData.photoProfile} alt={userData.name} className="w-16 h-16 rounded-full object-cover mx-auto mb-2.5 shadow-lg" />
+                  ) : (
+                    <div
+                      className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold text-white mx-auto mb-2.5 bg-gradient-to-br from-primary-500 to-indigo-600 shadow-lg"
+                    >
+                      {userData.avatar}
+                    </div>
+                  )}
                   <p className="font-semibold text-white text-base tracking-tight">{userData.name}</p>
                   <p className="text-xs text-dark-400 mt-0.5">{userData.email}</p>
-                  <span 
-                    className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full inline-block mt-2 bg-primary-500/10 text-primary-400 border border-primary-500/15"
-                  >
-                    {userData.plan}
-                  </span>
+                  {subscription && (
+                    <div className="flex items-center justify-center gap-1.5 mt-2 flex-wrap">
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-full inline-block bg-primary-500/10 text-primary-400 border border-primary-500/15">
+                        {subscription.plan.name}
+                      </span>
+                      <span
+                        className="text-[10px] font-bold px-2.5 py-1 rounded-full inline-block"
+                        style={{
+                          background: `${SUBSCRIPTION_STATUS_LABELS[subscription.status].color}20`,
+                          color: SUBSCRIPTION_STATUS_LABELS[subscription.status].color,
+                        }}
+                      >
+                        {SUBSCRIPTION_STATUS_LABELS[subscription.status].label}
+                      </span>
+                    </div>
+                  )}
+                  {subscription && (() => {
+                    const endDate = subscription.current_period_end ?? subscription.trial_end
+                    const days = daysRemaining(endDate)
+                    if (days === null || subscription.status === 'canceled') return null
+                    return (
+                      <p className="text-[11px] mt-1.5" style={{ color: days <= 3 ? '#ef4444' : '#94a3b8' }}>
+                        {days === 0
+                          ? "Expire aujourd'hui"
+                          : `${days} jour${days > 1 ? 's' : ''} restant${days > 1 ? 's' : ''} avant ${subscription.status === 'trialing' ? "la fin de l'essai" : 'le renouvellement'}`}
+                      </p>
+                    )
+                  })()}
                 </div>
 
                 {/* Infos entreprise */}

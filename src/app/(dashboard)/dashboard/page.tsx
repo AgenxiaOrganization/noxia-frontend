@@ -10,6 +10,7 @@ import { getDashboardStats, DashboardStats } from '@/lib/api/dashboard'
 import { useWebSockets } from '@/lib/hooks/useWebSockets'
 import { getCompany } from '@/lib/auth'
 import Loader from '@/components/ui/Loader'
+import { FeatureLockedScreen, isFeatureNotIncludedError } from '@/components/ui/FeatureLockedScreen'
 
 export default function DashboardPage() {
   const [modalOpen, setModalOpen] = useState(false)
@@ -19,6 +20,7 @@ export default function DashboardPage() {
   const [period, setPeriod] = useState<'day' | 'week' | 'month' | 'year'>('day')
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isFeatureLocked, setIsFeatureLocked] = useState(false)
   const [activeTheme, setActiveTheme] = useState('indigo')
   const [activeBg, setActiveBg] = useState('slate')
 
@@ -60,8 +62,13 @@ export default function DashboardPage() {
     try {
       const data = await getDashboardStats(period)
       setStats(data)
+      setIsFeatureLocked(false)
     } catch (error) {
-      console.error('Erreur chargement dashboard:', error)
+      if (isFeatureNotIncludedError(error)) {
+        setIsFeatureLocked(true)
+      } else {
+        console.error('Erreur chargement dashboard:', error)
+      }
     } finally {
       setLoading(false)
     }
@@ -102,6 +109,9 @@ export default function DashboardPage() {
 
   if (loading) {
     return <Loader />
+  }
+  if (isFeatureLocked) {
+    return <FeatureLockedScreen featureLabel="Tableau de bord avancé" />
   }
 
   return (

@@ -1,107 +1,39 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Settings, Building2, MapPin, Phone, Mail,
   CreditCard, Shield, Bell, Globe, Users,
   Key, Save, Eye, EyeOff, CheckCircle, DollarSign,
   FileText, Upload, Check, X, Clock, AlertCircle,
-  FileCheck, FileX, FileClock, Download, User
+  FileCheck, FileX, FileClock, Download, User, Camera,
+  BadgeCheck, Fingerprint
 } from 'lucide-react'
 import { getUser, getCompany, getMembership, saveSession } from '@/lib/auth'
-import { getMe, updateMe } from '@/lib/api'
-import { updateCompanyMe } from '@/lib/api/companies'
+import { getMe, updateMe, uploadMyPhoto } from '@/lib/api'
+import {
+  updateCompanyMe, getVerificationDocuments, deleteVerificationDocument,
+  uploadVerificationDocument, type VerificationDocument,
+} from '@/lib/api/companies'
 import { toast } from 'sonner'
 import { countriesData, timezonesList, splitPhoneNumber } from '@/lib/countriesData'
 
-// --- Données Mockées ---
-const mockCompany = {
-  name: 'Bar Le Premium',
-  address: 'Avenue de l\'Indépendance, Libreville',
-  phone: '+241 77 00 00 00',
-  email: 'contact@barlepremium.ga',
-  currency: 'FCFA',
-  country: 'Gabon',
-  tva: 18,
-  timezone: 'Africa/Libreville',
-}
-
-// Documents mockés
-const mockDocuments = [
-  {
-    id: 1,
-    name: 'Registre de commerce',
-    type: 'registre_commerce',
-    status: 'en_attente',
-    uploadDate: '2026-07-08',
-    fileName: 'registre_commerce.pdf',
-    size: '2.4 MB'
-  },
-  {
-    id: 2,
-    name: 'Attestation fiscale',
-    type: 'attestation_fiscale',
-    status: 'verifie',
-    uploadDate: '2026-07-05',
-    fileName: 'attestation_fiscale.pdf',
-    size: '1.8 MB'
-  },
-  {
-    id: 3,
-    name: 'Licence d\'exploitation',
-    type: 'licence_exploitation',
-    status: 'rejete',
-    uploadDate: '2026-07-01',
-    fileName: 'licence_exploitation.pdf',
-    size: '3.1 MB',
-    rejectionReason: 'Document illisible, veuillez fournir une copie claire'
-  },
-  {
-    id: 4,
-    name: 'Pièce d\'identité du gérant',
-    type: 'piece_identite',
-    status: 'a_verifier',
-    uploadDate: '2026-07-08',
-    fileName: 'cni_gerant.pdf',
-    size: '1.2 MB'
-  },
-]
-
+// Reflete VerificationDocument.DocumentType (noxia-backend/companies/models.py)
+// — a garder synchronise avec le backend si de nouveaux types y sont ajoutes.
 const documentTypes = [
-  { value: 'registre_commerce', label: 'Registre de commerce' },
-  { value: 'attestation_fiscale', label: 'Attestation fiscale' },
-  { value: 'licence_exploitation', label: "Licence d'exploitation" },
-  { value: 'piece_identite', label: "Pièce d'identité du gérant" },
-  { value: 'nif', label: 'NIF (Numéro d\'Identification Fiscale)' },
-  { value: 'statuts', label: 'Statuts de l\'entreprise' },
-  { value: 'autre', label: 'Autre' },
+  { value: 'rccm', label: 'Extrait RCCM (registre de commerce)' },
+  { value: 'nif', label: 'Attestation NIF (immatriculation fiscale)' },
+  { value: 'id_card', label: "Pièce d'identité du responsable (CNI/Passeport)" },
+  { value: 'proof_of_address', label: 'Justificatif du siège social' },
+  { value: 'operating_license', label: "Licence d'exploitation / patente" },
+  { value: 'establishment_photo', label: "Photo de l'établissement" },
+  { value: 'other', label: 'Autre document' },
 ]
 
 const statusConfig = {
-  en_attente: {
-    label: 'En attente',
-    icon: Clock,
-    color: '#f59e0b',
-    bg: 'rgba(245, 158, 11, 0.15)'
-  },
-  verifie: {
-    label: 'Vérifié',
-    icon: FileCheck,
-    color: '#22c55e',
-    bg: 'rgba(34, 197, 94, 0.15)'
-  },
-  rejete: {
-    label: 'Rejeté',
-    icon: FileX,
-    color: '#ef4444',
-    bg: 'rgba(239, 68, 68, 0.15)'
-  },
-  a_verifier: {
-    label: 'À vérifier',
-    icon: FileClock,
-    color: '#3b82f6',
-    bg: 'rgba(59, 130, 246, 0.15)'
-  },
+  pending: { label: 'En attente', icon: Clock, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' },
+  approved: { label: 'Approuvé', icon: FileCheck, color: '#22c55e', bg: 'rgba(34, 197, 94, 0.15)' },
+  rejected: { label: 'Rejeté', icon: FileX, color: '#ef4444', bg: 'rgba(239, 68, 68, 0.15)' },
 }
 
 export default function SettingsPage() {
@@ -120,10 +52,11 @@ export default function SettingsPage() {
   })
   const [isSaving, setIsSaving] = useState(false)
   const [showSaveSuccess, setShowSaveSuccess] = useState(false)
-  const [documents, setDocuments] = useState(mockDocuments)
+  const [documents, setDocuments] = useState<VerificationDocument[]>([])
   const [isUploading, setIsUploading] = useState(false)
+  const [deletingDocId, setDeletingDocId] = useState<number | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [documentType, setDocumentType] = useState('registre_commerce')
+  const [documentType, setDocumentType] = useState('rccm')
 
   const [profile, setProfile] = useState({
     first_name: '',
@@ -136,6 +69,8 @@ export default function SettingsPage() {
     companyId: '',
   })
   const [userPermissions, setUserPermissions] = useState<string[]>([])
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
 
   // States pour les indicatifs pays et numéros séparés
   const [companyPhonePrefix, setCompanyPhonePrefix] = useState('+241')
@@ -171,6 +106,7 @@ export default function SettingsPage() {
         const pPhone = splitPhoneNumber(fresh.user.phone || '')
         setProfilePhonePrefix(pPhone.prefix)
         setProfilePhoneNumber(pPhone.number)
+        setPhotoUrl(fresh.membership?.photo_profile || null)
 
         if (fresh.company) {
           setCompany({
@@ -218,7 +154,29 @@ export default function SettingsPage() {
       }
     }
     fetchData()
+
+    getVerificationDocuments()
+      .then(setDocuments)
+      .catch((err) => console.error('Erreur chargement documents', err))
   }, [])
+
+  // Un type deja soumis (en attente ou approuve) ne doit plus pouvoir etre
+  // resoumis — unique_together(company, document_type) cote backend. Un
+  // document rejete reste re-televersable (voir VerificationDocumentSerializer.create
+  // qui remet automatiquement le document rejete a PENDING).
+  const availableDocumentTypes = useMemo(() => {
+    const lockedTypes = new Set(
+      documents.filter((d) => d.status !== 'rejected').map((d) => d.document_type)
+    )
+    return documentTypes.filter((t) => !lockedTypes.has(t.value))
+  }, [documents])
+
+  useEffect(() => {
+    if (availableDocumentTypes.length === 0) return
+    if (!availableDocumentTypes.some((t) => t.value === documentType)) {
+      setDocumentType(availableDocumentTypes[0].value)
+    }
+  }, [availableDocumentTypes, documentType])
 
   const handleSaveProfile = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -250,31 +208,65 @@ export default function SettingsPage() {
     }
   }
 
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setIsUploadingPhoto(true)
+    try {
+      const fresh = await uploadMyPhoto(file)
+      setPhotoUrl(fresh.membership?.photo_profile || null)
+
+      const accessToken = localStorage.getItem('noxia_access') || ''
+      const refreshToken = localStorage.getItem('noxia_refresh') || ''
+      saveSession({
+        status: 'authenticated',
+        access: accessToken,
+        refresh: refreshToken,
+        user: fresh.user,
+        company: fresh.company,
+        membership: fresh.membership,
+      })
+
+      toast.success('Photo de profil mise à jour.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'envoi de la photo.")
+    } finally {
+      setIsUploadingPhoto(false)
+    }
+  }
+
   // --- Gestion des documents ---
-  const handleFileUpload = () => {
+  const handleFileUpload = async () => {
     if (!selectedFile) {
-      alert('Veuillez sélectionner un fichier.')
+      toast.error('Veuillez sélectionner un fichier.')
       return
     }
-
     setIsUploading(true)
-    setTimeout(() => {
-      const typeLabel = documentTypes.find(t => t.value === documentType)?.label || documentType
-      const newDoc = {
-        id: Date.now(),
-        name: typeLabel,
-        type: documentType,
-        status: 'en_attente',
-        uploadDate: new Date().toISOString().split('T')[0],
-        fileName: selectedFile.name,
-        size: (selectedFile.size / 1024 / 1024).toFixed(1) + ' MB'
-      }
-      setDocuments([...documents, newDoc])
+    try {
+      const doc = await uploadVerificationDocument(documentType, selectedFile)
+      setDocuments((prev) => [doc, ...prev.filter((d) => d.document_type !== doc.document_type)])
       setSelectedFile(null)
-      setDocumentType('registre_commerce')
+      toast.success('Document soumis avec succès ! Il sera vérifié par notre équipe.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'envoi du document.")
+    } finally {
       setIsUploading(false)
-      alert('📄 Document soumis avec succès ! Il sera vérifié par notre équipe.')
-    }, 1500)
+    }
+  }
+
+  const handleDeleteDocument = async (doc: VerificationDocument) => {
+    if (!confirm(`Supprimer le document "${documentTypes.find(t => t.value === doc.document_type)?.label ?? doc.document_type}" ?`)) return
+    try {
+      setDeletingDocId(doc.id)
+      await deleteVerificationDocument(doc.id)
+      setDocuments((prev) => prev.filter((d) => d.id !== doc.id))
+      toast.success('Document supprimé.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la suppression.')
+    } finally {
+      setDeletingDocId(null)
+    }
   }
 
   const getStatusBadge = (status: string) => {
@@ -395,7 +387,7 @@ export default function SettingsPage() {
         ].map(tab => {
           const Icon = tab.icon
           const isDocuments = tab.id === 'documents'
-          const pendingDocs = documents.filter(d => d.status === 'en_attente' || d.status === 'a_verifier').length
+          const pendingDocs = documents.filter(d => d.status === 'pending').length
           
           return (
             <button
@@ -430,9 +422,93 @@ export default function SettingsPage() {
       {/* ===== MON PROFIL ===== */}
       {activeTab === 'profile' && (
         <div className="space-y-4 animate-fade-in">
-          <div 
+          {/* Carte d'identité */}
+          <div
+            className="rounded-xl border p-5 relative overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.12), #1e293b 55%)',
+              borderColor: '#334155',
+            }}
+          >
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+              <div className="relative shrink-0">
+                <div
+                  className="w-24 h-24 rounded-2xl overflow-hidden flex items-center justify-center border-2"
+                  style={{ borderColor: '#4f46e5', background: 'rgba(51, 65, 85, 0.5)' }}
+                >
+                  {photoUrl ? (
+                    <img src={photoUrl} alt="Photo de profil" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="w-10 h-10" style={{ color: '#64748b' }} />
+                  )}
+                  {isUploadingPhoto && (
+                    <div className="absolute inset-0 flex items-center justify-center rounded-2xl" style={{ background: 'rgba(15, 23, 42, 0.7)' }}>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+                <label
+                  htmlFor="profilePhotoInput"
+                  className="absolute -bottom-1.5 -right-1.5 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition hover:opacity-90"
+                  style={{ background: '#4f46e5', border: '2px solid #1e293b' }}
+                  title="Changer la photo de profil"
+                >
+                  <Camera className="w-4 h-4 text-white" />
+                </label>
+                <input
+                  id="profilePhotoInput"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                  disabled={isUploadingPhoto}
+                />
+              </div>
+
+              <div className="flex-1 w-full text-center sm:text-left">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  <h2 className="text-lg font-bold text-white">
+                    {profile.first_name || profile.last_name ? `${profile.first_name} ${profile.last_name}`.trim() : 'Mon profil'}
+                  </h2>
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full font-semibold capitalize w-fit mx-auto sm:mx-0 flex items-center gap-1"
+                    style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}
+                  >
+                    <BadgeCheck className="w-3 h-3" />
+                    {profile.role}
+                  </span>
+                </div>
+                <p className="text-sm mt-0.5" style={{ color: '#94a3b8' }}>{profile.email}</p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4">
+                  <div className="p-2.5 rounded-lg" style={{ background: 'rgba(15, 23, 42, 0.4)' }}>
+                    <p className="text-[11px] flex items-center justify-center sm:justify-start gap-1" style={{ color: '#64748b' }}>
+                      <Building2 className="w-3 h-3" /> Établissement
+                    </p>
+                    <p className="text-sm font-medium text-white mt-0.5">{profile.company}</p>
+                  </div>
+                  <div className="p-2.5 rounded-lg" style={{ background: 'rgba(15, 23, 42, 0.4)' }}>
+                    <p className="text-[11px] flex items-center justify-center sm:justify-start gap-1" style={{ color: '#64748b' }}>
+                      <Fingerprint className="w-3 h-3" /> ID Établissement
+                    </p>
+                    <code className="text-sm font-mono text-indigo-300 mt-0.5 block">{profile.companyId}</code>
+                  </div>
+                  {profile.role !== 'administrateur' && (
+                    <div className="p-2.5 rounded-lg" style={{ background: 'rgba(15, 23, 42, 0.4)' }}>
+                      <p className="text-[11px] flex items-center justify-center sm:justify-start gap-1" style={{ color: '#64748b' }}>
+                        <Key className="w-3 h-3" /> ID Employé
+                      </p>
+                      <code className="text-sm font-mono text-indigo-300 mt-0.5 block">{profile.employeeId}</code>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div
             className="rounded-xl border p-4"
-            style={{ 
+            style={{
               background: '#1e293b',
               borderColor: '#334155'
             }}
@@ -536,49 +612,17 @@ export default function SettingsPage() {
             </form>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Rôle & Établissement */}
-            <div 
-              className="rounded-xl border p-4 space-y-3"
-              style={{ 
-                background: '#1e293b',
-                borderColor: '#334155'
-              }}
-            >
-              <h3 className="font-semibold text-sm text-white mb-2">Rôle & Établissement</h3>
-              
-              <div className="space-y-2 text-sm text-slate-300">
-                <div className="flex justify-between py-1.5 border-b" style={{ borderColor: '#334155' }}>
-                  <span style={{ color: '#94a3b8' }}>Rôle actuel</span>
-                  <span className="font-semibold capitalize text-indigo-400">{profile.role}</span>
-                </div>
-                <div className="flex justify-between py-1.5 border-b" style={{ borderColor: '#334155' }}>
-                  <span style={{ color: '#94a3b8' }}>Établissement</span>
-                  <span className="text-white font-medium">{profile.company}</span>
-                </div>
-                <div className="flex justify-between py-1.5 border-b" style={{ borderColor: '#334155' }}>
-                  <span style={{ color: '#94a3b8' }}>ID Établissement</span>
-                  <code className="font-mono text-xs text-indigo-300">{profile.companyId}</code>
-                </div>
-                {profile.role !== 'administrateur' && (
-                  <div className="flex justify-between py-1.5 border-b" style={{ borderColor: '#334155' }}>
-                    <span style={{ color: '#94a3b8' }}>ID Employé</span>
-                    <code className="font-mono text-xs text-indigo-300">{profile.employeeId}</code>
-                  </div>
-                )}
-              </div>
-            </div>
-
+          <div>
             {/* Mes Permissions */}
-            <div 
+            <div
               className="rounded-xl border p-4"
-              style={{ 
+              style={{
                 background: '#1e293b',
                 borderColor: '#334155'
               }}
             >
               <h3 className="font-semibold text-sm text-white mb-3">Mes Habilitations & Permissions</h3>
-              
+
               <div className="space-y-2">
                 {[
                   { id: 'ventes', label: 'Ventes', desc: 'Accès à la caisse (POS) et encaissement' },
@@ -796,25 +840,36 @@ export default function SettingsPage() {
               {/* Type de document - SELECT */}
               <div>
                 <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Type de document</label>
-                <select
-                  value={documentType}
-                  onChange={(e) => setDocumentType(e.target.value)}
-                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                  style={{ 
-                    background: 'rgba(51, 65, 85, 0.5)',
-                    border: '1px solid #334155'
-                  }}
-                >
-                  {documentTypes.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
+                {availableDocumentTypes.length > 0 ? (
+                  <select
+                    value={documentType}
+                    onChange={(e) => setDocumentType(e.target.value)}
+                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                    style={{
+                      background: 'rgba(51, 65, 85, 0.5)',
+                      border: '1px solid #334155'
+                    }}
+                  >
+                    {availableDocumentTypes.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p
+                    className="text-sm rounded-lg px-4 py-2.5 flex items-center gap-2"
+                    style={{ background: 'rgba(34, 197, 94, 0.08)', color: '#22c55e', border: '1px solid rgba(34, 197, 94, 0.2)' }}
+                  >
+                    <Check className="w-4 h-4" />
+                    Tous les types de documents ont déjà été soumis.
+                  </p>
+                )}
               </div>
 
               {/* Upload de fichier */}
-              <div 
+              {availableDocumentTypes.length > 0 && (
+              <div
                 className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition hover:border-primary-500"
                 style={{ borderColor: '#334155' }}
                 onClick={() => document.getElementById('fileInput')?.click()}
@@ -838,12 +893,14 @@ export default function SettingsPage() {
                   PDF, PNG, JPG (max 10 MB)
                 </p>
               </div>
+              )}
 
+              {availableDocumentTypes.length > 0 && (
               <button
                 onClick={handleFileUpload}
                 disabled={isUploading || !selectedFile}
                 className="w-full py-2.5 rounded-lg text-white text-sm font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2"
-                style={{ 
+                style={{
                   background: '#4f46e5',
                   boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
                 }}
@@ -857,6 +914,7 @@ export default function SettingsPage() {
                   </>
                 )}
               </button>
+              )}
             </div>
           </div>
 
@@ -877,42 +935,37 @@ export default function SettingsPage() {
 
             <div className="space-y-3">
               {documents.map((doc) => {
-                const status = statusConfig[doc.status as keyof typeof statusConfig]
-                const StatusIcon = status?.icon || FileText
-                const typeLabel = documentTypes.find(t => t.value === doc.type)?.label || doc.type
-                
+                const typeLabel = doc.document_type_display || documentTypes.find(t => t.value === doc.document_type)?.label || doc.document_type
+                const fileName = doc.file.split('/').pop() || doc.file
                 return (
-                  <div 
+                  <div
                     key={doc.id}
                     className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 rounded-lg border"
-                    style={{ 
+                    style={{
                       background: 'rgba(51, 65, 85, 0.2)',
-                      borderColor: doc.status === 'rejete' ? 'rgba(239, 68, 68, 0.2)' : '#334155'
+                      borderColor: doc.status === 'rejected' ? 'rgba(239, 68, 68, 0.2)' : '#334155'
                     }}
                   >
                     <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div 
+                      <div
                         className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
                         style={{ background: 'rgba(99, 102, 241, 0.15)' }}
                       >
                         <FileText className="w-5 h-5" style={{ color: '#818cf8' }} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-white truncate">{doc.name}</p>
+                        <p className="font-medium text-sm text-white truncate">{typeLabel}</p>
                         <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                          <span className="text-xs" style={{ color: '#94a3b8' }}>
-                            {doc.fileName} • {doc.size}
+                          <span className="text-xs truncate" style={{ color: '#94a3b8' }}>
+                            {fileName}
                           </span>
                           <span className="text-xs" style={{ color: '#64748b' }}>
-                            {doc.uploadDate}
-                          </span>
-                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(51,65,85,0.3)', color: '#94a3b8' }}>
-                            {typeLabel}
+                            {new Date(doc.created_at).toLocaleDateString('fr-FR')}
                           </span>
                         </div>
-                        {doc.status === 'rejete' && doc.rejectionReason && (
+                        {doc.status === 'rejected' && doc.rejection_reason && (
                           <p className="text-xs mt-1" style={{ color: '#ef4444' }}>
-                            ⚠️ {doc.rejectionReason}
+                            ⚠️ {doc.rejection_reason}
                           </p>
                         )}
                       </div>
@@ -920,12 +973,22 @@ export default function SettingsPage() {
 
                     <div className="flex items-center gap-3 mt-2 sm:mt-0">
                       {getStatusBadge(doc.status)}
-                      <button
+                      <a
+                        href={doc.file} target="_blank" rel="noopener noreferrer"
                         className="p-1.5 rounded hover:bg-white/10 transition"
                         style={{ color: '#94a3b8' }}
                         title="Télécharger"
                       >
                         <Download className="w-4 h-4" />
+                      </a>
+                      <button
+                        onClick={() => handleDeleteDocument(doc)}
+                        disabled={deletingDocId === doc.id}
+                        className="p-1.5 rounded hover:bg-red-500/10 transition disabled:opacity-50"
+                        style={{ color: '#f87171' }}
+                        title="Supprimer"
+                      >
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   </div>

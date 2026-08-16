@@ -2,10 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { 
-  LayoutDashboard, Package, Box, CreditCard, Users, 
+import {
+  LayoutDashboard, Package, Box, CreditCard, Users,
   FileBarChart, DollarSign, Truck, Bell, MessageSquare, MessageCircle,
-  Settings, Key, Activity, ChevronLeft, ChevronRight
+  Settings, Key, Activity, ChevronLeft, ChevronRight, ShieldCheck
 } from 'lucide-react'
 
 const menuItems = [
@@ -20,6 +20,7 @@ const menuItems = [
   { id: 'alerts', label: 'Alertes', icon: Bell },
   { id: 'notifications', label: 'Notifications', icon: MessageCircle },
   { id: 'messaging', label: 'Messagerie', icon: MessageSquare },
+  { id: 'certification', label: 'Certification', icon: ShieldCheck },
   { id: 'settings', label: 'Paramètres', icon: Settings },
   { id: 'subscription', label: 'Abonnement', icon: Key },
   { id: 'logs', label: 'Logs', icon: Activity },

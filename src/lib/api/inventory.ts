@@ -1,4 +1,5 @@
 import { get, post, put, patch, del } from '../api'
+import type { ApiClient } from '../superAdminClient'
 
 export interface StockItem {
   id: number
@@ -55,30 +56,44 @@ export interface SupplierOrder {
   updated_at?: string
 }
 
+/**
+ * Voir `catalog.ts` : meme principe d'injection de client, pour que
+ * `super-admin` reutilise cette logique sans la dupliquer.
+ */
+export function createInventoryApi(client: ApiClient) {
+  return {
+    // Stock Items
+    getStockItems: () => client.get<StockItem[]>('/inventory/stock-items/'),
+    getStockItem: (id: number) => client.get<StockItem>(`/inventory/stock-items/${id}/`),
+    patchStockItem: (id: number, data: Partial<StockItem>) => client.patch<StockItem>(`/inventory/stock-items/${id}/`, data),
 
-// Stock Items
-export const getStockItems = () => get<StockItem[]>('/inventory/stock-items/')
-export const getStockItem = (id: number) => get<StockItem>(`/inventory/stock-items/${id}/`)
-export const patchStockItem = (id: number, data: Partial<StockItem>) => patch<StockItem>(`/inventory/stock-items/${id}/`, data)
+    // Movements
+    getStockMovements: () => client.get<StockMovement[]>('/inventory/movements/'),
+    createStockMovement: (data: Partial<StockMovement>) => client.post<StockMovement>('/inventory/movements/', data),
 
-// Movements
-export const getStockMovements = () => get<StockMovement[]>('/inventory/movements/')
-export const createStockMovement = (data: Partial<StockMovement>) => post<StockMovement>('/inventory/movements/', data)
+    // Suppliers
+    getSuppliers: () => client.get<Supplier[]>('/inventory/suppliers/'),
+    createSupplier: (data: Partial<Supplier>) => client.post<Supplier>('/inventory/suppliers/', data),
+    updateSupplier: (id: number, data: Partial<Supplier>) => client.put<Supplier>(`/inventory/suppliers/${id}/`, data as any),
+    deleteSupplier: (id: number) => client.del<void>(`/inventory/suppliers/${id}/`),
+    contactSupplier: (id: number, data: { message: string; products: { name: string; quantity: string | number }[] }) =>
+      client.post<{ detail: string }>(`/inventory/suppliers/${id}/contact/`, data),
 
-// Suppliers
-export const getSuppliers = () => get<Supplier[]>('/inventory/suppliers/')
-export const createSupplier = (data: Partial<Supplier>) => post<Supplier>('/inventory/suppliers/', data)
-export const updateSupplier = (id: number, data: Partial<Supplier>) => put<Supplier>(`/inventory/suppliers/${id}/`, data as any)
-export const deleteSupplier = (id: number) => del<void>(`/inventory/suppliers/${id}/`)
-export const contactSupplier = (id: number, data: { message: string; products: { name: string; quantity: string | number }[] }) => 
-  post<{ detail: string }>(`/inventory/suppliers/${id}/contact/`, data)
+    // Supplier Orders
+    getSupplierOrders: () => client.get<SupplierOrder[]>('/inventory/supplier-orders/'),
+    createSupplierOrder: (data: Partial<SupplierOrder>) => client.post<SupplierOrder>('/inventory/supplier-orders/', data as any),
+    updateSupplierOrderStatus: (id: number, status: 'pending' | 'shipped' | 'delivered') =>
+      client.patch<SupplierOrder>(`/inventory/supplier-orders/${id}/`, { status } as any),
+    deleteSupplierOrder: (id: number) => client.del<void>(`/inventory/supplier-orders/${id}/`),
+    bulkDeleteSupplierOrders: (ids: number[]) => client.post<{ detail: string }>('/inventory/supplier-orders/bulk-delete/', { ids }),
+  }
+}
 
-// Supplier Orders
-export const getSupplierOrders = () => get<SupplierOrder[]>('/inventory/supplier-orders/')
-export const createSupplierOrder = (data: Partial<SupplierOrder>) => post<SupplierOrder>('/inventory/supplier-orders/', data as any)
-export const updateSupplierOrderStatus = (id: number, status: 'pending' | 'shipped' | 'delivered') => 
-  patch<SupplierOrder>(`/inventory/supplier-orders/${id}/`, { status } as any)
-export const deleteSupplierOrder = (id: number) => del<void>(`/inventory/supplier-orders/${id}/`)
-export const bulkDeleteSupplierOrders = (ids: number[]) => post<{ detail: string }>('/inventory/supplier-orders/bulk-delete/', { ids })
+const defaultInventoryApi = createInventoryApi({ get, post, put, patch, del })
 
-
+export const {
+  getStockItems, getStockItem, patchStockItem,
+  getStockMovements, createStockMovement,
+  getSuppliers, createSupplier, updateSupplier, deleteSupplier, contactSupplier,
+  getSupplierOrders, createSupplierOrder, updateSupplierOrderStatus, deleteSupplierOrder, bulkDeleteSupplierOrders,
+} = defaultInventoryApi

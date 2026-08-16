@@ -21,6 +21,19 @@ export class ControleApiError extends Error {
   }
 }
 
+export interface ExpiredTrial {
+  company_id: number
+  company_name: string
+  owner_email: string
+  owner_phone: string
+  trial_end: string
+  days_overdue: number
+  status: 'expired' | 'expiring_soon'
+  manual_reminder_count: number
+  instance_code: string
+  instance_name: string
+}
+
 export interface DashboardStats {
   totalCompanies: number
   activeCompanies: number
@@ -49,6 +62,7 @@ export interface DashboardStats {
     users: number
     revenue: number
   }[]
+  expiredTrials: ExpiredTrial[]
 }
 
 export async function platformLogin(

@@ -22,6 +22,9 @@ export interface AuthResponse {
     type: string
     is_active: boolean
     verification_status: string
+    verification_code?: string | null
+    verification_reviewed_at?: string | null
+    verification_rejection_reason?: string
     messaging_code: string
     role_permissions?: Record<string, string[]>
     address?: string
@@ -38,6 +41,7 @@ export interface AuthResponse {
     role: string
     is_active: boolean
     activation_code: string | null
+    photo_profile?: string | null
   } | null
 }
 
@@ -166,6 +170,17 @@ async function parseResponse<T>(res: Response, ctx: RequestContext): Promise<T> 
             .join(' ')
         : null) ??
       'Une erreur est survenue.'
+
+    // 403 "abonnement expire" (voir companies.permissions.SubscriptionExpiredError
+    // cote backend) : declenche un evenement global ecoute par useSubscriptionGuard
+    // pour afficher le modal de paiement bloquant, plutot que de laisser chaque
+    // appelant gerer ce cas individuellement (meme principe que forceLogout() sur 401).
+    if (res.status === 403 && (data as Record<string, unknown>)?.code === 'subscription_expired') {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('subscription-expired'))
+      }
+    }
+
     throw new ApiError(message, res.status, data)
   }
 
@@ -384,4 +399,24 @@ export async function updateMe(payload: {
   phone?: string
 }): Promise<Omit<AuthResponse, 'status' | 'access' | 'refresh'>> {
   return patch<Omit<AuthResponse, 'status' | 'access' | 'refresh'>>('/auth/me/', payload)
+}
+
+/**
+ * Televerse/remplace la photo de profil de l'utilisateur connecte —
+ * multipart, contourne le client JSON comme les autres uploads de photo.
+ * PATCH /auth/me/
+ */
+export async function uploadMyPhoto(file: File): Promise<Omit<AuthResponse, 'status' | 'access' | 'refresh'>> {
+  const formData = new FormData()
+  formData.append('photo_profile', file)
+  const res = await fetch(`${BASE_URL}/auth/me/`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: formData,
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as Record<string, unknown>)?.detail as string ?? "Erreur lors de l'envoi de la photo.")
+  }
+  return res.json()
 }

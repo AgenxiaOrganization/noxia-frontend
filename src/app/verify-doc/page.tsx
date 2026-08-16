@@ -11,12 +11,15 @@ interface VerifyResult {
   document_type?: string
   company_name?: string
   company_country?: string
+  company_type?: string
+  verified_since?: string
   employee_name?: string
   employee_email?: string
   employee_matricule?: string
   month?: string
   net_salary?: number
   currency?: string
+  status?: string
   status_display?: string
   created_at?: string
   has_employer_signature?: boolean
@@ -121,7 +124,29 @@ function VerifyDocContent() {
         {/* Résultat */}
         {!loading && searched && result && (
           <div className="space-y-4">
-            {result.is_valid ? (
+            {result.is_valid && result.document_type === 'Établissement certifié NOXIA' ? (
+              <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-6 space-y-4 backdrop-blur-md shadow-xl text-center">
+                <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400">
+                  <ShieldCheck className="w-8 h-8" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Établissement Certifié NOXIA</span>
+                  <h3 className="text-2xl font-bold text-white mt-1">{result.company_name}</h3>
+                  <p className="text-sm text-slate-400 mt-1">{result.company_type} • {result.company_country}</p>
+                </div>
+                <div className="pt-3 border-t border-emerald-500/20 flex items-center justify-center gap-1.5 text-xs text-slate-400">
+                  <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                  Certifié depuis le {result.verified_since}
+                </div>
+                <p className="text-xs font-mono text-emerald-300/70">Code Officiel : {result.verification_code}</p>
+              </div>
+            ) : !result.is_valid && result.company_name ? (
+              <div className="rounded-2xl border border-rose-500/40 bg-rose-950/20 p-6 space-y-3 backdrop-blur-md text-center shadow-xl">
+                <ShieldAlert className="w-10 h-10 text-rose-400 mx-auto" />
+                <h3 className="text-lg font-bold text-white">{result.company_name}</h3>
+                <p className="text-sm text-rose-300">{result.detail || "Cet établissement n'est plus certifié par NOXIA."}</p>
+              </div>
+            ) : result.is_valid ? (
               <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/20 p-6 space-y-4 backdrop-blur-md shadow-xl">
                 <div className="flex items-center gap-3 pb-3 border-b border-emerald-500/20">
                   <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400">

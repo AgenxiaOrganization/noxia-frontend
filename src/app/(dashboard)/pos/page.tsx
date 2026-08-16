@@ -7,6 +7,7 @@ import { createSale, getCashRegisters, createCashRegister, CashRegister, getSale
 import { useWebSockets } from '../../../lib/hooks/useWebSockets'
 import { getUser, getMembership } from '../../../lib/auth'
 import { toast } from 'sonner'
+import { FeatureLockedScreen, isFeatureNotIncludedError } from '@/components/ui/FeatureLockedScreen'
 
 import { Product, CartItem } from '../../../components/pos/types'
 import ProductGrid from '../../../components/pos/ProductGrid'
@@ -37,6 +38,7 @@ export default function POSPage() {
   const [paymentModal, setPaymentModal] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<string>(currentEmployee?.name || '')
   const [categoriesList, setCategoriesList] = useState<string[]>(['boisson'])
+  const [isFeatureLocked, setIsFeatureLocked] = useState(false)
 
 
   const loadData = async () => {
@@ -65,7 +67,8 @@ export default function POSPage() {
             category: p.category_name?.toLowerCase() || 'boisson',
             price: parseFloat(p.price),
             stock: stock,
-            unit: p.unit
+            unit: p.unit,
+            photo: p.photo ?? null,
           }
         }))
       }
@@ -91,8 +94,13 @@ export default function POSPage() {
         const catNames = apiCategories.map((c: any) => c.name.toLowerCase())
         setCategoriesList(Array.from(new Set(catNames)))
       }
+      setIsFeatureLocked(false)
     } catch (e) {
-      console.error('Erreur lors du chargement des données POS', e)
+      if (isFeatureNotIncludedError(e)) {
+        setIsFeatureLocked(true)
+      } else {
+        console.error('Erreur lors du chargement des données POS', e)
+      }
       setIsLoadingSales(false)
     }
   }
@@ -247,6 +255,10 @@ export default function POSPage() {
         setCart(backupCart)
         loadData()
       })
+  }
+
+  if (isFeatureLocked) {
+    return <FeatureLockedScreen featureLabel="Caisse enregistreuse (POS)" />
   }
 
   return (

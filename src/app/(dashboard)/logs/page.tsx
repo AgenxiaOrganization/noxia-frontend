@@ -9,11 +9,13 @@ import {
 import { getAuditLogs, clearAuditLogs, downloadAuditLogsExcel, AuditLogItem } from '@/lib/api/audit'
 import { useWebSockets } from '@/lib/hooks/useWebSockets'
 import Loader from '@/components/ui/Loader'
+import { FeatureLockedScreen, isFeatureNotIncludedError } from '@/components/ui/FeatureLockedScreen'
 import { toast } from 'sonner'
 
 export default function LogsPage() {
   const [logs, setLogs] = useState<AuditLogItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isFeatureLocked, setIsFeatureLocked] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedMethod, setSelectedMethod] = useState('all')
@@ -35,12 +37,17 @@ export default function LogsPage() {
         status_code: selectedStatus
       })
       setLogs(apiLogs)
+      setIsFeatureLocked(false)
       if (silent) {
         toast.success('🔄 Journal des logs rafraîchi avec succès.')
       }
     } catch (err) {
-      console.error('Erreur lors du chargement des logs', err)
-      toast.error('Impossible de charger les logs d\'audit.')
+      if (isFeatureNotIncludedError(err)) {
+        setIsFeatureLocked(true)
+      } else {
+        console.error('Erreur lors du chargement des logs', err)
+        toast.error('Impossible de charger les logs d\'audit.')
+      }
     } finally {
       setIsLoading(false)
       setIsRefreshing(false)
@@ -148,6 +155,7 @@ export default function LogsPage() {
   }
 
   if (isLoading) return <Loader />
+  if (isFeatureLocked) return <FeatureLockedScreen featureLabel="Journal d'audit" />
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto animate-in fade-in duration-300">

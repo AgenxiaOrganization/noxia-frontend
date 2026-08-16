@@ -1,72 +1,139 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useContext } from 'react'
+import Link from 'next/link'
+import { toast } from 'sonner'
 import {
-  Building2, Users, CreditCard, TrendingUp, TrendingDown,
-  Activity, AlertTriangle, CheckCircle, Clock, DollarSign,
-  BarChart3, PieChart, Package, ShoppingBag, Calendar,
-  ChevronRight, Download, Filter, MoreVertical, Eye,
-  Target, Zap, Award, Crown, Star, Gift, Layers,
-  Server, Globe, Database, HardDrive, Cpu, Loader2
+  Users, TrendingUp, AlertTriangle, DollarSign,
+  BarChart3, PieChart, ShoppingBag, Target, Zap,
+  Server, Globe, Loader2, Mail, Phone, ExternalLink, Building2, BellRing,
 } from 'lucide-react'
-import { ControleApiError, fetchControleDashboard, type DashboardStats } from '@/lib/controleApi'
+import { ControleApiError, fetchControleDashboard, type DashboardStats, type ExpiredTrial } from '@/lib/controleApi'
+import { sendManualNotification } from '@/lib/superAdminClient'
+import { ServerContext } from './layout'
+import CompanyDashboard from '@/components/super-admin/CompanyDashboard'
 
-// Types
-interface ExpiredTrial {
-  id: number
-  name: string
-  expiryDate: string
-  days: number
-  company: string
-  server: string
+function formatCurrency(amount: number) {
+  return amount.toLocaleString() + ' FCFA'
 }
 
-interface RecentActivity {
-  id: number
-  action: string
-  company: string
-  user: string
-  time: string
-  status: 'success' | 'warning' | 'error' | 'info'
-  server: string
+function TrialAlertRow({ trial }: { trial: ExpiredTrial }) {
+  const [isSending, setIsSending] = useState(false)
+  // Compteur optimiste : la vraie valeur vient du resume Celery (rafraichi
+  // toutes les 10 min), donc on l'incremente localement des le clic reussi
+  // pour un retour immediat, sans attendre le prochain cycle du resume.
+  const [reminderCount, setReminderCount] = useState(trial.manual_reminder_count)
+  const isExpired = trial.status === 'expired'
+  const statusColor = isExpired ? '#ef4444' : '#f59e0b'
+  const statusBg = isExpired ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.08)'
+  const statusLabel = isExpired ? `Expiré depuis ${trial.days_overdue} j` : `Expire dans ${Math.max(0, -trial.days_overdue)} j`
+
+  const whatsappNumber = trial.owner_phone.replace(/[^\d+]/g, '')
+
+  const handleRelaunch = async () => {
+    try {
+      setIsSending(true)
+      await sendManualNotification(trial.instance_code, trial.company_id, {
+        category: 'notification',
+        type: 'sub_reminder',
+        title: isExpired ? 'Votre essai a expiré' : 'Votre essai arrive à expiration',
+        message: isExpired
+          ? `Votre période d'essai est terminée depuis ${trial.days_overdue} jour${trial.days_overdue > 1 ? 's' : ''}. Renouvelez votre abonnement pour continuer à utiliser NOXIA sans interruption.`
+          : `Votre période d'essai se termine dans ${Math.max(0, -trial.days_overdue)} jour${Math.abs(trial.days_overdue) > 1 ? 's' : ''}. Pensez à choisir un abonnement pour continuer à utiliser NOXIA.`,
+        link: '/subscription',
+      })
+      setReminderCount((c) => c + 1)
+      toast.success(`Notification envoyée à ${trial.company_name}.`)
+    } catch (err) {
+      console.error(err)
+      toast.error("Erreur lors de l'envoi de la notification.")
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  return (
+    <div className="p-2.5 rounded-lg" style={{ background: statusBg }}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-white truncate">{trial.company_name}</p>
+          <div className="flex items-center gap-2 flex-wrap mt-0.5">
+            <span className="text-xs" style={{ color: '#64748b' }}>{trial.owner_email}</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
+              {trial.instance_name}
+            </span>
+            {reminderCount > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1" style={{ background: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6' }}>
+                <BellRing className="w-2.5 h-2.5" />
+                Relancé {reminderCount}×
+              </span>
+            )}
+          </div>
+        </div>
+        <span className="text-xs px-2 py-0.5 rounded-full shrink-0 font-medium" style={{ background: `${statusColor}20`, color: statusColor }}>
+          {statusLabel}
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5 mt-2">
+        <button
+          onClick={handleRelaunch}
+          disabled={isSending}
+          className="px-2.5 py-1 rounded text-xs font-medium transition flex items-center gap-1.5 disabled:opacity-50"
+          style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}
+          title="Envoyer une notification de relance dans son espace"
+        >
+          {isSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <BellRing className="w-3.5 h-3.5" />}
+          Relancer
+        </button>
+        <a
+          href={`mailto:${trial.owner_email}`}
+          className="p-1.5 rounded transition hover:bg-white/10"
+          style={{ color: '#94a3b8' }}
+          title="Envoyer un email"
+        >
+          <Mail className="w-3.5 h-3.5" />
+        </a>
+        {whatsappNumber && (
+          <a
+            href={`https://wa.me/${whatsappNumber.replace('+', '')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1.5 rounded transition hover:bg-white/10"
+            style={{ color: '#94a3b8' }}
+            title="Contacter sur WhatsApp"
+          >
+            <Phone className="w-3.5 h-3.5" />
+          </a>
+        )}
+        <Link
+          href={`/super-admin/entreprises?search=${encodeURIComponent(trial.company_name)}`}
+          className="p-1.5 rounded transition hover:bg-white/10 ml-auto flex items-center gap-1 text-xs"
+          style={{ color: '#818cf8' }}
+          title="Voir l'établissement"
+        >
+          <Building2 className="w-3.5 h-3.5" />
+          Voir
+          <ExternalLink className="w-3 h-3" />
+        </Link>
+      </div>
+    </div>
+  )
 }
-
-// Essais expirés / activités récentes : pas d'équivalent côté
-// InstanceSummary (Noxia Contrôle n'a aucune donnée métier détaillée,
-// seulement des compteurs agrégés) — restent mockés jusqu'à ce qu'une
-// nouvelle source de données soit décidée pour ces deux listes.
-const mockExpiredTrials: ExpiredTrial[] = [
-  { id: 1, name: 'Maison Kaly', expiryDate: '2026-05-28', days: 28, company: 'Maison Kaly', server: 'Gabon' },
-  { id: 2, name: 'Awa Couture', expiryDate: '2026-05-25', days: 25, company: 'Awa Couture', server: 'Cameroun' },
-  { id: 3, name: 'Délices du Sahel', expiryDate: '2026-05-21', days: 21, company: 'Délices du Sahel', server: "Côte d'Ivoire" },
-  { id: 4, name: 'Tech Accessories', expiryDate: '2026-05-18', days: 18, company: 'Tech Accessories', server: 'Sénégal' },
-  { id: 5, name: 'Mode Express', expiryDate: '2026-05-15', days: 15, company: 'Mode Express', server: 'Gabon' },
-  { id: 6, name: "Saveurs d'Afrique", expiryDate: '2026-05-12', days: 12, company: "Saveurs d'Afrique", server: 'France' },
-  { id: 7, name: 'Digital Store', expiryDate: '2026-05-09', days: 9, company: 'Digital Store', server: 'Afrique du Sud' },
-]
-
-const mockRecentActivities: RecentActivity[] = [
-  { id: 1, action: 'Nouvelle entreprise inscrite', company: 'Bar Le Premium', user: 'Jean M.', time: 'Il y a 5 min', status: 'success', server: 'Gabon' },
-  { id: 2, action: 'Abonnement Premium activé', company: 'Snack Le Délice', user: 'Marie K.', time: 'Il y a 15 min', status: 'success', server: 'Cameroun' },
-  { id: 3, action: 'Tentative de connexion suspecte', company: 'Boîte VIP', user: 'Inconnu', time: 'Il y a 30 min', status: 'warning', server: "Côte d'Ivoire" },
-  { id: 4, action: 'Paiement échoué', company: 'Restaurant La Terrasse', user: 'François T.', time: 'Il y a 1h', status: 'error', server: 'Sénégal' },
-  { id: 5, action: 'Nouvel utilisateur ajouté', company: 'Bar Le Soleil', user: 'Admin', time: 'Il y a 2h', status: 'success', server: 'Gabon' },
-]
 
 export default function SuperAdminDashboard() {
+  const { isGlobalMode, selectedServer, selectedCompany } = useContext(ServerContext)
+
+  if (!isGlobalMode && selectedCompany) {
+    return <CompanyDashboard instanceCode={selectedServer.id} company={selectedCompany} />
+  }
+
+  return <GlobalDashboard />
+}
+
+function GlobalDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [expiredTrials] = useState<ExpiredTrial[]>(mockExpiredTrials)
-  const [recentActivities] = useState<RecentActivity[]>(mockRecentActivities)
-  const [selectedPeriod, setSelectedPeriod] = useState('month')
-  const [isAnimating, setIsAnimating] = useState(false)
-
-  useEffect(() => {
-    setIsAnimating(true)
-    const timer = setTimeout(() => setIsAnimating(false), 1000)
-    return () => clearTimeout(timer)
-  }, [])
 
   useEffect(() => {
     fetchControleDashboard()
@@ -76,19 +143,6 @@ export default function SuperAdminDashboard() {
       })
       .finally(() => setLoading(false))
   }, [])
-
-  const formatCurrency = (amount: number) => {
-    return amount.toLocaleString() + ' FCFA'
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'success': return <CheckCircle className="w-4 h-4" style={{ color: '#22c55e' }} />
-      case 'warning': return <AlertTriangle className="w-4 h-4" style={{ color: '#f59e0b' }} />
-      case 'error': return <AlertTriangle className="w-4 h-4" style={{ color: '#ef4444' }} />
-      default: return <Activity className="w-4 h-4" style={{ color: '#818cf8' }} />
-    }
-  }
 
   if (loading) {
     return (
@@ -107,51 +161,28 @@ export default function SuperAdminDashboard() {
     )
   }
 
+  const expiredCount = stats.expiredTrials.filter((t) => t.status === 'expired').length
+  const expiringSoonCount = stats.expiredTrials.length - expiredCount
+
   return (
-    <div className={`space-y-6 transition-opacity duration-500 ${isAnimating ? 'opacity-0' : 'opacity-100'}`}>
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">🌍 Vue Globale</h1>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Globe className="w-6 h-6" style={{ color: '#818cf8' }} />
+            Vue Globale
+          </h1>
           <p className="text-sm" style={{ color: '#94a3b8' }}>
             Tous les serveurs • {stats.totalCompanies} entreprises • {stats.totalUsers} utilisateurs
           </p>
         </div>
-        <div className="flex gap-2">
-         <select
-  value={selectedPeriod}
-  onChange={(e) => setSelectedPeriod(e.target.value)}
-  className="px-3 py-2 rounded-lg text-sm outline-none transition"
-  style={{ 
-    background: 'rgba(51, 65, 85, 0.5)',
-    border: '1px solid #334155',
-    color: '#94a3b8'
-  }}
->
-  <option value="today">Aujourd'hui</option>
-  <option value="week">Cette semaine</option>
-  <option value="month">Ce mois</option>
-  <option value="quarter">Ce trimestre</option>
-  <option value="year">Cette année</option>
-</select>
-          <button
-            className="px-3 py-2 rounded-lg transition flex items-center gap-2"
-            style={{ 
-              background: 'rgba(51, 65, 85, 0.3)',
-              border: '1px solid #334155',
-              color: '#94a3b8'
-            }}
-          >
-            <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Exporter</span>
-          </button>
-        </div>
       </div>
 
-      {/* Stats par serveur (nouveau) */}
+      {/* Stats par serveur */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
         {stats.serversStats.map((server) => (
-          <div key={server.id} className="p-3 rounded-xl border hover:border-primary-500 transition cursor-pointer" style={{ background: '#1e293b', borderColor: '#334155' }}>
+          <div key={server.id} className="p-3 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
             <div className="flex items-center gap-2 mb-1">
               <Server className="w-3 h-3" style={{ color: '#818cf8' }} />
               <span className="text-xs font-medium text-white">{server.name}</span>
@@ -166,60 +197,36 @@ export default function SuperAdminDashboard() {
         ))}
       </div>
 
-      {/* KPIs Principaux (globaux) */}
+      {/* KPIs Principaux */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* MRR */}
-        <div className="p-4 rounded-xl border transition-all hover:border-primary-500" style={{ background: '#1e293b', borderColor: '#334155' }}>
+        <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-medium uppercase tracking-wider" style={{ color: '#94a3b8' }}>MRR Global</p>
             <DollarSign className="w-4 h-4" style={{ color: '#22c55e' }} />
           </div>
           <p className="text-2xl font-bold text-white">{formatCurrency(stats.mrr)}</p>
           <p className="text-xs mt-1" style={{ color: '#64748b' }}>Abonnements actifs</p>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e' }}>
-              <TrendingUp className="w-3 h-3" />
-              +{stats.revenueChange}%
-            </span>
-            <span className="text-xs" style={{ color: '#64748b' }}>vs mois dernier</span>
-          </div>
         </div>
 
-        {/* Commandes mois */}
-        <div className="p-4 rounded-xl border transition-all hover:border-primary-500" style={{ background: '#1e293b', borderColor: '#334155' }}>
+        <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-medium uppercase tracking-wider" style={{ color: '#94a3b8' }}>Commandes mois</p>
             <ShoppingBag className="w-4 h-4" style={{ color: '#818cf8' }} />
           </div>
           <p className="text-2xl font-bold text-white">{stats.monthlyOrders}</p>
           <p className="text-xs mt-1" style={{ color: '#64748b' }}>Commandes passées</p>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e' }}>
-              <TrendingUp className="w-3 h-3" />
-              +{stats.monthlyOrdersChange}%
-            </span>
-            <span className="text-xs" style={{ color: '#64748b' }}>vs mois dernier</span>
-          </div>
         </div>
 
-        {/* Commission */}
-        <div className="p-4 rounded-xl border transition-all hover:border-primary-500" style={{ background: '#1e293b', borderColor: '#334155' }}>
+        <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-medium uppercase tracking-wider" style={{ color: '#94a3b8' }}>Commission</p>
             <Zap className="w-4 h-4" style={{ color: '#f59e0b' }} />
           </div>
           <p className="text-2xl font-bold text-white">{formatCurrency(stats.commission)}</p>
           <p className="text-xs mt-1" style={{ color: '#64748b' }}>{stats.commissionRate}% sur les transactions</p>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs px-2 py-0.5 rounded-full flex items-center gap-1" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e' }}>
-              <TrendingUp className="w-3 h-3" />
-              Cumulé
-            </span>
-          </div>
         </div>
 
-        {/* Taux d'activation */}
-        <div className="p-4 rounded-xl border transition-all hover:border-primary-500" style={{ background: '#1e293b', borderColor: '#334155' }}>
+        <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-medium uppercase tracking-wider" style={{ color: '#94a3b8' }}>Activation</p>
             <Target className="w-4 h-4" style={{ color: '#8b5cf6' }} />
@@ -236,7 +243,6 @@ export default function SuperAdminDashboard() {
 
       {/* Statistiques détaillées */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Taux de conversion & Boutiques actives */}
         <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-sm text-white">Conversion & Activation</h3>
@@ -274,7 +280,6 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
 
-        {/* Répartition des plans */}
         <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-sm text-white">Répartition des plans</h3>
@@ -316,7 +321,6 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
 
-        {/* Revenus */}
         <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-sm text-white">Revenus</h3>
@@ -343,89 +347,54 @@ export default function SuperAdminDashboard() {
         </div>
       </div>
 
-      {/* Essais expirés + Activités récentes (avec serveur) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Essais expirés */}
-        <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-sm text-white">Essais expirés — à relancer</h3>
-            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
-              {expiredTrials.length}
-            </span>
-          </div>
-          <div className="space-y-2 max-h-[250px] overflow-y-auto">
-            {expiredTrials.map((trial) => (
-              <div key={trial.id} className="flex items-center justify-between p-2 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                <div>
-                  <p className="text-sm font-medium text-white">{trial.name}</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs" style={{ color: '#64748b' }}>{trial.company}</span>
-                    <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
-                      {trial.server}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
-                    J-{trial.days}
-                  </span>
-                  <button className="px-3 py-1 rounded text-xs font-medium transition hover:bg-green-500/20" style={{ color: '#22c55e' }}>
-                    Relancer
-                  </button>
-                </div>
-              </div>
-            ))}
+      {/* Essais à relancer — données réelles (Subscription.trial_end) */}
+      <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-sm text-white">Essais à relancer</h3>
+          <div className="flex items-center gap-2">
+            {expiredCount > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
+                {expiredCount} expiré{expiredCount > 1 ? 's' : ''}
+              </span>
+            )}
+            {expiringSoonCount > 0 && (
+              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>
+                {expiringSoonCount} bientôt
+              </span>
+            )}
           </div>
         </div>
-
-        {/* Activités récentes (avec serveur) */}
-        <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-sm text-white">Activités récentes</h3>
-            <button className="text-xs flex items-center gap-1" style={{ color: '#818cf8' }}>
-              Voir tout
-              <ChevronRight className="w-3 h-3" />
-            </button>
+        {stats.expiredTrials.length === 0 ? (
+          <div className="text-center py-8">
+            <TrendingUp className="w-10 h-10 mx-auto mb-2" style={{ color: '#334155' }} />
+            <p className="text-sm" style={{ color: '#64748b' }}>Aucun essai à relancer pour le moment.</p>
           </div>
-          <div className="space-y-2 max-h-[250px] overflow-y-auto">
-            {recentActivities.map((activity) => (
-              <div key={activity.id} className="flex items-center justify-between p-2 rounded-lg" style={{ background: 'rgba(51, 65, 85, 0.3)' }}>
-                <div className="flex items-center gap-2">
-                  {getStatusIcon(activity.status)}
-                  <div>
-                    <p className="text-sm text-white">{activity.action}</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs" style={{ color: '#64748b' }}>{activity.company} • {activity.user}</span>
-                      <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8' }}>
-                        {activity.server}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <span className="text-xs" style={{ color: '#64748b' }}>{activity.time}</span>
-              </div>
+        ) : (
+          <div className="space-y-2 max-h-[320px] overflow-y-auto">
+            {stats.expiredTrials.map((trial) => (
+              <TrialAlertRow key={`${trial.instance_code}-${trial.company_id}`} trial={trial} />
             ))}
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Footer stats */}
+      {/* Résumé utilisateurs — dérivé des vraies stats agrégées */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-3 rounded-xl border text-center" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-2xl font-bold text-white">1769</p>
+          <p className="text-2xl font-bold text-white">{stats.totalUsers}</p>
           <p className="text-xs" style={{ color: '#94a3b8' }}>Utilisateurs total</p>
         </div>
         <div className="p-3 rounded-xl border text-center" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-2xl font-bold text-white">61</p>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Nouveaux cette semaine</p>
+          <p className="text-2xl font-bold text-white">{stats.activeCompanies}</p>
+          <p className="text-xs" style={{ color: '#94a3b8' }}>Entreprises actives</p>
         </div>
         <div className="p-3 rounded-xl border text-center" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-2xl font-bold text-white">525</p>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Messages</p>
+          <p className="text-2xl font-bold text-white">{stats.monthlyOrders}</p>
+          <p className="text-xs" style={{ color: '#94a3b8' }}>Commandes ce mois</p>
         </div>
         <div className="p-3 rounded-xl border text-center" style={{ background: '#1e293b', borderColor: '#334155' }}>
-          <p className="text-2xl font-bold text-white">133</p>
-          <p className="text-xs" style={{ color: '#94a3b8' }}>Notifications</p>
+          <p className="text-2xl font-bold" style={{ color: '#ef4444' }}>{stats.expiredTrials.length}</p>
+          <p className="text-xs" style={{ color: '#94a3b8' }}>Essais à relancer</p>
         </div>
       </div>
     </div>

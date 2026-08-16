@@ -1,5 +1,6 @@
-import { get, post } from '../api'
+import { get, post, put, patch, del } from '../api'
 import { getAuthHeaders } from '../auth'
+import type { ApiClient } from '../superAdminClient'
 
 export interface AuditLogItem {
   id: number
@@ -22,29 +23,32 @@ export interface AuditLogResponse {
   results?: AuditLogItem[]
 }
 
-export const getAuditLogs = async (params?: {
-  search?: string
-  method?: string
-  status_code?: string | number
-}): Promise<AuditLogItem[]> => {
-  const queryParams = new URLSearchParams()
-  if (params?.search) queryParams.append('search', params.search)
-  if (params?.method && params.method !== 'all') queryParams.append('method', params.method)
-  if (params?.status_code && params.status_code !== 'all') queryParams.append('status_code', String(params.status_code))
+/**
+ * Voir `catalog.ts` : meme principe d'injection de client, pour que
+ * `super-admin` reutilise cette logique sans la dupliquer.
+ */
+export function createAuditApi(client: ApiClient) {
+  return {
+    getAuditLogs: async (params?: { search?: string; method?: string; status_code?: string | number }): Promise<AuditLogItem[]> => {
+      const queryParams = new URLSearchParams()
+      if (params?.search) queryParams.append('search', params.search)
+      if (params?.method && params.method !== 'all') queryParams.append('method', params.method)
+      if (params?.status_code && params.status_code !== 'all') queryParams.append('status_code', String(params.status_code))
 
-  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : ''
-  const res = await get<any>(`/audit-logs/${queryString}`)
-  if (res && Array.isArray(res.results)) {
-    return res.results
-  } else if (Array.isArray(res)) {
-    return res
+      const queryString = queryParams.toString() ? `?${queryParams.toString()}` : ''
+      const res = await client.get<any>(`/audit-logs/${queryString}`)
+      if (res && Array.isArray(res.results)) return res.results
+      if (Array.isArray(res)) return res
+      return []
+    },
+
+    clearAuditLogs: async (): Promise<{ detail: string }> => client.post<{ detail: string }>('/audit-logs/clear/', {}),
   }
-  return []
 }
 
-export const clearAuditLogs = async (): Promise<{ detail: string }> => {
-  return post<{ detail: string }>('/audit-logs/clear/', {})
-}
+const defaultAuditApi = createAuditApi({ get, post, put, patch, del })
+
+export const { getAuditLogs, clearAuditLogs } = defaultAuditApi
 
 export const downloadAuditLogsExcel = async (params?: {
   search?: string

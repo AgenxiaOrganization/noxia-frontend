@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react'
 import {
   MessageCircle, Bot, CreditCard, Clock, Sparkles,
-  Check, CheckCheck, Calendar, ArrowRight
+  Check, CheckCheck, Calendar, ArrowRight, Trash2,
+  FileCheck, FileX, ShieldCheck
 } from 'lucide-react'
-import { getNotifications, markAsRead, markAllAsRead, type Notification } from '@/lib/api/notifications'
+import { getNotifications, markAsRead, markAllAsRead, deleteNotification, type Notification } from '@/lib/api/notifications'
 import { ensureArray } from '@/lib/api'
 import Loader from '@/components/ui/Loader'
 import { toast } from 'sonner'
@@ -17,6 +18,9 @@ const notifTypeConfig: Record<string, { icon: any; color: string; bgColor: strin
   sub_change: { icon: CreditCard, color: '#3b82f6', bgColor: 'rgba(59, 130, 246, 0.15)', label: 'Abonnement' },
   sub_expiry: { icon: Clock, color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.15)', label: 'Expiration' },
   sub_reminder: { icon: Sparkles, color: '#a855f7', bgColor: 'rgba(168, 85, 247, 0.15)', label: 'Rappel' },
+  doc_approved: { icon: FileCheck, color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.15)', label: 'Document approuvé' },
+  doc_rejected: { icon: FileX, color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.15)', label: 'Document rejeté' },
+  company_certified: { icon: ShieldCheck, color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.15)', label: 'Certification' },
 }
 
 // --- Formatage de la date ---
@@ -97,6 +101,18 @@ export default function NotificationsPage() {
       window.dispatchEvent(new Event('notifications_updated'))
     } catch (err) {
       console.error(err)
+    }
+  }
+
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteNotification(id)
+      setNotifications(prev => prev.filter(n => n.id !== id))
+      window.dispatchEvent(new Event('notifications_updated'))
+      toast.success('Notification supprimée')
+    } catch (err) {
+      console.error(err)
+      toast.error('Impossible de supprimer la notification.')
     }
   }
 
@@ -261,7 +277,7 @@ export default function NotificationsPage() {
                       </div>
 
                       {/* Actions/Liens */}
-                      <div className="flex items-center shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
                         {notif.link ? (
                           <div
                             className="p-2 rounded-lg transition opacity-60 group-hover:opacity-100 bg-white/5 hover:bg-white/10"
@@ -283,6 +299,16 @@ export default function NotificationsPage() {
                             </button>
                           )
                         )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDelete(notif.id)
+                          }}
+                          className="p-2 rounded-lg transition opacity-60 group-hover:opacity-100 hover:bg-red-500/10 text-dark-400 hover:text-red-400"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   )

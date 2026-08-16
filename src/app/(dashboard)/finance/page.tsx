@@ -32,6 +32,7 @@ import { getEmployees, getCompanyMe, updateCompanyMe, Employee } from '@/lib/api
 import { getCashRegisters, createCashRegister, updateCashRegister, deleteCashRegister, getSales, CashRegister, Sale } from '@/lib/api/sales'
 import { getMembership } from '@/lib/auth'
 import { ensureArray } from '@/lib/api'
+import { FeatureLockedScreen, isFeatureNotIncludedError } from '@/components/ui/FeatureLockedScreen'
 
 const enhanceSignatureCanvas = (imageSrc: string): Promise<string> => {
   return new Promise((resolve) => {
@@ -228,6 +229,7 @@ export default function FinancePage() {
   const nowStr = new Date().toISOString().slice(0, 7)
   const [selectedMonth, setSelectedMonth] = useState<string>(nowStr.startsWith('2026') ? nowStr : '2026-06')
   const [loading, setLoading] = useState(true)
+  const [isFeatureLocked, setIsFeatureLocked] = useState(false)
   const [exportingExcel, setExportingExcel] = useState(false)
   const [downloadingPdfId, setDownloadingPdfId] = useState<number | null>(null)
 
@@ -300,16 +302,26 @@ export default function FinancePage() {
       const role = (membership?.role || '').toLowerCase()
       const canAccessFinance = ['administrateur', 'responsable', 'gerant', 'comptable'].includes(role) || !role
 
+      // Un 403 `feature_not_included` (plan sans finance.summary/expenses/
+      // payroll) doit afficher l'ecran de mise a niveau plutot qu'etre avale
+      // silencieusement comme les autres erreurs (role insuffisant, etc.).
+      let financeFeatureLocked = false
+      const catchFinance = <T,>(fallback: T) => (e: unknown) => {
+        if (isFeatureNotIncludedError(e)) financeFeatureLocked = true
+        return fallback
+      }
+
       const [sumRes, expRes, payRes, empRes, caisseRes, salesRes, companyRes] = await Promise.all([
-        canAccessFinance ? getFinancialSummary(selectedMonth).catch(() => null) : Promise.resolve(null),
-        canAccessFinance ? getExpenses(selectedMonth).catch(() => []) : Promise.resolve([]),
-        canAccessFinance ? getPayrollRecords(selectedMonth).catch(() => []) : Promise.resolve([]),
+        canAccessFinance ? getFinancialSummary(selectedMonth).catch(catchFinance(null)) : Promise.resolve(null),
+        canAccessFinance ? getExpenses(selectedMonth).catch(catchFinance([])) : Promise.resolve([]),
+        canAccessFinance ? getPayrollRecords(selectedMonth).catch(catchFinance([])) : Promise.resolve([]),
         getEmployees().catch(() => []),
         getCashRegisters().catch(() => []),
         getSales().catch(() => []),
         getCompanyMe().catch(() => ({})),
       ])
 
+      setIsFeatureLocked(financeFeatureLocked)
       setSummary(sumRes)
       setExpenses(ensureArray(expRes))
       setPayrolls(ensureArray(payRes))
@@ -590,6 +602,10 @@ export default function FinancePage() {
   const tvaCollected = summary ? parseFloat(String(summary.tva_collected)) : 0
   const tvaDeductible = summary ? parseFloat(String(summary.tva_deductible)) : 0
   const tvaPayable = summary ? parseFloat(String(summary.net_tva_payable)) : 0
+
+  if (!loading && isFeatureLocked) {
+    return <FeatureLockedScreen featureLabel="Finances" />
+  }
 
   return (
     <div className="p-4 space-y-4 max-w-7xl mx-auto">

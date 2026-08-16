@@ -82,7 +82,11 @@ export default function ProductGrid({
               }}
             >
               <div className="flex items-center gap-2 mb-1">
-                <Icon className="w-4 h-4 text-primary-400" />
+                {product.photo ? (
+                  <img src={product.photo} alt={product.name} className="w-6 h-6 rounded object-cover shrink-0" />
+                ) : (
+                  <Icon className="w-4 h-4 text-primary-400 shrink-0" />
+                )}
                 <span className="font-medium text-sm text-white truncate flex-1">{product.name}</span>
               </div>
               <p className="text-sm font-bold text-accent-500">

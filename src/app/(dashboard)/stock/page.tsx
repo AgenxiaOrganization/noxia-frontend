@@ -2,13 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import {
-  Search, Plus, Minus, Package, TrendingUp, TrendingDown,
+  Search,
   X, Check, AlertTriangle
 } from 'lucide-react'
 import { getProducts, createCategory, createProduct, createCategoryCharacteristic, getCategories } from '../../../lib/api/catalog'
 import { getStockItems, getStockMovements, createStockMovement } from '../../../lib/api/inventory'
 import { ensureArray } from '@/lib/api'
 import Loader from '@/components/ui/Loader'
+import { FeatureLockedScreen, isFeatureNotIncludedError } from '@/components/ui/FeatureLockedScreen'
+import StockTable from '@/components/products/StockTable'
+import StockAdjustmentModal, { type StockAdjustmentPayload } from '@/components/products/StockAdjustmentModal'
 import { toast } from 'sonner'
 
 // --- Types ---
@@ -34,17 +37,14 @@ export default function StockPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [movements, setMovements] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isFeatureLocked, setIsFeatureLocked] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'remove'>('add')
-  const [adjustmentQty, setAdjustmentQty] = useState(1)
-  const [adjustmentTypeQty, setAdjustmentTypeQty] = useState<'unit' | 'package'>('unit')
-  const [adjustmentNote, setAdjustmentNote] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [categoriesList, setCategoriesList] = useState<string[]>([])
-  const [unitsPerPackageInput, setUnitsPerPackageInput] = useState<number>(12)
 
 
   const loadData = async (silent = false) => {
@@ -195,9 +195,14 @@ export default function StockPage() {
       // Enregistrer la liste de toutes les catégories existantes
       const catNames = (apiCategories || []).map((c: any) => c.name)
       setCategoriesList(Array.from(new Set(catNames)))
+      setIsFeatureLocked(false)
 
     } catch (e) {
-      console.error('Erreur chargement des stocks', e)
+      if (isFeatureNotIncludedError(e)) {
+        setIsFeatureLocked(true)
+      } else {
+        console.error('Erreur chargement des stocks', e)
+      }
     } finally {
       if (!silent) setIsLoading(false)
     }
@@ -227,44 +232,14 @@ export default function StockPage() {
   const openAdjustmentModal = (product: Product, type: 'add' | 'remove') => {
     setSelectedProduct(product)
     setAdjustmentType(type)
-    setAdjustmentQty(1)
-    setAdjustmentTypeQty('unit')
-    setUnitsPerPackageInput(product.unitsPerPackage || 12)
-    setAdjustmentNote(type === 'add' ? 'Approvisionnement' : 'Sortie manuelle')
     setIsModalOpen(true)
   }
 
   // --- Appliquer l'ajustement ---
-  const applyAdjustment = async () => {
-    if (!selectedProduct || !selectedProduct.stockItemId) {
-      toast.error("Erreur : Aucun ID de stock associé à ce produit.")
-      return
-    }
-
-    let qtyToAdjust = adjustmentQty
-    let unitLabel = ''
-    let packagingId: number | null = null
-
-    // Si c'est un produit en casier et qu'on ajuste en "casiers"
-    if (selectedProduct.subCategory === 'casier' && adjustmentTypeQty === 'package') {
-      const casierPkg = selectedProduct.packagings?.find(pkg => pkg.name === 'Casier')
-      if (casierPkg) {
-        packagingId = casierPkg.id
-        qtyToAdjust = adjustmentQty * unitsPerPackageInput
-        unitLabel = ` (${adjustmentQty} casier${adjustmentQty > 1 ? 's' : ''} × ${unitsPerPackageInput} unités = ${qtyToAdjust} unités)`
-      }
-    }
-
+  const applyAdjustment = async (payload: StockAdjustmentPayload) => {
     try {
       setIsSaving(true)
-      const adjustPromise = createStockMovement({
-        stock_item: selectedProduct.stockItemId,
-        movement_type: adjustmentType === 'add' ? 'entry' : 'exit',
-        quantity: packagingId ? undefined : qtyToAdjust,
-        packaging: packagingId || undefined,
-        packaging_quantity: packagingId ? adjustmentQty : undefined,
-        reason: adjustmentNote + unitLabel
-      })
+      const adjustPromise = createStockMovement(payload)
 
       toast.promise(adjustPromise, {
         loading: "Enregistrement de l'ajustement...",
@@ -289,6 +264,9 @@ export default function StockPage() {
   // --- Rendu ---
   if (isLoading) {
     return <Loader />
+  }
+  if (isFeatureLocked) {
+    return <FeatureLockedScreen featureLabel="Gestion des stocks" />
   }
 
   return (
@@ -358,358 +336,18 @@ export default function StockPage() {
         </div>
       </div>
 
-      {/* Tableau des stocks */}
-      <div
-        className="rounded-xl border overflow-hidden"
-        style={{ background: '#1e293b', borderColor: '#334155' }}
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b" style={{ borderColor: '#334155' }}>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Produit</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Type</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Stock</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Seuil</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Valeur</th>
-                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredProducts.map((product) => {
-                const isServiceUnit = product.unit === 'service' || product.category?.toLowerCase().includes('service')
-                const isInfinite = product.stock < 0 || isServiceUnit
-                const isLow = !isInfinite && product.stock >= 0 && product.stock <= product.minStock
-                const isOut = !isInfinite && product.stock === 0
-                const progress = product.maxStock > 0 ? (product.stock / product.maxStock) * 100 : 0
-
-                return (
-                  <tr key={product.id} className="border-b" style={{ borderColor: '#334155' }}>
-                    <td className="px-4 py-3">
-                      <div>
-                        <span className="font-medium text-white">{product.name}</span>
-                        {product.supplier && (
-                          <p className="text-xs" style={{ color: '#64748b' }}>{product.supplier}</p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8' }}>
-                        {product.subCategory === 'casier' ? 'Casier' : 'Unité'}
-                      </span>
-                      {product.subCategory === 'casier' && (
-                        <p className="text-xs" style={{ color: '#64748b' }}>
-                          {product.unitsPerPackage} unités/casier
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {!isInfinite ? (
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className={`font-semibold ${isOut ? 'text-red-400' : isLow ? 'text-orange-400' : 'text-white'}`}>
-                              {product.stock}
-                            </span>
-                            <span className="text-xs" style={{ color: '#64748b' }}>{product.unit}s</span>
-                            {isOut && <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">RUPTURE</span>}
-                            {isLow && !isOut && <span className="text-xs px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400">ALERTE</span>}
-                          </div>
-                          {product.maxStock > 0 && (
-                            <div className="w-full h-1.5 rounded-full" style={{ background: '#334155' }}>
-                              <div
-                                className="h-1.5 rounded-full transition-all"
-                                style={{
-                                  width: `${Math.min(100, progress)}%`,
-                                  background: isOut ? '#ef4444' : isLow ? '#f59e0b' : '#22c55e'
-                                }}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs" style={{ color: '#64748b' }}>Illimité</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: '#94a3b8' }}>
-                      {product.minStock > 0 ? product.minStock : '-'}
-                    </td>
-                    <td className="px-4 py-3 text-xs" style={{ color: '#94a3b8' }}>
-                      {product.stock >= 0 ? `${(product.stock * product.cost).toLocaleString()} F` : '-'}
-                    </td>
-                    <td className="px-4 py-3">
-                      {!isInfinite && product.stockItemId ? (
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => openAdjustmentModal(product, 'add')}
-                            className="p-1.5 rounded transition hover:bg-green-500/20"
-                            style={{ color: '#22c55e' }}
-                            title="Ajouter du stock"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => openAdjustmentModal(product, 'remove')}
-                            className="p-1.5 rounded transition hover:bg-red-500/20"
-                            style={{ color: '#ef4444' }}
-                            title="Retirer du stock"
-                          >
-                            <Minus className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-500 italic">-</span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-        {filteredProducts.length === 0 && (
-          <div className="p-8 text-center">
-            <Package className="w-12 h-12 mx-auto mb-2" style={{ color: '#334155' }} />
-            <p className="text-sm" style={{ color: '#64748b' }}>Aucun produit trouvé</p>
-          </div>
-        )}
-      </div>
-
-      {/* Historique des mouvements */}
-      <div
-        className="rounded-xl border p-4"
-        style={{ background: '#1e293b', borderColor: '#334155' }}
-      >
-        <h3 className="font-semibold text-sm text-white mb-3">Mouvements récents</h3>
-        <div className="space-y-2 max-h-[200px] overflow-y-auto">
-          {movements.slice(0, 10).map((movement) => (
-            <div
-              key={movement.id}
-              className="flex items-center justify-between p-2 rounded-lg text-sm"
-              style={{
-                background: movement.type === 'entree' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(239, 68, 68, 0.05)',
-                border: `1px solid ${movement.type === 'entree' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'}`
-              }}
-            >
-              <div className="flex items-center gap-3">
-                {movement.type === 'entree' ? (
-                  <TrendingUp className="w-4 h-4" style={{ color: '#22c55e' }} />
-                ) : (
-                  <TrendingDown className="w-4 h-4" style={{ color: '#ef4444' }} />
-                )}
-                <div>
-                  <span className="text-white">{movement.product}</span>
-                  <span className="text-xs ml-2" style={{ color: '#64748b' }}>{movement.date}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={`font-semibold ${movement.type === 'entree' ? 'text-green-400' : 'text-red-400'}`}>
-                  {movement.type === 'entree' ? '+' : '-'}{movement.qty}
-                </span>
-                <span className="text-xs" style={{ color: '#64748b' }}>{movement.user}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Tableau des stocks + mouvements */}
+      <StockTable products={filteredProducts} movements={movements} onAdjust={openAdjustmentModal} />
 
       {/* MODAL D'AJUSTEMENT */}
       {isModalOpen && selectedProduct && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.7)' }}
-          onClick={() => setIsModalOpen(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl p-6"
-            style={{
-              background: '#1e293b',
-              border: '1px solid #334155'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-semibold text-white mb-4">
-              {adjustmentType === 'add' ? 'Ajouter du stock' : 'Retirer du stock'}
-            </h2>
-
-            <div className="space-y-4">
-              {/* Produit (Lecture seule) */}
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Produit</label>
-                <input
-                  type="text"
-                  value={selectedProduct.name}
-                  disabled
-                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition opacity-60"
-                  style={{
-                    background: 'rgba(51, 65, 85, 0.5)',
-                    border: '1px solid #334155'
-                  }}
-                />
-              </div>
-
-              {/* Stock actuel */}
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Stock actuel</label>
-                <p className="text-lg font-bold text-white">
-                  {selectedProduct.stock >= 0 ? `${selectedProduct.stock} ${selectedProduct.unit}s` : 'Illimité'}
-                </p>
-                {selectedProduct.subCategory === 'casier' && selectedProduct.stock >= 0 && (
-                  <p className="text-xs" style={{ color: '#64748b' }}>
-                    Soit {Math.floor(selectedProduct.stock / selectedProduct.unitsPerPackage)} casier(s) de {selectedProduct.unitsPerPackage} unités
-                  </p>
-                )}
-              </div>
-
-              {/* Type d'ajustement (casier ou unité) */}
-              {selectedProduct.subCategory === 'casier' && (
-                <div>
-                  <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Ajuster en</label>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setAdjustmentTypeQty('unit')}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${adjustmentTypeQty === 'unit' ? 'border' : 'border-transparent'
-                        }`}
-                      style={{
-                        background: adjustmentTypeQty === 'unit' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(51, 65, 85, 0.3)',
-                        borderColor: adjustmentTypeQty === 'unit' ? '#6366f1' : 'transparent',
-                        color: adjustmentTypeQty === 'unit' ? '#818cf8' : '#94a3b8'
-                      }}
-                    >
-                      Unités
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAdjustmentTypeQty('package')}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${adjustmentTypeQty === 'package' ? 'border' : 'border-transparent'
-                        }`}
-                      style={{
-                        background: adjustmentTypeQty === 'package' ? 'rgba(99, 102, 241, 0.15)' : 'rgba(51, 65, 85, 0.3)',
-                        borderColor: adjustmentTypeQty === 'package' ? '#6366f1' : 'transparent',
-                        color: adjustmentTypeQty === 'package' ? '#818cf8' : '#94a3b8'
-                      }}
-                    >
-                      Casiers
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Quantité */}
-              <div>
-                {selectedProduct.subCategory === 'casier' && adjustmentTypeQty === 'package' ? (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
-                          Nbr de casiers
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          step="1"
-                          value={adjustmentQty}
-                          onChange={(e) => setAdjustmentQty(Math.max(1, parseInt(e.target.value) || 1))}
-                          className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition bg-slate-900 border border-slate-700 focus:border-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
-                          Unités par casier
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          step="1"
-                          value={unitsPerPackageInput}
-                          onChange={(e) => setUnitsPerPackageInput(Math.max(1, parseInt(e.target.value) || 1))}
-                          className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition bg-slate-900 border border-slate-700 focus:border-indigo-500"
-                        />
-                      </div>
-                    </div>
-                    <div className="p-3 rounded-lg border border-indigo-500/20 text-center" style={{ background: 'rgba(99, 102, 241, 0.05)' }}>
-                      <p className="text-xs text-slate-300">Total à {adjustmentType === 'add' ? 'ajouter' : 'retirer'} :</p>
-                      <p className="text-lg font-bold text-indigo-400 mt-0.5">
-                        {adjustmentQty} casier{adjustmentQty > 1 ? 's' : ''} × {unitsPerPackageInput} = {adjustmentQty * unitsPerPackageInput} unités
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
-                      Quantité (en unités)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      value={adjustmentQty}
-                      onChange={(e) => setAdjustmentQty(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                      style={{
-                        background: 'rgba(51, 65, 85, 0.5)',
-                        border: '1px solid #334155'
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Note */}
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Note</label>
-                <input
-                  type="text"
-                  value={adjustmentNote}
-                  onChange={(e) => setAdjustmentNote(e.target.value)}
-                  placeholder={adjustmentType === 'add' ? 'Approvisionnement' : 'Sortie manuelle'}
-                  className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                  style={{
-                    background: 'rgba(51, 65, 85, 0.5)',
-                    border: '1px solid #334155'
-                  }}
-                />
-              </div>
-
-              {/* Boutons */}
-              <div className="flex gap-3 pt-3 border-t" style={{ borderColor: '#334155' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-[1.02] hover:bg-slate-700/50 active:scale-[0.98]"
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid #334155',
-                    color: '#94a3b8'
-                  }}
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  onClick={applyAdjustment}
-                  disabled={isSaving}
-                  className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-2"
-                  style={{
-                    background: adjustmentType === 'add' ? '#22c55e' : '#ef4444',
-                    boxShadow: adjustmentType === 'add'
-                      ? '0 10px 25px -5px rgba(34, 197, 94, 0.3)'
-                      : '0 10px 25px -5px rgba(239, 68, 68, 0.3)'
-                  }}
-                >
-                  {isSaving ? (
-                    <>
-                      <img src="/logos/NOXIA_Orbit_Logo.svg" alt="NOXIA" className="w-4 h-4 animate-spin" />
-                      Validation...
-                    </>
-                  ) : (
-                    'Valider'
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <StockAdjustmentModal
+          product={selectedProduct}
+          type={adjustmentType}
+          isSaving={isSaving}
+          onSubmit={applyAdjustment}
+          onClose={() => setIsModalOpen(false)}
+        />
       )}
     </div>
   )
