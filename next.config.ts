@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  // Image Docker minimale : ne copie que server.js + les deps effectivement
+  // utilisees au runtime, au lieu de node_modules complet (voir Dockerfile).
+  output: "standalone",
   async rewrites() {
     return [
       {
