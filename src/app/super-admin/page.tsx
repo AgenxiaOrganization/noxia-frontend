@@ -10,11 +10,47 @@ import {
 } from 'lucide-react'
 import { ControleApiError, fetchControleDashboard, type DashboardStats, type ExpiredTrial } from '@/lib/controleApi'
 import { sendManualNotification } from '@/lib/superAdminClient'
+import { getContinent } from '@/lib/countriesData'
 import { ServerContext } from './layout'
 import CompanyDashboard from '@/components/super-admin/CompanyDashboard'
 
 function formatCurrency(amount: number) {
   return amount.toLocaleString() + ' FCFA'
+}
+
+const GEO_BAR_COLORS = ['#22c55e', '#818cf8', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316']
+
+/** Agrège une répartition {clé: count} en une liste triée décroissante,
+ * avec la proportion (%) du total pour dimensionner les barres. */
+function toRankedShares(distribution: Record<string, number>) {
+  const total = Object.values(distribution).reduce((sum, n) => sum + n, 0)
+  return Object.entries(distribution)
+    .map(([label, count]) => ({ label, count, pct: total > 0 ? (count / total) * 100 : 0 }))
+    .sort((a, b) => b.count - a.count)
+}
+
+function GeoDistributionList({ items }: { items: { label: string; count: number; pct: number }[] }) {
+  if (items.length === 0) {
+    return <p className="text-sm text-center py-6" style={{ color: '#64748b' }}>Aucune donnée disponible.</p>
+  }
+  return (
+    <div className="space-y-2.5">
+      {items.map((item, i) => (
+        <div key={item.label}>
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className="truncate" style={{ color: '#cbd5e1' }}>{item.label}</span>
+            <span className="font-semibold text-white shrink-0 ml-2">{item.count}</span>
+          </div>
+          <div className="w-full h-1.5 rounded-full" style={{ background: '#334155' }}>
+            <div
+              className="h-1.5 rounded-full transition-all"
+              style={{ width: `${Math.max(2, item.pct)}%`, background: GEO_BAR_COLORS[i % GEO_BAR_COLORS.length] }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function TrialAlertRow({ trial }: { trial: ExpiredTrial }) {
@@ -377,6 +413,48 @@ function GlobalDashboard() {
           </div>
         )}
       </div>
+
+      {/* Répartition géographique — dérivée de Company.country (toutes instances) */}
+      {(() => {
+        const byCountry = toRankedShares(stats.countryDistribution)
+        const continentDistribution: Record<string, number> = {}
+        for (const [country, count] of Object.entries(stats.countryDistribution)) {
+          const continent = getContinent(country)
+          continentDistribution[continent] = (continentDistribution[continent] ?? 0) + count
+        }
+        const byContinent = toRankedShares(continentDistribution)
+        const topCountry = byCountry[0]
+
+        return (
+          <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-sm text-white">Répartition géographique</h3>
+              <Globe className="w-4 h-4" style={{ color: '#64748b' }} />
+            </div>
+            {topCountry && (
+              <div
+                className="flex items-center justify-between rounded-lg p-2.5 mb-4 text-sm"
+                style={{ background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.2)' }}
+              >
+                <span style={{ color: '#94a3b8' }}>Top pays</span>
+                <span className="font-semibold" style={{ color: '#22c55e' }}>
+                  {topCountry.label} · {topCountry.count} client{topCountry.count > 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs font-medium mb-2" style={{ color: '#94a3b8' }}>Par pays</p>
+                <GeoDistributionList items={byCountry} />
+              </div>
+              <div>
+                <p className="text-xs font-medium mb-2" style={{ color: '#94a3b8' }}>Par continent</p>
+                <GeoDistributionList items={byContinent} />
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Résumé utilisateurs — dérivé des vraies stats agrégées */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

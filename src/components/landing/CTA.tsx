@@ -79,7 +79,7 @@ export function CTA() {
           }}
         >
           <p className="text-sm mb-3" style={{ color: '#94a3b8' }}>
-            📬 Recevez nos actualités et offres exclusives
+             Recevez nos actualités et offres exclusives
           </p>
           <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
             <div className="relative flex-1">

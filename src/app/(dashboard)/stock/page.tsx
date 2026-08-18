@@ -5,7 +5,7 @@ import {
   Search,
   X, Check, AlertTriangle
 } from 'lucide-react'
-import { getProducts, createCategory, createProduct, createCategoryCharacteristic, getCategories } from '../../../lib/api/catalog'
+import { getProducts, createCategory, createCategoryCharacteristic, getCategories } from '../../../lib/api/catalog'
 import { getStockItems, getStockMovements, createStockMovement } from '../../../lib/api/inventory'
 import { ensureArray } from '@/lib/api'
 import Loader from '@/components/ui/Loader'
@@ -71,7 +71,6 @@ export default function StockPage() {
 
         const catBoisson = apiCategories.find((c: any) => c.type === 'boisson')
         const catNourriture = apiCategories.find((c: any) => c.type === 'nourriture')
-        const catService = apiCategories.find((c: any) => c.type === 'service')
 
         // Créer des modèles de caractéristiques s'il n'y en a pas encore
         if (catBoisson && (!catBoisson.characteristics || catBoisson.characteristics.length === 0)) {
@@ -91,64 +90,6 @@ export default function StockPage() {
             attributes: { "accompagnement": "Frites", "option": "Salade" }
           })
         }
-
-        const defaultProducts = [
-          {
-            category: catBoisson?.id || null,
-            name: 'Bière Castel 65cl',
-            unit: 'unite' as const,
-            price: '1500',
-            initial_stock: 48,
-            initial_min_stock: 10,
-            units_per_package: 12
-          },
-          {
-            category: catBoisson?.id || null,
-            name: 'Bière Guinness 65cl',
-            unit: 'unite' as const,
-            price: '2000',
-            initial_stock: 12,
-            initial_min_stock: 10,
-            units_per_package: 12
-          },
-          {
-            category: catBoisson?.id || null,
-            name: 'Whisky Jack Daniel\'s',
-            unit: 'bouteille' as const,
-            price: '25000',
-            initial_stock: 8,
-            initial_min_stock: 2
-          },
-          {
-            category: catNourriture?.id || null,
-            name: 'Burger Classic',
-            unit: 'plat' as const,
-            price: '4000',
-            initial_stock: 30,
-            initial_min_stock: 5
-          },
-          {
-            category: catService?.id || null,
-            name: 'Chicha Session',
-            unit: 'service' as const,
-            price: '10000',
-            initial_stock: 0,
-            initial_min_stock: 0
-          }
-        ]
-
-        for (const p of defaultProducts) {
-          await createProduct(p)
-        }
-
-        const [freshProducts, freshStockItems, freshMovements] = await Promise.all([
-          getProducts(),
-          getStockItems(),
-          getStockMovements()
-        ])
-        apiProducts = ensureArray<any>(freshProducts)
-        apiStockItems = ensureArray<any>(freshStockItems)
-        apiMovements = ensureArray<any>(freshMovements)
       }
 
       const stockItemsMap = new Map(apiStockItems.map((item: any) => [item.product, item]))

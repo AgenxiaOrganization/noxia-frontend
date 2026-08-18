@@ -55,6 +55,7 @@ export interface DashboardStats {
     business: number
     pro: number
   }
+  countryDistribution: Record<string, number>
   serversStats: {
     id: string
     name: string

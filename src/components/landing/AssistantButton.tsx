@@ -3,44 +3,47 @@
 import { useState, useEffect } from 'react'
 import { Bot, X, Send, Sparkles } from 'lucide-react'
 
-// Données mockées pour le chat
-const mockMessages = [
-  { 
-    id: 1, 
-    sender: 'assistant', 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api/v1'
+
+const initialMessages = [
+  {
+    id: 1,
+    sender: 'assistant',
     message: 'Bonjour ! Je suis l\'assistant NOXIA. Je peux vous aider sur :\n• Le fonctionnement de la plateforme\n• Les plans d\'abonnement\n• La gestion des stocks\n• Les questions fréquentes\n\nPosez votre question en langage naturel !',
     time: '10:00'
   },
 ]
 
-const getMockResponse = (question: string): string => {
-  const lower = question.toLowerCase()
-  
-  if (lower.includes('prix') || lower.includes('tarif') || lower.includes('plan') || lower.includes('abonnement')) {
-    return '📊 **Nos plans d\'abonnement :**\n\n• **Essai** : 30 jours gratuits (toutes les fonctionnalités)\n• **Starter** : 5 000 FCFA/mois\n• **Premium** : 11 000 FCFA/mois\n• **Business** : 14 000 FCFA/mois\n\n💡 Tous nos plans incluent la gestion des ventes, stocks, et l\'assistant IA.'
+/**
+ * Relaie le message au proxy public Django (AssistantLandingChatProxyView,
+ * `/companies/assistant/landing-chat/`) qui route vers le webhook n8n dédié
+ * à la landing (N8N_ASSISTANT_LANDING_WEBHOOK, agent autonome sans contexte
+ * utilisateur — jamais appelé directement depuis le navigateur pour ne pas
+ * exposer l'URL du webhook n8n côté client).
+ */
+async function fetchAssistantReply(message: string): Promise<string> {
+  const res = await fetch(`${BASE_URL}/companies/assistant/landing-chat/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  })
+
+  const data = await res.json().catch(() => null)
+
+  if (!res.ok) {
+    throw new Error(data?.detail || "L'assistant est momentanément indisponible.")
   }
-  if (lower.includes('stock') || lower.includes('inventaire')) {
-    return '📦 **Gestion des stocks :**\n\n• Suivi en temps réel\n• Alertes automatiques\n• Gestion des casiers et unités\n• Historique des mouvements\n• Valeur totale du stock\n\n🔔 Vous recevez des notifications quand un produit atteint le seuil critique.'
+
+  const reply = data?.message ?? data?.output ?? data?.text
+  if (typeof reply !== 'string' || !reply.trim()) {
+    throw new Error("Réponse inattendue de l'assistant.")
   }
-  if (lower.includes('vente') || lower.includes('encaissement') || lower.includes('pos')) {
-    return '💳 **Gestion des ventes (POS) :**\n\n• Interface tactile optimisée\n• Multi-caisses\n• Tickets et factures\n• Modes de paiement : Espèces, Mobile Money, Carte\n• Option "Autre" pour flexibilité\n• Mise à jour automatique du stock'
-  }
-  if (lower.includes('employe') || lower.includes('equipe')) {
-    return '👥 **Gestion des employés :**\n\n• Création de comptes\n• Rôles et permissions (Drag & Drop)\n• ID unique par employé\n• Suivi des performances\n• Gestion des salaires et commissions\n• Liaison WhatsApp automatisée'
-  }
-  if (lower.includes('essaie') || lower.includes('gratuit') || lower.includes('demo')) {
-    return '🎁 **Essai gratuit de 30 jours :**\n\n• Accès à TOUTES les fonctionnalités\n• Pas de carte bancaire requise\n• Support inclus\n• Annulation à tout moment\n\n👉 Cliquez sur "Essai gratuit" dans le menu pour commencer !'
-  }
-  if (lower.includes('aide') || lower.includes('help') || lower.includes('commande')) {
-    return '📋 **Commandes disponibles :**\n\n• Plans / Tarifs\n• Stock\n• Ventes / POS\n• Employés\n• Essai gratuit\n\nPosez votre question en langage naturel !'
-  }
-  
-  return `🤖 Je suis l'assistant NOXIA. Je peux vous renseigner sur :\n• Les plans et tarifs\n• La gestion des stocks\n• Le système de vente (POS)\n• La gestion des employés\n• L'essai gratuit de 30 jours\n\nQue voulez-vous savoir ?`
+  return reply
 }
 
 export function AssistantButton() {
   const [isOpen, setIsOpen] = useState(false)
-  const [messages, setMessages] = useState(mockMessages)
+  const [messages, setMessages] = useState(initialMessages)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -62,7 +65,7 @@ export function AssistantButton() {
 
     const userMessage = input.trim()
     setInput('')
-    
+
     setMessages(prev => [...prev, {
       id: prev.length + 1,
       sender: 'user',
@@ -72,9 +75,14 @@ export function AssistantButton() {
 
     setIsLoading(true)
 
-    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 700))
-
-    const response = getMockResponse(userMessage)
+    let response: string
+    try {
+      response = await fetchAssistantReply(userMessage)
+    } catch (err) {
+      response = err instanceof Error
+        ? `⚠️ ${err.message}`
+        : "⚠️ L'assistant est momentanément indisponible. Réessayez dans un instant."
+    }
 
     setMessages(prev => [...prev, {
       id: prev.length + 1,

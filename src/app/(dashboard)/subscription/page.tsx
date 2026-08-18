@@ -6,12 +6,14 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import {
   CreditCard, Check, X, Crown, Star,
   Package, BarChart, Globe,
-  Headphones, Calendar, Gift, Loader2, Receipt,
+  Headphones, Calendar, Gift, Loader2, Receipt, Download, Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   getMySubscription, subscribeToPlan, getPlans, getFeatureRegistry,
-  type Subscription, type Plan, type FeatureRegistryEntry,
+  listMyTransactions, hideTransaction, downloadTransactionInvoicePdf,
+  type Subscription, type Plan, type FeatureRegistryEntry, type PvitTransaction,
+  type BillingPeriod,
 } from '@/lib/api/subscription'
 import Loader from '@/components/ui/Loader'
 import PvitPaymentModal from '@/components/payments/PvitPaymentModal'
@@ -82,18 +84,23 @@ function SubscriptionPageContent() {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [plans, setPlans] = useState<Plan[]>([])
   const [featureRegistry, setFeatureRegistry] = useState<FeatureRegistryEntry[]>([])
+  const [transactions, setTransactions] = useState<PvitTransaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isChangingPlan, setIsChangingPlan] = useState(false)
   const [selectedPlanCode, setSelectedPlanCode] = useState<string | null>(null)
   const [paymentModalPlan, setPaymentModalPlan] = useState<Plan | null>(null)
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly')
+  const [downloadingRef, setDownloadingRef] = useState<string | null>(null)
+  const [hidingRef, setHidingRef] = useState<string | null>(null)
 
   const loadData = () => {
     setIsLoading(true)
-    Promise.all([getMySubscription(), getPlans(), getFeatureRegistry()])
-      .then(([sub, planList, registry]) => {
+    Promise.all([getMySubscription(), getPlans(), getFeatureRegistry(), listMyTransactions()])
+      .then(([sub, planList, registry, txs]) => {
         setSubscription(sub)
         setPlans([...planList].sort((a, b) => a.display_order - b.display_order))
         setFeatureRegistry(registry)
+        setTransactions(txs)
       })
       .catch((e) => console.error('Erreur chargement abonnement', e))
       .finally(() => setIsLoading(false))
@@ -140,6 +147,33 @@ function SubscriptionPageContent() {
       return
     }
     setPaymentModalPlan(plan)
+  }
+
+  const handleDownloadInvoice = async (tx: PvitTransaction) => {
+    setDownloadingRef(tx.merchant_reference)
+    try {
+      await downloadTransactionInvoicePdf(tx.merchant_reference, `facture_abonnement_${tx.merchant_reference}.pdf`)
+    } catch (err) {
+      console.error(err)
+      toast.error(err instanceof Error ? err.message : 'Erreur lors du téléchargement de la facture.')
+    } finally {
+      setDownloadingRef(null)
+    }
+  }
+
+  const handleHideTransaction = async (tx: PvitTransaction) => {
+    if (!confirm('Retirer cette transaction de votre historique ?')) return
+    setHidingRef(tx.merchant_reference)
+    try {
+      await hideTransaction(tx.merchant_reference)
+      setTransactions((prev) => prev.filter((t) => t.merchant_reference !== tx.merchant_reference))
+      toast.success('Transaction retirée de votre historique.')
+    } catch (err) {
+      console.error(err)
+      toast.error(err instanceof Error ? err.message : "Erreur lors de la suppression.")
+    } finally {
+      setHidingRef(null)
+    }
   }
 
   if (isLoading) return <Loader />
@@ -209,12 +243,38 @@ function SubscriptionPageContent() {
       </div>
 
       {/* PLANS DISPONIBLES */}
-      <h3 className="font-semibold text-sm text-white mt-2">Changer de plan</h3>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-2">
+        <h3 className="font-semibold text-sm text-white">Changer de plan</h3>
+        <div className="flex items-center gap-1 p-1 rounded-lg self-start" style={{ background: 'rgba(51, 65, 85, 0.5)' }}>
+          <button
+            onClick={() => setBillingPeriod('monthly')}
+            className="px-3 py-1.5 rounded-md text-xs font-medium transition"
+            style={{
+              background: billingPeriod === 'monthly' ? '#4f46e5' : 'transparent',
+              color: billingPeriod === 'monthly' ? '#fff' : '#94a3b8',
+            }}
+          >
+            Mensuel
+          </button>
+          <button
+            onClick={() => setBillingPeriod('yearly')}
+            className="px-3 py-1.5 rounded-md text-xs font-medium transition"
+            style={{
+              background: billingPeriod === 'yearly' ? '#4f46e5' : 'transparent',
+              color: billingPeriod === 'yearly' ? '#fff' : '#94a3b8',
+            }}
+          >
+            Annuel
+          </button>
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {plans.map((plan) => {
           const isCurrent = plan.code === currentPlanCode
-          const price = parseFloat(plan.price)
-          const isFree = plan.is_free || price === 0
+          const hasYearlyOffer = plan.yearly_price !== null && Number(plan.yearly_price) >= 0
+          const useYearly = billingPeriod === 'yearly' && hasYearlyOffer
+          const price = useYearly ? parseFloat(plan.yearly_price as string) : parseFloat(plan.price)
+          const isFree = plan.is_free || parseFloat(plan.price) === 0
           const isChanging = selectedPlanCode === plan.code && isChangingPlan
           const planFeatures = plan.features.filter((f) => f.included)
 
@@ -262,7 +322,15 @@ function SubscriptionPageContent() {
                   {price === 0 ? 'Gratuit' : price.toLocaleString('fr-FR') + ' FCFA'}
                 </span>
                 {price > 0 && (
-                  <span className="text-sm" style={{ color: '#94a3b8' }}>/{plan.period_label}</span>
+                  <span className="text-sm" style={{ color: '#94a3b8' }}>/{useYearly ? 'an' : plan.period_label}</span>
+                )}
+                {useYearly && plan.yearly_discount_percent > 0 && (
+                  <p className="text-xs mt-1 font-medium" style={{ color: '#818cf8' }}>
+                    Économisez {plan.yearly_discount_percent}% vs mensuel
+                  </p>
+                )}
+                {!isFree && billingPeriod === 'yearly' && !hasYearlyOffer && (
+                  <p className="text-xs mt-1" style={{ color: '#64748b' }}>Pas d'offre annuelle — facturé au mois</p>
                 )}
                 {isFree && plan.trial_days > 0 && (
                   <p className="text-xs mt-1" style={{ color: '#22c55e' }}>{plan.trial_days} jours d'essai complet</p>
@@ -382,15 +450,12 @@ function SubscriptionPageContent() {
         </div>
       )}
 
-      {/* FACTURATION */}
+      {/* FACTURATION & HISTORIQUE */}
       <div
-        className="rounded-xl border p-4"
-        style={{
-          background: '#1e293b',
-          borderColor: '#334155'
-        }}
+        className="rounded-xl border overflow-hidden"
+        style={{ background: '#1e293b', borderColor: '#334155' }}
       >
-        <div className="flex items-center gap-3">
+        <div className="p-4 border-b flex items-center gap-3" style={{ borderColor: '#334155' }}>
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
             style={{ background: 'rgba(99, 102, 241, 0.15)' }}
@@ -398,12 +463,98 @@ function SubscriptionPageContent() {
             <Receipt className="w-5 h-5" style={{ color: '#818cf8' }} />
           </div>
           <div>
-            <p className="text-sm font-medium text-white">Facturation & méthodes de paiement</p>
+            <p className="text-sm font-medium text-white">Facturation & historique</p>
             <p className="text-xs" style={{ color: '#94a3b8' }}>
-              Paiement sécurisé via Airtel Money, Moov Money ou Visa/Mastercard. Choisissez un plan payant ci-dessus pour démarrer.
+              Paiement sécurisé via Airtel Money, Moov Money ou Visa/Mastercard.
             </p>
           </div>
         </div>
+
+        {transactions.length === 0 ? (
+          <div className="p-6 text-center">
+            <p className="text-sm" style={{ color: '#64748b' }}>Aucun paiement d'abonnement pour le moment.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b" style={{ borderColor: '#334155' }}>
+                  <th className="px-4 py-2.5 text-left text-xs" style={{ color: '#94a3b8' }}>Date</th>
+                  <th className="px-4 py-2.5 text-left text-xs" style={{ color: '#94a3b8' }}>Plan</th>
+                  <th className="px-4 py-2.5 text-left text-xs" style={{ color: '#94a3b8' }}>Cycle</th>
+                  <th className="px-4 py-2.5 text-left text-xs" style={{ color: '#94a3b8' }}>Méthode</th>
+                  <th className="px-4 py-2.5 text-right text-xs" style={{ color: '#94a3b8' }}>Montant</th>
+                  <th className="px-4 py-2.5 text-left text-xs" style={{ color: '#94a3b8' }}>Statut</th>
+                  <th className="px-4 py-2.5 text-right text-xs" style={{ color: '#94a3b8' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.map((tx) => {
+                  const statusStyle: Record<PvitTransaction['status'], { label: string; color: string }> = {
+                    success: { label: 'Réussi', color: '#22c55e' },
+                    pending: { label: 'En attente', color: '#f59e0b' },
+                    failed: { label: 'Échoué', color: '#ef4444' },
+                    ambiguous: { label: 'Incertain', color: '#94a3b8' },
+                  }
+                  const st = statusStyle[tx.status]
+                  return (
+                    <tr key={tx.merchant_reference} className="border-b" style={{ borderColor: '#334155' }}>
+                      <td className="px-4 py-2.5 text-xs" style={{ color: '#94a3b8' }}>
+                        {new Date(tx.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-white">{tx.plan_name}</td>
+                      <td className="px-4 py-2.5 text-xs" style={{ color: '#94a3b8' }}>
+                        {tx.billing_period === 'yearly' ? 'Annuel' : 'Mensuel'}
+                      </td>
+                      <td className="px-4 py-2.5 text-xs" style={{ color: '#94a3b8' }}>{tx.method_display}</td>
+                      <td className="px-4 py-2.5 text-xs text-white text-right">
+                        {Number(tx.amount).toLocaleString('fr-FR')} FCFA
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full"
+                          style={{ background: `${st.color}20`, color: st.color }}
+                        >
+                          {st.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center justify-end gap-1.5">
+                          {tx.status === 'success' && (
+                            <button
+                              onClick={() => handleDownloadInvoice(tx)}
+                              disabled={downloadingRef === tx.merchant_reference}
+                              className="p-1.5 rounded transition hover:bg-white/10 disabled:opacity-50"
+                              style={{ color: '#818cf8' }}
+                              title="Télécharger la facture"
+                            >
+                              {downloadingRef === tx.merchant_reference
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <Download className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
+                          {tx.status !== 'pending' && (
+                            <button
+                              onClick={() => handleHideTransaction(tx)}
+                              disabled={hidingRef === tx.merchant_reference}
+                              className="p-1.5 rounded transition hover:bg-red-500/10 disabled:opacity-50"
+                              style={{ color: '#ef4444' }}
+                              title="Retirer de l'historique"
+                            >
+                              {hidingRef === tx.merchant_reference
+                                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                : <Trash2 className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* SUPPORT */}
@@ -445,6 +596,7 @@ function SubscriptionPageContent() {
       {paymentModalPlan && (
         <PvitPaymentModal
           plan={paymentModalPlan}
+          billingPeriod={billingPeriod === 'yearly' && paymentModalPlan.yearly_price !== null ? 'yearly' : 'monthly'}
           onClose={() => setPaymentModalPlan(null)}
           onSuccess={() => { setPaymentModalPlan(null); loadData() }}
         />

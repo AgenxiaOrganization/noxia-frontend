@@ -55,7 +55,7 @@ export function Hero() {
               >
                 <span className="w-2 h-2 rounded-full bg-accent-400 animate-ping" />
                 <span className="w-1.5 h-1.5 rounded-full bg-accent-500 absolute left-[18px]" />
-                Lancement beta — Rejoignez les premiers clients
+                Lancement beta
               </motion.div>
             </div>
             

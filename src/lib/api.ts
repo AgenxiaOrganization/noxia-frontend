@@ -329,7 +329,7 @@ export async function loginWithEmployeeId(
  */
 export async function googleAuth(
   idToken: string,
-  extra?: { company_name?: string; company_type?: string },
+  extra?: { company_name?: string; company_type?: string; country?: string; plan_code?: string },
 ): Promise<GoogleAuthResult> {
   // For the no_membership case the backend returns HTTP 403 which our `post`
   // helper would normally throw. We catch it here so the frontend can display
@@ -359,8 +359,26 @@ export async function registerAccount(payload: {
   phone?: string
   company_name: string
   company_type?: string
+  country?: string
+  plan_code?: string
 }): Promise<AuthResponse> {
   return post<AuthResponse>('/auth/register/', payload)
+}
+
+/**
+ * Détecte le pays probable du visiteur à partir de son IP (best-effort,
+ * pour pré-remplir — jamais bloquant — le champ pays du formulaire
+ * d'inscription). Renvoie `null` si la détection échoue plutôt que de
+ * lever une erreur, pour ne jamais gêner l'affichage du formulaire.
+ * GET /auth/detect-country/
+ */
+export async function detectCountry(): Promise<string | null> {
+  try {
+    const { country } = await get<{ country: string | null }>('/auth/detect-country/', { skipCache: true })
+    return country
+  } catch {
+    return null
+  }
 }
 
 /**

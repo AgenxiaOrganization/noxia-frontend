@@ -64,6 +64,8 @@ export interface InstancePlan {
   original_price: string | null
   discount_ends_at: string | null
   has_active_discount: boolean
+  yearly_price: string | null
+  yearly_discount_percent: number
   trial_days: number
   period_label: string
   is_free: boolean
@@ -82,6 +84,8 @@ export interface PlanPayload {
   price: number
   original_price?: number | null
   discount_ends_at?: string | null
+  yearly_price?: number | null
+  yearly_discount_percent?: number
   trial_days?: number
   period_label?: string
   is_free?: boolean

@@ -69,7 +69,6 @@ export default function ProductsPage() {
 
       const catBoisson = cats.find((c: any) => c.type === 'boisson')
       const catNourriture = cats.find((c: any) => c.type === 'nourriture')
-      const catService = cats.find((c: any) => c.type === 'service')
 
       if (catBoisson && (!catBoisson.characteristics || catBoisson.characteristics.length === 0)) {
         await createCategoryCharacteristic(catBoisson.id, {
@@ -88,57 +87,8 @@ export default function ProductsPage() {
           attributes: { "accompagnement": "Frites", "option": "Salade" }
         })
       }
-
-      const defaultProducts = [
-        {
-          category: catBoisson?.id || null,
-          name: 'Bière Castel 65cl',
-          unit: 'unite' as const,
-          price: '1500',
-          initial_stock: 48,
-          initial_min_stock: 10,
-          units_per_package: 12
-        },
-        {
-          category: catBoisson?.id || null,
-          name: 'Bière Guinness 65cl',
-          unit: 'unite' as const,
-          price: '2000',
-          initial_stock: 12,
-          initial_min_stock: 10,
-          units_per_package: 12
-        },
-        {
-          category: catBoisson?.id || null,
-          name: 'Whisky Jack Daniel\'s',
-          unit: 'bouteille' as const,
-          price: '25000',
-          initial_stock: 8,
-          initial_min_stock: 2
-        },
-        {
-          category: catNourriture?.id || null,
-          name: 'Burger Classic',
-          unit: 'plat' as const,
-          price: '4000',
-          initial_stock: 30,
-          initial_min_stock: 5
-        },
-        {
-          category: catService?.id || null,
-          name: 'Chicha Session',
-          unit: 'service' as const,
-          price: '10000',
-          initial_stock: 0,
-          initial_min_stock: 0
-        }
-      ]
-
-      for (const p of defaultProducts) {
-        await createProduct(p)
-      }
     } catch (err) {
-      console.error('Erreur lors du peuplement automatique de la base de données', err)
+      console.error('Erreur lors de la création des catégories par défaut', err)
     }
   }
 

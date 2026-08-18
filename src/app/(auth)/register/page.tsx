@@ -4,11 +4,13 @@ import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
-  Mail, User, Building2, Phone,
+  Mail, User, Building2, Phone, Globe, Check, Gift, Star,
   AlertCircle, CheckCircle2, ChevronRight, ChevronLeft,
 } from 'lucide-react'
-import { registerAccount, googleAuth, ApiError } from '@/lib/api'
+import { registerAccount, googleAuth, detectCountry, ApiError } from '@/lib/api'
 import { saveSession } from '@/lib/auth'
+import { countriesData } from '@/lib/countriesData'
+import { getPlans, type Plan } from '@/lib/api/subscription'
 import { toast } from 'sonner'
 
 // Types pour Google GIS sont déclarés globalement dans src/types/google-gis.d.ts
@@ -54,8 +56,11 @@ function RegisterForm() {
     phone: '',
     companyName: '',
     companyType: 'bar',
+    country: 'Gabon',
+    planCode: '',
   })
 
+  const [plans, setPlans] = useState<Plan[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -176,6 +181,34 @@ function RegisterForm() {
     }
   }, [viaGoogle, googleIdToken])
 
+  // Pré-remplit (sans jamais l'imposer) le pays via géolocalisation IP —
+  // le <select> reste modifiable dans tous les cas, et un échec de
+  // détection laisse simplement le défaut 'Gabon'.
+  useEffect(() => {
+    detectCountry().then((detected) => {
+      if (detected && countriesData.some((c) => c.name === detected)) {
+        setFormData((prev) => ({ ...prev, country: detected }))
+      }
+    })
+  }, [])
+
+  // Catalogue de plans pour l'étape 3 (choix de l'offre) — le plan gratuit
+  // est présélectionné par défaut, jamais un plan payant, pour qu'un
+  // utilisateur qui n'atteint jamais cette étape (ou clique directement sur
+  // "Créer mon compte") reçoive toujours l'essai gratuit.
+  useEffect(() => {
+    getPlans()
+      .then((list) => {
+        const sorted = [...list].sort((a, b) => a.display_order - b.display_order)
+        setPlans(sorted)
+        const freePlan = sorted.find((p) => p.is_free) ?? sorted[0]
+        if (freePlan) {
+          setFormData((prev) => ({ ...prev, planCode: prev.planCode || freePlan.code }))
+        }
+      })
+      .catch((err) => console.error('Erreur chargement des plans', err))
+  }, [])
+
   // ── Form submit ────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -190,6 +223,8 @@ function RegisterForm() {
         result = await googleAuth(pendingGoogleToken, {
           company_name: formData.companyName,
           company_type: formData.companyType,
+          country: formData.country,
+          plan_code: formData.planCode,
         })
         if (result.status !== 'authenticated') {
           // Throw so the catch block handles the error and finally always runs.
@@ -205,13 +240,27 @@ function RegisterForm() {
           phone: formData.phone,
           company_name: formData.companyName,
           company_type: formData.companyType,
+          country: formData.country,
+          plan_code: formData.planCode,
         })
       }
 
       saveSession(result)
       setSuccess(true)
+
+      // Le compte est toujours créé en essai (voir accounts.serializers —
+      // un plan payant n'active jamais rien sans paiement reel). Si
+      // l'utilisateur a choisi un plan payant, on l'envoie payer juste
+      // apres — sinon direction le tableau de bord comme avant.
+      const chosenPlan = plans.find((p) => p.code === formData.planCode)
+      const isPaidPlanChosen = chosenPlan && !chosenPlan.is_free && Number(chosenPlan.price) > 0
+
       toast.success("Compte créé avec succès !")
-      setTimeout(() => { window.location.href = '/dashboard' }, 600)
+      setTimeout(() => {
+        window.location.href = isPaidPlanChosen
+          ? `/subscription-checkout?plan=${encodeURIComponent(chosenPlan.code)}`
+          : '/dashboard'
+      }, 600)
     } catch (err) {
       const errMsg = err instanceof ApiError ? err.message : 'Erreur lors de la création du compte.'
       setError(errMsg)
@@ -222,7 +271,16 @@ function RegisterForm() {
   }
 
   // ── Render ────────────────────────────────────────────────────────────────────
-  const totalSteps = isGoogleMode ? 1 : 2
+  // Mode Google saute l'étape 1 (perso, déjà fournie par Google) : établissement + plan.
+  // Mode classique : perso + établissement + plan. Les deux modes finissent
+  // à l'étape 3 (choix du plan) qui déclenche handleSubmit.
+  const totalSteps = 3
+  const headerSubtitle =
+    step === 3
+      ? 'Dernière étape — choisissez votre offre'
+      : isGoogleMode
+        ? 'Renseignez votre établissement'
+        : "Créez votre compte en quelques instants"
 
   return (
     <div
@@ -240,30 +298,28 @@ function RegisterForm() {
           </div>
           <h1 className="text-2xl font-bold text-white">Créer votre compte NOXIA</h1>
           <p className="text-sm" style={{ color: '#94a3b8' }}>
-            {isGoogleMode ? 'Dernière étape — infos de votre établissement' : 'Commencez votre essai gratuit de 30 jours'}
+            {headerSubtitle}
           </p>
         </div>
 
         {/* Step indicator */}
-        {!isGoogleMode && (
-          <div className="flex items-center justify-center gap-2 mb-4">
-            {[1, 2].map((s) => (
-              <div key={s} className="flex items-center gap-2">
-                <div
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all"
-                  style={{
-                    background: s <= step ? '#4f46e5' : 'rgba(51,65,85,0.5)',
-                    color: s <= step ? '#fff' : '#64748b',
-                    border: s === step ? '2px solid #818cf8' : '2px solid transparent',
-                  }}
-                >
-                  {s}
-                </div>
-                {s < 2 && <div className="w-8 h-px" style={{ background: step > s ? '#4f46e5' : '#334155' }} />}
+        <div className="flex items-center justify-center gap-2 mb-4">
+          {(isGoogleMode ? [2, 3] : [1, 2, 3]).map((s, i, arr) => (
+            <div key={s} className="flex items-center gap-2">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all"
+                style={{
+                  background: s <= step ? '#4f46e5' : 'rgba(51,65,85,0.5)',
+                  color: s <= step ? '#fff' : '#64748b',
+                  border: s === step ? '2px solid #818cf8' : '2px solid transparent',
+                }}
+              >
+                {s}
               </div>
-            ))}
-          </div>
-        )}
+              {i < arr.length - 1 && <div className="w-8 h-px" style={{ background: step > s ? '#4f46e5' : '#334155' }} />}
+            </div>
+          ))}
+        </div>
 
         {/* Card */}
         <div
@@ -293,7 +349,7 @@ function RegisterForm() {
           )}
 
           {!success && !googleLoading && (
-            <form onSubmit={step === totalSteps || isGoogleMode ? handleSubmit : (e) => { e.preventDefault(); setStep(2) }}>
+            <form onSubmit={step === totalSteps ? handleSubmit : (e) => { e.preventDefault(); setStep(step + 1) }}>
 
               {/* Error */}
               {error && (
@@ -408,7 +464,7 @@ function RegisterForm() {
               )}
 
               {/* ── ÉTAPE 2 : Infos établissement ── */}
-              {(step === 2 || isGoogleMode) && (
+              {step === 2 && (
                 <div className="space-y-4">
                   <div>
                     <h2 className="text-base font-semibold text-white mb-0.5">Votre établissement</h2>
@@ -453,11 +509,23 @@ function RegisterForm() {
                     </select>
                   </div>
 
-                  <div
-                    className="rounded-lg p-3 text-xs"
-                    style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', color: '#a5b4fc' }}
-                  >
-                    🎁 Essai gratuit de <strong>30 jours</strong> inclus — aucune carte bancaire requise.
+                  <div>
+                    <label className="block text-xs mb-1.5" style={{ color: '#94a3b8' }}>Pays</label>
+                    <div className="relative">
+                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#64748b' }} />
+                      <select
+                        id="register-country"
+                        name="country"
+                        value={formData.country}
+                        onChange={handleChange}
+                        className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition focus:ring-2 focus:ring-indigo-500"
+                        style={{ background: 'rgba(51,65,85,0.9)', border: '1px solid #334155' }}
+                      >
+                        {countriesData.map((c) => (
+                          <option key={c.code} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
                   <div className="flex gap-3 pt-1">
@@ -473,9 +541,97 @@ function RegisterForm() {
                       </button>
                     )}
                     <button
+                      id="register-next-btn-2"
+                      type="submit"
+                      disabled={!formData.companyName}
+                      className="flex-1 py-2.5 rounded-lg text-white font-semibold text-sm transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ background: '#4f46e5', boxShadow: '0 10px 25px -5px rgba(99,102,241,0.3)' }}
+                    >
+                      Continuer <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── ÉTAPE 3 : Choix de l'offre ── */}
+              {step === 3 && (
+                <div className="space-y-4">
+                  <h2 className="text-base font-semibold text-white mb-0.5">Choisissez votre offre</h2>
+                  <p className="text-xs" style={{ color: '#94a3b8' }}>
+                    Vous pourrez toujours changer de plan plus tard depuis votre espace.
+                  </p>
+
+                  <div className="space-y-2">
+                    {plans.map((plan) => {
+                      const price = parseFloat(plan.price)
+                      const isPlanFree = plan.is_free || price === 0
+                      const isSelected = formData.planCode === plan.code
+                      return (
+                        <button
+                          key={plan.code}
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, planCode: plan.code }))}
+                          className="w-full flex items-center justify-between gap-3 p-3 rounded-lg border transition text-left"
+                          style={{
+                            background: isSelected ? 'rgba(99,102,241,0.12)' : 'rgba(51,65,85,0.3)',
+                            borderColor: isSelected ? '#6366f1' : '#334155',
+                          }}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                              style={{ background: isPlanFree ? 'rgba(34,197,94,0.15)' : 'rgba(99,102,241,0.15)' }}
+                            >
+                              {isPlanFree ? (
+                                <Gift className="w-4 h-4" style={{ color: '#22c55e' }} />
+                              ) : (
+                                <Star className="w-4 h-4" style={{ color: '#818cf8' }} />
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-white">{plan.name}</p>
+                              <p className="text-xs" style={{ color: '#94a3b8' }}>
+                                {isPlanFree
+                                  ? `Gratuit${plan.trial_days > 0 ? ` — ${plan.trial_days} jours d'essai complet` : ''}`
+                                  : `${price.toLocaleString('fr-FR')} FCFA/${plan.period_label}`}
+                              </p>
+                            </div>
+                          </div>
+                          {isSelected && <Check className="w-4 h-4 shrink-0" style={{ color: '#818cf8' }} />}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {(() => {
+                    const chosenPlan = plans.find((p) => p.code === formData.planCode)
+                    const isPaid = chosenPlan && !chosenPlan.is_free && parseFloat(chosenPlan.price) > 0
+                    return (
+                      <div
+                        className="rounded-lg p-3 text-xs"
+                        style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', color: '#a5b4fc' }}
+                      >
+                        {isPaid
+                          ? '💳 Votre compte est créé immédiatement — vous serez ensuite invité à régler ce plan par Mobile Money ou carte bancaire.'
+                          : `🎁 Essai gratuit${chosenPlan && chosenPlan.trial_days > 0 ? ` de ${chosenPlan.trial_days} jours` : ''} inclus — aucune carte bancaire requise.`}
+                      </div>
+                    )
+                  })()}
+
+                  <div className="flex gap-3 pt-1">
+                    <button
+                      id="register-back-btn-2"
+                      type="button"
+                      onClick={() => setStep(2)}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-[1.02] hover:bg-slate-700/50 active:scale-[0.98] flex items-center justify-center gap-1"
+                      style={{ background: 'rgba(51,65,85,0.4)', border: '1px solid #334155', color: '#94a3b8' }}
+                    >
+                      <ChevronLeft className="w-4 h-4" /> Retour
+                    </button>
+                    <button
                       id="register-submit-btn"
                       type="submit"
-                      disabled={isLoading || !formData.companyName}
+                      disabled={isLoading || !formData.planCode}
                       className="flex-1 py-2.5 rounded-lg text-white font-semibold text-sm transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{ background: '#4f46e5', boxShadow: '0 10px 25px -5px rgba(99,102,241,0.3)' }}
                     >

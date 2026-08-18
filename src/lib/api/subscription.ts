@@ -1,5 +1,8 @@
 import { get, post, put, patch, del } from '@/lib/api'
+import { getAuthHeaders } from '@/lib/auth'
 import type { ApiClient } from '../superAdminClient'
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api/v1'
 
 export interface PlanFeature {
   key: string | null
@@ -23,6 +26,8 @@ export interface Plan {
   original_price: string | null
   discount_ends_at: string | null
   has_active_discount: boolean
+  yearly_price: string | null
+  yearly_discount_percent: number
   trial_days: number
   period_label: string
   is_free: boolean
@@ -44,6 +49,7 @@ export interface Subscription {
 }
 
 export type PvitMethod = 'AIRTEL_MONEY' | 'MOOV_MONEY' | 'VISA_MASTERCARD'
+export type BillingPeriod = 'monthly' | 'yearly'
 
 export interface PvitTransaction {
   id: number
@@ -54,6 +60,7 @@ export interface PvitTransaction {
   method_display: string
   amount: string
   fees: string | null
+  billing_period: BillingPeriod
   status: 'pending' | 'success' | 'failed' | 'ambiguous'
   status_display: string
   failure_reason: string
@@ -98,15 +105,30 @@ export function createSubscriptionApi(client: ApiClient) {
      * (Airtel Money, Moov Money, Visa/Mastercard) via MyPVit. Renvoie une
      * transaction PENDING ; le statut definitif arrive par webhook, donc il
      * faut ensuite sonder getPvitTransactionStatus jusqu'a success/failed. */
-    initiatePvitPayment: (planCode: Plan['code'], method: PvitMethod, customerAccountNumber = '') =>
+    initiatePvitPayment: (
+      planCode: Plan['code'], method: PvitMethod, customerAccountNumber = '',
+      billingPeriod: BillingPeriod = 'monthly',
+    ) =>
       client.post<PvitTransaction>('/subscriptions/mypvit/initiate/', {
         plan_code: planCode, method, customer_account_number: customerAccountNumber,
+        billing_period: billingPeriod,
       }),
 
     /** GET /subscriptions/mypvit/transactions/{reference}/ — statut courant
      * d'une transaction MyPVit, pour le polling cote frontend. */
     getPvitTransactionStatus: (reference: string) =>
       client.get<PvitTransaction>(`/subscriptions/mypvit/transactions/${encodeURIComponent(reference)}/`),
+
+    /** GET /subscriptions/mypvit/transactions/ — historique des transactions
+     * de l'entreprise (masquees exclues, voir hideTransaction). */
+    listMyTransactions: () =>
+      client.get<PvitTransaction[]>('/subscriptions/mypvit/transactions/'),
+
+    /** DELETE /subscriptions/mypvit/transactions/{reference}/hide/ —
+     * suppression LOGIQUE d'une entree de l'historique visible du gerant
+     * (jamais un vrai DELETE en base, refuse sur une transaction PENDING). */
+    hideTransaction: (reference: string) =>
+      client.del<void>(`/subscriptions/mypvit/transactions/${encodeURIComponent(reference)}/hide/`),
   }
 }
 
@@ -114,4 +136,25 @@ const defaultSubscriptionApi = createSubscriptionApi({ get, post, put, patch, de
 
 export const {
   getMySubscription, subscribeToPlan, initiatePvitPayment, getPvitTransactionStatus,
+  listMyTransactions, hideTransaction,
 } = defaultSubscriptionApi
+
+/** Telecharge la facture PDF d'une transaction reussie — meme pattern que
+ * downloadPayslipPDF (lib/api/finance.ts) : le endpoint exige un JWT (header
+ * Authorization), donc un simple <a href> ne fonctionnerait pas ; on
+ * recupere le blob nous-memes puis on declenche le telechargement. */
+export async function downloadTransactionInvoicePdf(reference: string, filename?: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/subscriptions/mypvit/transactions/${encodeURIComponent(reference)}/pdf/`, {
+    headers: getAuthHeaders(),
+  })
+  if (!res.ok) throw new Error('Échec du téléchargement de la facture PDF.')
+  const blob = await res.blob()
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename ?? `facture_abonnement_${reference}.pdf`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
+}

@@ -5,7 +5,7 @@ import { X, Loader2, CheckCircle2, XCircle, ArrowLeft, ExternalLink } from 'luci
 import { toast } from 'sonner'
 import {
   initiatePvitPayment, getPvitTransactionStatus,
-  type Plan, type PvitMethod, type PvitTransaction,
+  type Plan, type PvitMethod, type PvitTransaction, type BillingPeriod,
 } from '@/lib/api/subscription'
 import { PaymentMethodLogo } from './PaymentMethodLogo'
 
@@ -36,13 +36,20 @@ const methodOptions: { value: PvitMethod; label: string; hint: string }[] = [
 
 export default function PvitPaymentModal({
   plan,
+  billingPeriod = 'monthly',
   onClose,
   onSuccess,
 }: {
   plan: Plan
+  billingPeriod?: BillingPeriod
   onClose: () => void
   onSuccess: () => void
 }) {
+  const displayAmount = billingPeriod === 'yearly' && plan.yearly_price
+    ? Number(plan.yearly_price)
+    : Number(plan.price)
+  const periodSuffix = billingPeriod === 'yearly' ? 'an' : plan.period_label
+
   const [step, setStep] = useState<Step>('select-method')
   const [method, setMethod] = useState<PvitMethod | null>(null)
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -101,7 +108,7 @@ export default function PvitPaymentModal({
     setIsSubmitting(true)
     setStep('processing')
     try {
-      const created = await initiatePvitPayment(plan.code, selectedMethod, number)
+      const created = await initiatePvitPayment(plan.code, selectedMethod, number, billingPeriod)
       setTransaction(created)
       if (selectedMethod === 'VISA_MASTERCARD') {
         if (!created.redirect_url) {
@@ -152,7 +159,7 @@ export default function PvitPaymentModal({
           <div>
             <h2 className="text-lg font-bold text-white">Payer l'abonnement</h2>
             <p className="text-xs" style={{ color: '#94a3b8' }}>
-              {plan.name} — {Number(plan.price).toLocaleString()} FCFA/{plan.period_label}
+              {plan.name} — {displayAmount.toLocaleString()} FCFA/{periodSuffix}
             </p>
           </div>
           {!isBlocking && (
@@ -214,7 +221,7 @@ export default function PvitPaymentModal({
               style={{ background: '#4f46e5', boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)' }}
             >
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-              Payer {Number(plan.price).toLocaleString()} FCFA
+              Payer {displayAmount.toLocaleString()} FCFA
             </button>
           </form>
         )}

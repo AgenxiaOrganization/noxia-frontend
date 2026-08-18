@@ -25,6 +25,9 @@ interface FormState {
   hasDiscount: boolean
   original_price: string
   discount_ends_at: string
+  hasYearlyOffer: boolean
+  yearly_price: string
+  yearly_discount_percent: string
   trial_days: string
   period_label: string
   is_free: boolean
@@ -44,6 +47,7 @@ function emptyForm(): FormState {
   return {
     code: '', name: '', description: '', price: '0',
     hasDiscount: false, original_price: '', discount_ends_at: '',
+    hasYearlyOffer: false, yearly_price: '', yearly_discount_percent: '',
     trial_days: '0', period_label: 'mois',
     is_free: false, is_featured: false, badge_label: '', cta_label: 'Choisir ce plan',
     is_active: true,
@@ -65,6 +69,9 @@ function planToForm(plan: InstancePlan): FormState {
     hasDiscount: plan.original_price !== null,
     original_price: plan.original_price ?? '',
     discount_ends_at: plan.discount_ends_at ? plan.discount_ends_at.slice(0, 16) : '',
+    hasYearlyOffer: plan.yearly_price !== null,
+    yearly_price: plan.yearly_price ?? '',
+    yearly_discount_percent: String(plan.yearly_discount_percent ?? 0),
     trial_days: String(plan.trial_days),
     period_label: plan.period_label,
     is_free: plan.is_free,
@@ -164,6 +171,8 @@ export default function SuperAdminPlans() {
         price: parseFloat(form.price) || 0,
         original_price: form.hasDiscount && form.original_price ? parseFloat(form.original_price) : null,
         discount_ends_at: form.hasDiscount && form.discount_ends_at ? new Date(form.discount_ends_at).toISOString() : null,
+        yearly_price: form.hasYearlyOffer && form.yearly_price ? parseFloat(form.yearly_price) : null,
+        yearly_discount_percent: form.hasYearlyOffer ? (parseInt(form.yearly_discount_percent, 10) || 0) : 0,
         trial_days: parseInt(form.trial_days, 10) || 0,
         period_label: form.period_label.trim(),
         is_free: form.is_free,
@@ -353,6 +362,12 @@ export default function SuperAdminPlans() {
                     Remise active{plan.discount_ends_at ? ` jusqu'au ${new Date(plan.discount_ends_at).toLocaleDateString('fr-FR')}` : ''}
                   </p>
                 )}
+                {plan.yearly_price !== null && (
+                  <p className="text-xs mt-1 flex items-center gap-1" style={{ color: '#818cf8' }}>
+                    <Percent className="w-3 h-3" />
+                    Annuel : {formatFcfa(plan.yearly_price)} FCFA{plan.yearly_discount_percent > 0 ? ` (-${plan.yearly_discount_percent}%)` : ''}
+                  </p>
+                )}
               </div>
 
               <ul className="space-y-1.5 mb-4 text-xs flex-1">
@@ -490,6 +505,42 @@ export default function SuperAdminPlans() {
                       <input
                         type="datetime-local"
                         value={form.discount_ends_at} onChange={(e) => setForm((f) => ({ ...f, discount_ends_at: e.target.value }))}
+                        className="w-full rounded-lg px-3 py-2 text-white text-sm outline-none bg-dark-950/50 border border-dark-800/60 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-lg p-3 space-y-3" style={{ background: 'rgba(99, 102, 241, 0.06)', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox" checked={form.hasYearlyOffer}
+                    onChange={(e) => setForm((f) => ({ ...f, hasYearlyOffer: e.target.checked }))}
+                    className="rounded"
+                  />
+                  <span className="text-sm font-semibold flex items-center gap-1.5" style={{ color: '#818cf8' }}>
+                    <Percent className="w-3.5 h-3.5" />
+                    Proposer un engagement annuel
+                  </span>
+                </label>
+                {form.hasYearlyOffer && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold mb-1 text-dark-400">Prix annuel (FCFA)</label>
+                      <input
+                        type="number" min="0" step="1"
+                        value={form.yearly_price} onChange={(e) => setForm((f) => ({ ...f, yearly_price: e.target.value }))}
+                        placeholder="50000"
+                        className="w-full rounded-lg px-3 py-2 text-white text-sm outline-none bg-dark-950/50 border border-dark-800/60 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1 text-dark-400">Réduction affichée (%)</label>
+                      <input
+                        type="number" min="0" max="100" step="1"
+                        value={form.yearly_discount_percent} onChange={(e) => setForm((f) => ({ ...f, yearly_discount_percent: e.target.value }))}
+                        placeholder="20"
                         className="w-full rounded-lg px-3 py-2 text-white text-sm outline-none bg-dark-950/50 border border-dark-800/60 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition"
                       />
                     </div>
