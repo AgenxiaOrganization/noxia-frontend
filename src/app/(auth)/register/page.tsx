@@ -223,6 +223,7 @@ function RegisterForm() {
         result = await googleAuth(pendingGoogleToken, {
           company_name: formData.companyName,
           company_type: formData.companyType,
+          phone: formData.phone,
           country: formData.country,
           plan_code: formData.planCode,
         })
@@ -423,7 +424,7 @@ function RegisterForm() {
                   </div>
 
                   <div>
-                    <label className="block text-xs mb-1.5" style={{ color: '#94a3b8' }}>Téléphone <span style={{ color: '#64748b' }}>(optionnel)</span></label>
+                    <label className="block text-xs mb-1.5" style={{ color: '#94a3b8' }}>Téléphone</label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
                       <input
@@ -435,8 +436,12 @@ function RegisterForm() {
                         placeholder="+237 6XX XXX XXX"
                         className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition focus:ring-2 focus:ring-indigo-500"
                         style={{ background: 'rgba(51,65,85,0.5)', border: '1px solid #334155' }}
+                        required
                       />
                     </div>
+                    <p className="text-[11px] mt-1" style={{ color: '#64748b' }}>
+                      De préférence un numéro relié à WhatsApp — il servira à activer votre session bot.
+                    </p>
                   </div>
 
                   {/* Google option */}
@@ -528,6 +533,29 @@ function RegisterForm() {
                     </div>
                   </div>
 
+                  {isGoogleMode && (
+                    <div>
+                      <label className="block text-xs mb-1.5" style={{ color: '#94a3b8' }}>Téléphone</label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
+                        <input
+                          id="register-phone-google"
+                          type="tel"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleChange}
+                          placeholder="+237 6XX XXX XXX"
+                          className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition focus:ring-2 focus:ring-indigo-500"
+                          style={{ background: 'rgba(51,65,85,0.5)', border: '1px solid #334155' }}
+                          required
+                        />
+                      </div>
+                      <p className="text-[11px] mt-1" style={{ color: '#64748b' }}>
+                        De préférence un numéro relié à WhatsApp — il servira à activer votre session bot.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="flex gap-3 pt-1">
                     {!isGoogleMode && (
                       <button
@@ -543,7 +571,7 @@ function RegisterForm() {
                     <button
                       id="register-next-btn-2"
                       type="submit"
-                      disabled={!formData.companyName}
+                      disabled={!formData.companyName || (isGoogleMode && !formData.phone.trim())}
                       className="flex-1 py-2.5 rounded-lg text-white font-semibold text-sm transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{ background: '#4f46e5', boxShadow: '0 10px 25px -5px rgba(99,102,241,0.3)' }}
                     >

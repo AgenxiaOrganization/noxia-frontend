@@ -13,7 +13,7 @@ import { getUser, getCompany, getMembership, saveSession } from '@/lib/auth'
 import { getMe, updateMe, uploadMyPhoto } from '@/lib/api'
 import {
   updateCompanyMe, getVerificationDocuments, deleteVerificationDocument,
-  uploadVerificationDocument, type VerificationDocument,
+  uploadVerificationDocument, uploadCompanyLogo, type VerificationDocument,
 } from '@/lib/api/companies'
 import { toast } from 'sonner'
 import { countriesData, timezonesList, splitPhoneNumber } from '@/lib/countriesData'
@@ -50,6 +50,8 @@ export default function SettingsPage() {
     timezone: 'Africa/Libreville',
     tva: 18,
   })
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showSaveSuccess, setShowSaveSuccess] = useState(false)
   const [documents, setDocuments] = useState<VerificationDocument[]>([])
@@ -116,12 +118,13 @@ export default function SettingsPage() {
             address: fresh.company.address || '',
             phone: fresh.company.phone || '',
             currency: fresh.company.currency || 'XAF',
-            email: fresh.user.email,
+            email: fresh.company.email || '',
             country: fresh.company.country || 'Gabon',
             timezone: fresh.company.timezone || 'Africa/Libreville',
-            tva: fresh.company.tva || 18,
+            tva: fresh.company.tva_rate ?? 18,
           })
-          
+          setLogoUrl(fresh.company.logo || null)
+
           const cPhone = splitPhoneNumber(fresh.company.phone || '')
           setCompanyPhonePrefix(cPhone.prefix)
           setCompanyPhoneNumber(cPhone.number)
@@ -205,6 +208,38 @@ export default function SettingsPage() {
       toast.error(err.message || "Erreur de mise à jour")
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setIsUploadingLogo(true)
+    try {
+      const updatedComp = await uploadCompanyLogo(file)
+      setLogoUrl(updatedComp.logo || null)
+
+      const currentUser = getUser()
+      const currentMembership = getMembership()
+      const accessToken = localStorage.getItem('noxia_access') || ''
+      const refreshToken = localStorage.getItem('noxia_refresh') || ''
+      if (currentUser) {
+        saveSession({
+          status: 'authenticated',
+          access: accessToken,
+          refresh: refreshToken,
+          user: currentUser,
+          company: updatedComp,
+          membership: currentMembership,
+        })
+      }
+
+      toast.success('Logo mis à jour.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'envoi du logo.")
+    } finally {
+      setIsUploadingLogo(false)
     }
   }
 
@@ -294,15 +329,19 @@ export default function SettingsPage() {
         type: company.type,
         address: company.address,
         phone: fullPhone,
+        email: company.email,
         currency: company.currency,
         country: company.country,
         timezone: company.timezone,
+        tva_rate: company.tva,
       })
-      
+
       setCompany(prev => ({
         ...prev,
-        ...updatedComp
+        ...updatedComp,
+        tva: updatedComp.tva_rate ?? prev.tva,
       }))
+      setLogoUrl(updatedComp.logo || logoUrl)
       
       const currentUser = getUser()
       const currentMembership = getMembership()
@@ -671,7 +710,49 @@ export default function SettingsPage() {
           }}
         >
           <h3 className="font-semibold text-sm text-white mb-4">Informations de l'établissement</h3>
-          
+
+          <div className="flex items-center gap-4 mb-5">
+            <div className="relative shrink-0">
+              <div
+                className="w-20 h-20 rounded-2xl overflow-hidden flex items-center justify-center border-2"
+                style={{ borderColor: '#4f46e5', background: 'rgba(51, 65, 85, 0.5)' }}
+              >
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Logo de l'établissement" className="w-full h-full object-cover" />
+                ) : (
+                  <Building2 className="w-8 h-8" style={{ color: '#64748b' }} />
+                )}
+                {isUploadingLogo && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-2xl" style={{ background: 'rgba(15, 23, 42, 0.7)' }}>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
+              <label
+                htmlFor="companyLogoInput"
+                className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition hover:opacity-90"
+                style={{ background: '#4f46e5', border: '2px solid #1e293b' }}
+                title="Changer le logo de l'établissement"
+              >
+                <Camera className="w-3.5 h-3.5 text-white" />
+              </label>
+              <input
+                id="companyLogoInput"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleLogoChange}
+                disabled={isUploadingLogo}
+              />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white">Logo de l'établissement</p>
+              <p className="text-xs mt-0.5" style={{ color: '#94a3b8' }}>
+                JPG, PNG ou WEBP, 5 Mo maximum.
+              </p>
+            </div>
+          </div>
+
           <div className="space-y-3">
             <div>
               <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nom de l'établissement</label>

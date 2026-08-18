@@ -29,10 +29,12 @@ export interface AuthResponse {
     role_permissions?: Record<string, string[]>
     address?: string
     phone?: string
+    email?: string
     currency?: string
     country?: string
     timezone?: string
-    tva?: number
+    tva_rate?: number
+    logo?: string | null
     whatsapp_bot_active?: boolean
     telegram_bot_active?: boolean
   } | null
@@ -329,7 +331,7 @@ export async function loginWithEmployeeId(
  */
 export async function googleAuth(
   idToken: string,
-  extra?: { company_name?: string; company_type?: string; country?: string; plan_code?: string },
+  extra?: { company_name?: string; company_type?: string; phone?: string; country?: string; plan_code?: string },
 ): Promise<GoogleAuthResult> {
   // For the no_membership case the backend returns HTTP 403 which our `post`
   // helper would normally throw. We catch it here so the frontend can display

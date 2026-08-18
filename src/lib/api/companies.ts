@@ -172,6 +172,27 @@ export async function uploadEmployeePhoto(employeeId: number, file: File): Promi
   return res.json()
 }
 
+/**
+ * Upload/remplacement du logo de l'etablissement — multipart (ImageField
+ * cote backend, stocke dans R2 sous {etablissement}/logo/, voir
+ * companies/storage.py::company_logo_path), meme principe que
+ * uploadEmployeePhoto mais sur /companies/me/.
+ */
+export async function uploadCompanyLogo(file: File): Promise<any> {
+  const formData = new FormData()
+  formData.append('logo', file)
+  const res = await fetch(`${API_BASE_URL}/companies/me/`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: formData,
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(extractDocumentErrorMessage(data))
+  }
+  return res.json()
+}
+
 export async function uploadInstanceEmployeePhoto(
   instanceCode: string, companyId: number, employeeId: number, file: File,
 ): Promise<Employee> {
