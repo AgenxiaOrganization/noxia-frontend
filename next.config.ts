@@ -3,18 +3,30 @@ import type { NextConfig } from "next";
 // Domaines API/WS distants réellement appelés côté client (voir src/lib/auth.ts,
 // src/lib/hooks/useWebSockets.ts, src/components/ui/N8nChatWidget.tsx) — en dev
 // ils pointent vers 127.0.0.1, en prod vers api.noxia.ga / admin.noxia.ga.
-const connectSrc = [
-  "'self'",
+//
+// useWebSockets.ts construit dynamiquement `wss://<hostname>:8000` côté
+// client quand NEXT_PUBLIC_WS_URL n'est pas défini (fallback sur
+// window.location.hostname, donc inconnu au build ici) — d'où les entrées
+// explicites avec/sans port et avec/sans sous-domaine ci-dessous, plutôt que
+// de deviner une seule URL WS exacte qui casserait au premier changement de
+// port ou de sous-domaine.
+const connectSrcOrigins = [
   process.env.NEXT_PUBLIC_API_URL,
   process.env.NEXT_PUBLIC_CONTROLE_API_URL,
   process.env.NEXT_PUBLIC_WS_URL,
   "ws://127.0.0.1:8000",
+  "wss://noxia.ga",
+  "wss://noxia.ga:8000",
   "wss://*.noxia.ga",
+  "wss://*.noxia.ga:8000",
 ]
   .filter(Boolean)
+  // "'self'" n'est pas une URL valide : new URL("'self'", base) ne lève pas
+  // d'erreur mais renvoie l'origine du placeholder au lieu de la valeur
+  // littérale — d'où son ajout à part, après la conversion, jamais dans ce tableau.
   .map((url) => new URL(url!, "http://placeholder").origin)
-  .filter((origin, i, arr) => arr.indexOf(origin) === i)
-  .join(" ");
+  .filter((origin, i, arr) => arr.indexOf(origin) === i);
+const connectSrc = ["'self'", ...connectSrcOrigins].join(" ");
 
 // CSP restrictive : autorise uniquement les sources effectivement utilisées
 // par l'app (Google Sign-In pour l'OAuth, l'API/WS Noxia). `unsafe-inline`
