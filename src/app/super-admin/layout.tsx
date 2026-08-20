@@ -9,7 +9,7 @@ import {
   Package, Truck, BarChart, Globe, AlertTriangle,
   Database, Server, ShoppingBag, UserCog, Flag, Plus,
   Layers, Zap, Target, Award, Crown, Star, Gift,
-  MessageCircle, Bot, Tag, ShieldCheck
+  MessageCircle, Bot, Tag, ShieldCheck, Sparkles
 } from 'lucide-react'
 import React from 'react'
 import { usePlatformSessionGuard } from '@/lib/hooks/usePlatformSessionGuard'
@@ -85,6 +85,11 @@ const menuItems = [
   { id: 'alertes', label: 'Alertes système', icon: AlertTriangle, href: '/super-admin/alertes' },
   { id: 'notifications', label: 'Notifications', icon: MessageCircle, href: '/super-admin/notifications' },
   { id: 'parametres', label: 'Paramètres', icon: Settings, href: '/super-admin/parametres' },
+  // Conformité Art. 32/53 (Ordonnance n°0011/PR/2026, Gabon) : volontairement
+  // en dernier dans le menu, distinct du journal d'audit ci-dessus (actions
+  // utilisateurs) — celui-ci trace les métadonnées d'origine des contenus
+  // générés par l'assistant IA, restituables à la HAC sur demande.
+  { id: 'journal-ia', label: 'Journal des contenus IA', icon: Sparkles, href: '/super-admin/journal-ia' },
 ]
 
 // Contexte pour partager le serveur ET l'établissement sélectionnés

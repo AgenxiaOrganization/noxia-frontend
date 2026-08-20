@@ -48,7 +48,6 @@ export function Navbar() {
             <a href="#pricing" className="hover:text-white transition duration-200">Tarifs</a>
             <a href="#demo" className="hover:text-white transition duration-200">Démo</a>
             <a href="#faq" className="hover:text-white transition duration-200">FAQ</a>
-            <a href="/documentation" className="hover:text-white transition duration-200">Documentation</a>
             <a href="#contact" className="hover:text-white transition duration-200">Contact</a>
           </div>
 
@@ -88,7 +87,6 @@ export function Navbar() {
           <a href="#pricing" className="block text-dark-300 hover:text-white py-2 font-medium" onClick={() => setIsOpen(false)}>Tarifs</a>
           <a href="#demo" className="block text-dark-300 hover:text-white py-2 font-medium" onClick={() => setIsOpen(false)}>Démo</a>
           <a href="#faq" className="block text-dark-300 hover:text-white py-2 font-medium" onClick={() => setIsOpen(false)}>FAQ</a>
-          <a href="/documentation" className="block text-dark-300 hover:text-white py-2 font-medium" onClick={() => setIsOpen(false)}>Documentation</a>
           <a href="#contact" className="block text-dark-300 hover:text-white py-2 font-medium" onClick={() => setIsOpen(false)}>Contact</a>
           <div className="pt-4 border-t border-dark-800/60 space-y-3 mt-auto">
             <a href="/login" className="block text-center py-2.5 rounded-xl text-sm font-semibold text-dark-300 hover:text-white hover:bg-white/5 transition">Connexion</a>

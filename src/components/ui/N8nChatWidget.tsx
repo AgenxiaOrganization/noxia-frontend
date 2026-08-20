@@ -130,7 +130,10 @@ export default function N8nChatWidget() {
         i18n: {
           en: {
             title: 'Assistant NOXIA',
-            subtitle: 'En ligne',
+            // Marquage requis par l'Ordonnance n°0011/PR/2026 (Art. 32/53,
+            // Gabon) : mention visible en permanence, sans action
+            // supplémentaire de l'utilisateur, tant que le chat est ouvert.
+            subtitle: 'Réponses générées par intelligence artificielle',
             inputPlaceholder: 'Écrivez votre message...',
             getStarted: 'Démarrer la discussion',
             footer: 'Assistant Intelligent NOXIA',
@@ -254,6 +257,34 @@ export default function N8nChatWidget() {
       }
       findShadowRoots(document.body)
 
+      const STARTER_REGEX = /«([^»]+)»/g
+
+      // Construit le bouton via l'API DOM (jamais via innerHTML/chaîne de
+      // caractères) pour qu'aucun contenu issu de la réponse du bot ne
+      // puisse être interprété comme du HTML/JS, même en cas de prompt
+      // injection sur le message généré par le LLM côté n8n.
+      const createStarterButton = (label: string) => {
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.className = 'n8n-starter-btn'
+        button.style.cssText =
+          "background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); color: #818cf8; padding: 4px 10px; margin: 3px 0; border-radius: 6px; cursor: pointer; text-align: left; font-size: 11px; display: inline-block; font-family: inherit; transition: all 0.2s; font-weight: 500;"
+        button.textContent = label
+        button.addEventListener('mouseover', () => {
+          button.style.background = 'rgba(99, 102, 241, 0.2)'
+          button.style.borderColor = 'rgba(99, 102, 241, 0.5)'
+        })
+        button.addEventListener('mouseout', () => {
+          button.style.background = 'rgba(99, 102, 241, 0.1)'
+          button.style.borderColor = 'rgba(99, 102, 241, 0.3)'
+        })
+        button.addEventListener('click', () => {
+          const handler = (window as unknown as Record<string, unknown>).sendN8nSuggestedMessage
+          if (typeof handler === 'function') (handler as (text: string) => void)(label)
+        })
+        return button
+      }
+
       shadowRoots.forEach(sr => {
         const elements = sr.querySelectorAll('p, li, span, div.message')
         elements.forEach(el => {
@@ -261,16 +292,33 @@ export default function N8nChatWidget() {
             return
           }
 
-          const html = el.innerHTML
-          const regex = /«([^»]+)»/g
-          if (regex.test(html)) {
-            const newHtml = html.replace(regex, (match, p1) => {
-              const cleanedText = p1.replace(/'/g, "\\'").replace(/"/g, '&quot;')
-              return `<button class="n8n-starter-btn" style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); color: #818cf8; padding: 4px 10px; margin: 3px 0; border-radius: 6px; cursor: pointer; text-align: left; font-size: 11px; display: inline-block; font-family: inherit; transition: all 0.2s; font-weight: 500;" onmouseover="this.style.background='rgba(99, 102, 241, 0.2)'; this.style.borderColor='rgba(99, 102, 241, 0.5)';" onmouseout="this.style.background='rgba(99, 102, 241, 0.1)'; this.style.borderColor='rgba(99, 102, 241, 0.3)';" onclick="window.sendN8nSuggestedMessage('${cleanedText}')">${match}</button>`
-            })
-            el.innerHTML = newHtml
-            el.setAttribute('data-starters-transformed', 'true')
-          }
+          // On ne parcourt que les nœuds texte directs : le contenu du bot
+          // n'est jamais interprété comme du HTML, seul du texte brut est lu.
+          const textNodes = Array.from(el.childNodes).filter(
+            (n) => n.nodeType === Node.TEXT_NODE && n.textContent && STARTER_REGEX.test(n.textContent)
+          )
+          if (textNodes.length === 0) return
+
+          textNodes.forEach((textNode) => {
+            const text = textNode.textContent ?? ''
+            STARTER_REGEX.lastIndex = 0
+            const fragment = document.createDocumentFragment()
+            let lastIndex = 0
+            let match: RegExpExecArray | null
+            while ((match = STARTER_REGEX.exec(text)) !== null) {
+              if (match.index > lastIndex) {
+                fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)))
+              }
+              fragment.appendChild(createStarterButton(match[1]))
+              lastIndex = STARTER_REGEX.lastIndex
+            }
+            if (lastIndex < text.length) {
+              fragment.appendChild(document.createTextNode(text.slice(lastIndex)))
+            }
+            textNode.parentNode?.replaceChild(fragment, textNode)
+          })
+
+          el.setAttribute('data-starters-transformed', 'true')
         })
       })
     }

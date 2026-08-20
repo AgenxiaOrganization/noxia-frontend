@@ -33,27 +33,32 @@ export function Footer() {
               <li><a href="#features" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Fonctionnalités</a></li>
               <li><a href="#pricing" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Tarifs</a></li>
               <li><a href="#demo" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Démo</a></li>
-              <li><a href="https://api.noxia.ga/api/docs/" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Documentation</a></li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-semibold mb-4 text-white">Ressources</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="https://api.noxia.ga/api/docs/" className="hover:text-white transition" style={{ color: '#94a3b8' }}>API</a></li>
-              <li><a href="#" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Blog</a></li>
+              {/* RL9-17 (audit RL SERVICES) : "Documentation"/"API" retirés
+                  du menu public — /api/docs/ exige désormais une session
+                  authentifiée (RL9-02), un visiteur anonyme y tomberait sur
+                  une erreur. "Blog"/"Support" retirés tant qu'aucune page
+                  réelle n'existe derrière (mieux vaut absent que mort). */}
               <li><a href="#faq" className="hover:text-white transition" style={{ color: '#94a3b8' }}>FAQ</a></li>
-              <li><a href="#" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Support</a></li>
+              <li><a href="mailto:contact@noxia.ga" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Support</a></li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-semibold mb-4 text-white">Contact</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="agenxia3@gmail.com" className="hover:text-white transition" style={{ color: '#94a3b8' }}>contact@noxia.io</a></li>
+              <li><a href="mailto:contact@noxia.ga" className="hover:text-white transition" style={{ color: '#94a3b8' }}>contact@noxia.ga</a></li>
               <li><a href="tel:+24174821635" className="hover:text-white transition" style={{ color: '#94a3b8' }}>+241 74 82 16 35</a></li>
-              <li><a href="https://chat.whatsapp.com/LkkvafHDBP9FVlfV7aZ7rT?s=cl&p=a&ilr=1" className="hover:text-white transition" style={{ color: '#94a3b8' }}>WhatsApp</a></li>
-              <li><a href="https://t.me/+lyFVQtdL8903MzJk" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Telegram</a></li>
+              {/* RL9-04 (audit RL SERVICES) : lien de discussion directe au lieu
+                  d'une invitation de groupe public, qui exposait les numéros de
+                  tous les membres à quiconque cliquait le lien. */}
+              <li><a href="https://wa.me/24174821635" className="hover:text-white transition" style={{ color: '#94a3b8' }}>WhatsApp</a></li>
+              <li><a href="https://t.me/noxia_user_bot" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Telegram</a></li>
             </ul>
           </div>
         </div>
@@ -61,6 +66,10 @@ export function Footer() {
         <div className="border-t border-dark-800 mt-8 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm" style={{ color: '#64748b' }}>
             &copy; 2026 NOXIA. Tous droits réservés.
+            {' · '}
+            <a href="/mentions-legales" className="hover:text-white transition" style={{ color: '#64748b' }}>
+              Mentions légales
+            </a>
           </p>
           <p className="text-sm" style={{ color: '#64748b' }}>
             Made by <span className="text-primary-400">Agenxia</span>

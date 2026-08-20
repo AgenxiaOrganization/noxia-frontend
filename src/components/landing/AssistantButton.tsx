@@ -139,6 +139,12 @@ className="chatbot-trigger fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full sh
               <div>
                 <span className="font-semibold text-sm text-white">Assistant NOXIA</span>
                 <span className="text-xs ml-2" style={{ color: '#22c55e' }}>● En ligne</span>
+                {/* Marquage requis par l'Ordonnance n°0011/PR/2026 (Art. 32/53,
+                    Gabon) : mention visible en permanence, sans action
+                    supplémentaire de l'utilisateur, tant que le chat est ouvert. */}
+                <p className="text-[10px] mt-0.5" style={{ color: '#64748b' }}>
+                  Réponses générées par intelligence artificielle
+                </p>
               </div>
             </div>
             <button

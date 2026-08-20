@@ -1,0 +1,4 @@
+Contact: mailto:contact@noxia.ga
+Expires: 2027-08-20T00:00:00.000Z
+Preferred-Languages: fr, en
+Canonical: https://noxia.ga/.well-known/security.txt
