@@ -129,7 +129,10 @@ export interface ProxyCompanyDetail {
     plan_name: string
     plan_code: string
     trial_end: string | null
+    created_at: string
+    current_period_start: string | null
     current_period_end: string | null
+    billing_period: 'monthly' | 'yearly' | null
   } | null
   users_count: number
   products_count: number

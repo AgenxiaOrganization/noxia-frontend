@@ -9,7 +9,7 @@ import {
   Package, Truck, BarChart, Globe, AlertTriangle,
   Database, Server, ShoppingBag, UserCog, Flag, Plus,
   Layers, Zap, Target, Award, Crown, Star, Gift,
-  MessageCircle, Bot, Tag, ShieldCheck, Sparkles
+  MessageCircle, Bot, Tag, ShieldCheck, Sparkles, Search
 } from 'lucide-react'
 import React from 'react'
 import { usePlatformSessionGuard } from '@/lib/hooks/usePlatformSessionGuard'
@@ -132,6 +132,7 @@ export default function SuperAdminLayout({
   const [companies, setCompanies] = useState<ProxyCompany[]>([])
   const [selectedCompany, setSelectedCompany] = useState<ProxyCompany | null>(null)
   const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false)
+  const [companySearchTerm, setCompanySearchTerm] = useState('')
   const [serversReloadKey, setServersReloadKey] = useState(0)
   const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0)
   const pathname = usePathname()
@@ -146,7 +147,12 @@ export default function SuperAdminLayout({
   const switchCompany = (company: ProxyCompany) => {
     setSelectedCompany(company)
     setIsCompanyDropdownOpen(false)
+    setCompanySearchTerm('')
   }
+
+  const filteredCompanies = companies.filter((c) =>
+    c.name.toLowerCase().includes(companySearchTerm.trim().toLowerCase())
+  )
 
   const refreshServers = () => setServersReloadKey((k) => k + 1)
 
@@ -157,7 +163,21 @@ export default function SuperAdminLayout({
         if (cancelled) return
         const loaded = [GLOBAL_SERVER, ...list.map(toServerInstance)]
         setServers(loaded)
-        setSelectedServer((current) => loaded.find((s) => s.id === current.id) ?? GLOBAL_SERVER)
+        setSelectedServer((current) => {
+          const match = loaded.find((s) => s.id === current.id)
+          if (!match && current.id !== 'global') {
+            // Diagnostic temporaire (bug "sidebar disparaît au clic") : ce
+            // re-fetch (déclenché par un changement de serversReloadKey,
+            // donc un clic sur "Rafraîchir") ne retrouve plus l'instance
+            // actuellement sélectionnée dans la liste renvoyée par
+            // listInstances() — on retombe alors sur GLOBAL_SERVER.
+            console.warn(
+              '[super-admin] selectedServer reinitialise a GLOBAL_SERVER : instance courante introuvable dans la liste rechargee',
+              { current, loadedIds: loaded.map((s) => s.id) },
+            )
+          }
+          return match ?? GLOBAL_SERVER
+        })
       })
       .catch((e) => console.error('Erreur chargement des instances', e))
     return () => { cancelled = true }
@@ -304,21 +324,46 @@ export default function SuperAdminLayout({
 
                 {isCompanyDropdownOpen && companies.length > 0 && (
                   <div
-                    className="absolute left-0 right-0 mt-1 rounded-lg border shadow-xl z-50 max-h-64 overflow-y-auto"
-                    style={{ background: '#1e293b', borderColor: '#334155' }}
+                    className="absolute left-0 right-0 mt-1 rounded-lg border shadow-xl z-50 flex flex-col"
+                    style={{ background: '#1e293b', borderColor: '#334155', maxHeight: '20rem' }}
                   >
-                    {companies.map((company) => (
-                      <button
-                        key={company.id}
-                        onClick={() => switchCompany(company)}
-                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm transition hover:bg-white/5 ${
-                          selectedCompany?.id === company.id ? 'bg-primary-500/10 text-primary-400' : 'text-white'
-                        }`}
-                      >
-                        <span className="truncate">{company.name}</span>
-                        <span className="text-xs ml-auto" style={{ color: '#64748b' }}>{company.country}</span>
-                      </button>
-                    ))}
+                    {/* Barre de recherche : indispensable dès qu'une instance
+                        compte plusieurs dizaines/centaines d'entreprises. */}
+                    {companies.length > 6 && (
+                      <div className="p-2 border-b sticky top-0" style={{ borderColor: '#334155', background: '#1e293b' }}>
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: '#64748b' }} />
+                          <input
+                            type="text"
+                            autoFocus
+                            value={companySearchTerm}
+                            onChange={(e) => setCompanySearchTerm(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder="Rechercher une entreprise..."
+                            className="w-full rounded-lg pl-8 pr-2 py-1.5 text-xs text-white outline-none transition"
+                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid #334155' }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <div className="overflow-y-auto">
+                      {filteredCompanies.length === 0 ? (
+                        <p className="px-3 py-3 text-xs text-center" style={{ color: '#64748b' }}>Aucune entreprise trouvée.</p>
+                      ) : (
+                        filteredCompanies.map((company) => (
+                          <button
+                            key={company.id}
+                            onClick={() => switchCompany(company)}
+                            className={`w-full flex items-center gap-3 px-3 py-2 text-sm transition hover:bg-white/5 ${
+                              selectedCompany?.id === company.id ? 'bg-primary-500/10 text-primary-400' : 'text-white'
+                            }`}
+                          >
+                            <span className="truncate">{company.name}</span>
+                            <span className="text-xs ml-auto" style={{ color: '#64748b' }}>{company.country}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

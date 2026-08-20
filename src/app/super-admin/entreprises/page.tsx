@@ -3,7 +3,7 @@
 import { useState, useEffect, useContext, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { ServerContext } from '../layout'
-import { listInstanceCompaniesDetailed, createSuperAdminClient, type ProxyCompanyDetail } from '@/lib/superAdminClient'
+import { listInstanceCompaniesDetailed, createSuperAdminClient, sendManualNotification, type ProxyCompanyDetail } from '@/lib/superAdminClient'
 import { listInstancePlans, type InstancePlan } from '@/lib/api/plans'
 import { createSubscriptionApi } from '@/lib/api/subscription'
 import { ensureArray } from '@/lib/api'
@@ -12,7 +12,7 @@ import { toast } from 'sonner'
 import {
   Building2, Search, Eye, X, Users, MapPin, Phone, Mail,
   Clock, AlertTriangle, CheckCircle, Download, ChevronDown, Loader2,
-  Server, Globe, ShoppingBag, DollarSign, Package, FileText,
+  Server, Globe, ShoppingBag, DollarSign, Package, FileText, BellRing,
 } from 'lucide-react'
 
 const subscriptionStatusConfig: Record<string, { label: string; color: string; bg: string; icon: typeof CheckCircle }> = {
@@ -31,6 +31,112 @@ const verificationStatusConfig: Record<string, { label: string; color: string; b
 
 function formatCurrency(amount: number) {
   return amount.toLocaleString() + ' FCFA'
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+/** Formatte un reste de temps en unite adaptee : jours seuls sous 30 j
+ * (cas mensuel/essai), mois+semaines+jours au-dela (cas annuel) — la echelle
+ * de granularite demandee dépend directement de la durée totale de la
+ * période, pas seulement du nombre de jours restants. */
+function formatTimeLeft(daysLeft: number, totalDays: number): string {
+  const days = Math.max(0, Math.ceil(daysLeft))
+  if (totalDays <= 31 || days < 30) {
+    return `${days} j`
+  }
+  const months = Math.floor(days / 30)
+  const remAfterMonths = days % 30
+  const weeks = Math.floor(remAfterMonths / 7)
+  const remDays = remAfterMonths % 7
+  const parts = [`${months} mois`]
+  if (weeks > 0) parts.push(`${weeks} sem.`)
+  if (remDays > 0) parts.push(`${remDays} j`)
+  return parts.join(' ')
+}
+
+interface SubscriptionProgress {
+  /** null = pas d'echeance connue (ex: aucun abonnement) */
+  pct: number | null
+  isExpired: boolean
+  label: string
+  daysOverdue: number
+}
+
+function computeSubscriptionProgress(subscription: ProxyCompanyDetail['subscription']): SubscriptionProgress {
+  if (!subscription) {
+    return { pct: null, isExpired: false, label: '—', daysOverdue: 0 }
+  }
+
+  if (subscription.status === 'canceled') {
+    return { pct: null, isExpired: false, label: 'Annulé', daysOverdue: 0 }
+  }
+
+  const isTrial = subscription.status === 'trialing'
+  const start = isTrial ? subscription.created_at : subscription.current_period_start
+  const end = isTrial ? subscription.trial_end : subscription.current_period_end
+
+  if (!start || !end) {
+    return { pct: null, isExpired: subscription.status === 'expired', label: subscription.status === 'expired' ? 'Expiré' : '—', daysOverdue: 0 }
+  }
+
+  const startMs = new Date(start).getTime()
+  const endMs = new Date(end).getTime()
+  const nowMs = Date.now()
+  const totalDays = Math.max(1, (endMs - startMs) / MS_PER_DAY)
+  const daysLeft = (endMs - nowMs) / MS_PER_DAY
+  const isExpired = nowMs >= endMs || subscription.status === 'expired'
+
+  if (isExpired) {
+    const daysOverdue = Math.max(0, Math.ceil((nowMs - endMs) / MS_PER_DAY))
+    return { pct: 100, isExpired: true, label: `Expiré depuis ${daysOverdue} j`, daysOverdue }
+  }
+
+  const elapsedPct = Math.min(100, Math.max(0, ((nowMs - startMs) / MS_PER_DAY / totalDays) * 100))
+  return { pct: elapsedPct, isExpired: false, label: formatTimeLeft(daysLeft, totalDays), daysOverdue: 0 }
+}
+
+function SubscriptionProgressCell({
+  subscription, onRelaunch, isSending,
+}: {
+  subscription: ProxyCompanyDetail['subscription']
+  onRelaunch: () => void
+  isSending: boolean
+}) {
+  const progress = computeSubscriptionProgress(subscription)
+
+  if (progress.pct === null) {
+    return <span className="text-xs" style={{ color: '#64748b' }}>{progress.label}</span>
+  }
+
+  const barColor = progress.isExpired ? '#ef4444' : progress.pct > 80 ? '#f59e0b' : '#22c55e'
+
+  return (
+    <div className="min-w-[150px]">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs font-medium" style={{ color: progress.isExpired ? '#ef4444' : '#cbd5e1' }}>
+          {progress.isExpired ? progress.label : `${progress.label} restant${progress.label.startsWith('1 ') ? '' : 's'}`}
+        </span>
+      </div>
+      <div className="w-full h-1.5 rounded-full" style={{ background: '#334155' }}>
+        <div
+          className="h-1.5 rounded-full transition-all"
+          style={{ width: `${Math.max(3, progress.pct)}%`, background: barColor }}
+        />
+      </div>
+      {progress.isExpired && (
+        <button
+          onClick={onRelaunch}
+          disabled={isSending}
+          className="mt-1.5 px-2 py-1 rounded text-[11px] font-medium transition flex items-center gap-1 disabled:opacity-50"
+          style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}
+          title="Envoyer une notification de relance dans son espace"
+        >
+          {isSending ? <Loader2 className="w-3 h-3 animate-spin" /> : <BellRing className="w-3 h-3" />}
+          Relancer
+        </button>
+      )}
+    </div>
+  )
 }
 
 export default function SuperAdminEntreprises() {
@@ -54,6 +160,7 @@ function SuperAdminEntreprisesContent() {
   const [selectedCompany, setSelectedCompany] = useState<ProxyCompanyDetail | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [changingPlanForId, setChangingPlanForId] = useState<number | null>(null)
+  const [relaunchingForId, setRelaunchingForId] = useState<number | null>(null)
 
   const loadData = () => {
     if (isGlobalMode) {
@@ -108,6 +215,28 @@ function SuperAdminEntreprisesContent() {
       toast.error(err instanceof Error ? err.message : 'Erreur lors du changement de plan.')
     } finally {
       setChangingPlanForId(null)
+    }
+  }
+
+  const handleRelaunch = async (company: ProxyCompanyDetail) => {
+    setRelaunchingForId(company.id)
+    try {
+      const isTrial = company.subscription?.status === 'trialing'
+      await sendManualNotification(selectedServer.id, company.id, {
+        category: 'notification',
+        type: 'sub_reminder',
+        title: isTrial ? 'Votre essai a expiré' : 'Votre abonnement a expiré',
+        message: isTrial
+          ? "Votre période d'essai est terminée. Renouvelez votre abonnement pour continuer à utiliser NOXIA sans interruption."
+          : "Votre abonnement est arrivé à expiration. Renouvelez-le pour continuer à utiliser NOXIA sans interruption.",
+        link: '/subscription',
+      })
+      toast.success(`Notification envoyée à ${company.name}.`)
+    } catch (err) {
+      console.error(err)
+      toast.error("Erreur lors de l'envoi de la notification.")
+    } finally {
+      setRelaunchingForId(null)
     }
   }
 
@@ -243,6 +372,7 @@ function SuperAdminEntreprisesContent() {
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Entreprise</th>
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Plan</th>
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Abonnement</th>
+                <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Temps restant</th>
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Utilisateurs</th>
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Revenus (mois)</th>
                 <th className="px-4 py-3 text-left text-xs font-medium" style={{ color: '#94a3b8' }}>Actions</th>
@@ -294,6 +424,13 @@ function SuperAdminEntreprisesContent() {
                     )}
                   </td>
                   <td className="px-4 py-3">{getSubscriptionBadge(company.subscription?.status)}</td>
+                  <td className="px-4 py-3">
+                    <SubscriptionProgressCell
+                      subscription={company.subscription}
+                      onRelaunch={() => handleRelaunch(company)}
+                      isSending={relaunchingForId === company.id}
+                    />
+                  </td>
                   <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center gap-1">
                       <Users className="w-3 h-3" style={{ color: '#64748b' }} />
