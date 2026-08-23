@@ -33,11 +33,24 @@ const connectSrc = ["'self'", ...connectSrcOrigins].join(" ");
 // sur style-src reste nécessaire pour le CSS injecté par le widget n8n
 // (voir N8nChatWidget.tsx WIDGET_STYLES) — pas de contournement possible
 // sans réécrire ce widget tiers.
+// En dev, Turbopack/React ont besoin de eval() pour le hot-reload et la
+// reconstruction des call stacks de debug — jamais utilisé en production.
+const scriptSrc = process.env.NODE_ENV === "development"
+  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com"
+  : "script-src 'self' 'unsafe-inline' https://accounts.google.com";
+
+// En dev, le backend local tourne en http:// (voir NEXT_PUBLIC_API_URL) —
+// les logos d'établissements (vitrine landing) servis depuis MEDIA_ROOT en
+// HTTP local seraient sinon bloqués par la CSP.
+const imgSrc = process.env.NODE_ENV === "development"
+  ? "img-src 'self' data: https: http:"
+  : "img-src 'self' data: https:";
+
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://accounts.google.com",
+  scriptSrc,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https:",
+  imgSrc,
   "font-src 'self' data:",
   `connect-src ${connectSrc}`,
   "frame-src https://accounts.google.com",
@@ -51,6 +64,11 @@ const nextConfig: NextConfig = {
   // Image Docker minimale : ne copie que server.js + les deps effectivement
   // utilisees au runtime, au lieu de node_modules complet (voir Dockerfile).
   output: "standalone",
+  // Autorise l'accès au dev server (HMR inclus) depuis l'IP réseau local et
+  // les tunnels Ngrok, pour les tests à distance (voir README "Exposition
+  // distante Ngrok"). Sans effet en production (headers()/rewrites() restent
+  // les seuls mécanismes actifs en prod).
+  allowedDevOrigins: ["127.0.0.1", "10.2.0.2", "*.ngrok-free.app", "*.ngrok.io", "*.ngrok.app"],
   async headers() {
     return [
       {

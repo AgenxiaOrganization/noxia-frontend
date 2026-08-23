@@ -45,6 +45,7 @@ const FEATURE_CATEGORY_KEYWORDS: Record<string, string> = {
   'déploiement personnalisé': 'support',
   'intégrations sur mesure': 'integration',
   'sla garanti': 'support',
+  'menu par qr code': 'advanced',
 }
 
 function featureCategoryOf(label: string): string {

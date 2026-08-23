@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Send, Mail, User, MessageSquare, Phone } from 'lucide-react'
 
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api/v1'
+
 export function ContactSection() {
   const [formData, setFormData] = useState({
     name: '',
@@ -14,16 +16,36 @@ export function ContactSection() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    setTimeout(() => {
-      setIsSubmitting(false)
+    setError(null)
+
+    try {
+      // Relaie vers le proxy public Django (ContactFormProxyView,
+      // /companies/contact/) qui route vers le webhook n8n dédié — jamais
+      // d'appel direct navigateur -> n8n (même pattern qu'AssistantButton).
+      const res = await fetch(`${BASE_URL}/companies/contact/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        throw new Error(data?.detail || "L'envoi a échoué. Veuillez réessayer.")
+      }
+
       setSubmitted(true)
       setFormData({ name: '', email: '', phone: '', subject: '', message: '' })
       setTimeout(() => setSubmitted(false), 5000)
-    }, 1500)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "L'envoi a échoué. Veuillez réessayer.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -187,6 +209,11 @@ export function ContactSection() {
             {submitted && (
               <p className="text-center text-sm animate-fade-in" style={{ color: '#22c55e' }}>
                 ✅ Message envoyé avec succès ! Nous vous répondrons dans les plus brefs délais.
+              </p>
+            )}
+            {error && (
+              <p className="text-center text-sm animate-fade-in" style={{ color: '#f87171' }}>
+                ⚠️ {error}
               </p>
             )}
           </form>

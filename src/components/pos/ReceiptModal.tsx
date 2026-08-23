@@ -64,13 +64,16 @@ export default function ReceiptModal({
               </tr>
             </thead>
             <tbody>
-              ${(sale.items || []).map(item => `
+              ${(sale.items || []).map(item => {
+                const lineTotal = item.subtotal ? parseFloat(item.subtotal) : parseFloat(item.unit_price) * parseFloat(item.quantity)
+                return `
                 <tr>
                   <td>${item.product_name || 'Produit'}</td>
                   <td class="text-right">${item.quantity}</td>
-                  <td class="text-right">${(parseFloat(item.subtotal || item.unit_price) * parseFloat(item.quantity)).toLocaleString('fr-FR')} F</td>
+                  <td class="text-right">${lineTotal.toLocaleString('fr-FR')} F</td>
                 </tr>
-              `).join('')}
+              `
+              }).join('')}
             </tbody>
           </table>
           <div class="total">

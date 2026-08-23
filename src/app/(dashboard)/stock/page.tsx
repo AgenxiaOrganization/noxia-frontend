@@ -7,7 +7,8 @@ import {
 } from 'lucide-react'
 import { getProducts, createCategory, createCategoryCharacteristic, getCategories } from '../../../lib/api/catalog'
 import { getStockItems, getStockMovements, createStockMovement } from '../../../lib/api/inventory'
-import { ensureArray } from '@/lib/api'
+import { ensureArray, invalidateApiCache } from '@/lib/api'
+import { useWebSockets } from '../../../lib/hooks/useWebSockets'
 import Loader from '@/components/ui/Loader'
 import { FeatureLockedScreen, isFeatureNotIncludedError } from '@/components/ui/FeatureLockedScreen'
 import StockTable from '@/components/products/StockTable'
@@ -153,6 +154,19 @@ export default function StockPage() {
     loadData()
   }, [])
 
+  // Une vente POS (ou toute autre modification de vente confirmee) decremente
+  // le stock cote backend (voir sales/signals.py::sale_item_changed) — sans
+  // cette ecoute, un onglet Stock ouvert pendant qu'une vente a lieu ailleurs
+  // (POS, bot WhatsApp/Telegram) affiche un stock perime jusqu'au prochain
+  // rechargement manuel de la page.
+  useWebSockets('/ws/sales/', () => {
+    // Le cache client (60s, voir lib/api.ts CACHE_TTL_MS) doit etre purge
+    // avant de recharger, sinon loadData() re-sert des stocks perimes.
+    invalidateApiCache('/catalog')
+    invalidateApiCache('/inventory')
+    loadData(true)
+  })
+
   const categories = ['all', ...categoriesList]
 
   const filteredProducts = products.filter(p => {
@@ -194,6 +208,9 @@ export default function StockPage() {
       await adjustPromise
       setIsModalOpen(false)
       setSelectedProduct(null)
+      // createStockMovement() n'invalide que /inventory — le stock affiche
+      // sur chaque Product (derive de StockItem) reste en cache /catalog.
+      invalidateApiCache('/catalog')
       await loadData(true)
     } catch (err: any) {
       console.error("Erreur lors de l'ajustement", err)

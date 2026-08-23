@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { User, Wallet } from 'lucide-react'
 import { getProducts, getCategories } from '../../../lib/api/catalog'
 import { createSale, getCashRegisters, createCashRegister, CashRegister, getSales, Sale } from '../../../lib/api/sales'
+import { invalidateApiCache } from '../../../lib/api'
 import { useWebSockets } from '../../../lib/hooks/useWebSockets'
 import { getUser, getMembership } from '../../../lib/auth'
 import { toast } from 'sonner'
@@ -243,6 +244,14 @@ export default function POSPage() {
     })
       .then(async (newSale) => {
         toast.success(`✅ Vente enregistrée : ${currentTotal.toLocaleString()} FCFA (${paymentMethod})`)
+        // createSale() n'invalide que le cache de /sales — le stock des
+        // produits vendus a pourtant changé (voir sales/services.py
+        // checkout_sale -> apply_movement). Sans ça, loadData() ci-dessous
+        // re-sert le cache /catalog perime (60s de fraicheur, voir
+        // lib/api.ts CACHE_TTL_MS) et ecrase la mise a jour optimiste
+        // faite plus haut avec l'ancien stock.
+        invalidateApiCache('/catalog')
+        invalidateApiCache('/inventory')
         await loadData()
         if (newSale && newSale.id) {
           setSelectedReceiptSale(newSale)

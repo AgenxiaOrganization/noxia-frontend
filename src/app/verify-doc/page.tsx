@@ -219,9 +219,9 @@ function VerifyDocContent() {
         )}
 
         <div className="text-center pt-4">
-          <Link href="/finance" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition">
+          <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition">
             <ArrowLeft className="w-3.5 h-3.5" />
-            Retourner au tableau de bord Finance
+            Retourner à l&apos;accueil NOXIA
           </Link>
         </div>
       </div>

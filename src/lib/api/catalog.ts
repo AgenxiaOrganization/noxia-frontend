@@ -54,6 +54,12 @@ export interface ProductVariant {
   price: string
 }
 
+export interface QrMenuSettings {
+  enabled: boolean
+  slug: string | null
+  menu_url: string | null
+}
+
 export interface ProductPackaging {
   id: number
   product: number
@@ -99,6 +105,11 @@ export function createCatalogApi(client: ApiClient) {
     createProductPackaging: (productId: number, data: Partial<ProductPackaging>) => client.post<ProductPackaging>(`/catalog/products/${productId}/packagings/`, data),
     updateProductPackaging: (productId: number, packagingId: number, data: Partial<ProductPackaging>) => client.put<ProductPackaging>(`/catalog/products/${productId}/packagings/${packagingId}/`, data),
     deleteProductPackaging: (productId: number, packagingId: number) => client.del<void>(`/catalog/products/${productId}/packagings/${packagingId}/`),
+
+    // Menu par QR code
+    getQrMenuSettings: () => client.get<QrMenuSettings>('/catalog/qr-menu/'),
+    enableQrMenu: () => client.post<QrMenuSettings>('/catalog/qr-menu/', {}),
+    disableQrMenu: () => client.del<QrMenuSettings>('/catalog/qr-menu/'),
   }
 }
 
@@ -110,6 +121,7 @@ export const {
   getProducts, createProduct, updateProduct, deleteProduct,
   getProductVariants, createProductVariant, updateProductVariant, deleteProductVariant,
   getProductPackagings, createProductPackaging, updateProductPackaging, deleteProductPackaging,
+  getQrMenuSettings, enableQrMenu, disableQrMenu,
 } = defaultCatalogApi
 
 async function parsePhotoResponse<T>(res: Response): Promise<T> {

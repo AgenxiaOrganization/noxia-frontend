@@ -1,78 +1,56 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Bot } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 const faqs = [
   {
-    question: 'Comment fonctionne l\'essai gratuit ?',
-    answer: 'Vous bénéficiez de 30 jours d\'essai gratuit avec accès à toutes les fonctionnalités du plan Business. Aucune carte bancaire n\'est requise pour commencer.',
-    trigger: 'essai gratuit'
+    question: "Comment fonctionne l'essai gratuit ?",
+    answer:
+      "L'essai gratuit dure 30 jours et donne accès à l'ensemble des fonctionnalités du plan Business dès l'inscription : caisse (POS), gestion des stocks, catalogue produits, bots WhatsApp/Telegram et assistant IA. Aucune carte bancaire n'est demandée pour démarrer. À la fin des 30 jours, vous choisissez le plan qui correspond à votre activité — si vous ne renouvelez pas, votre compte reste accessible en lecture le temps de récupérer vos données, sans perte d'historique.",
   },
   {
     question: 'Puis-je changer de plan à tout moment ?',
-    answer: 'Oui, vous pouvez upgrader ou downgrader votre plan à tout moment. Le changement prend effet immédiatement et vos données sont préservées.',
-    trigger: 'changer de plan'
+    answer:
+      "Oui. Vous pouvez passer à un plan supérieur ou inférieur directement depuis votre espace Abonnement, sans interruption de service. Le changement est appliqué immédiatement et l'ensemble de vos données (produits, stocks, historique de ventes, employés) est conservé intégralement, quel que soit le plan choisi.",
   },
   {
     question: 'Comment mes employés accèdent-ils au bot ?',
-    answer: 'Vous créez leurs comptes depuis le tableau de bord. Chaque employé reçoit un ID unique à envoyer au bot WhatsApp. Leurs permissions sont automatiquement appliquées.',
-    trigger: 'employés accèdent'
+    answer:
+      "Depuis votre tableau de bord, vous créez le compte de chaque employé et lui attribuez un rôle (caissier, serveur, gérant...). Un identifiant de liaison unique est généré automatiquement : l'employé l'envoie une seule fois au bot WhatsApp ou Telegram de l'établissement pour associer son numéro à son compte. Ses permissions (ce qu'il peut consulter ou modifier) sont ensuite appliquées automatiquement selon son rôle, sans configuration supplémentaire.",
   },
   {
     question: 'Mes données sont-elles sécurisées ?',
-    answer: 'Absolument. Chaque client a un espace de données isolé. Toutes les communications sont chiffrées en HTTPS. Sauvegardes quotidiennes automatiques.',
-    trigger: 'données sécurisées'
+    answer:
+      "Oui. Chaque établissement dispose d'un espace de données strictement isolé — aucune donnée ne peut être partagée ou consultée entre deux entreprises clientes. Toutes les communications transitent en HTTPS chiffré, les mots de passe et identifiants sensibles sont chiffrés en base, et des sauvegardes automatiques de la base de données sont réalisées quotidiennement.",
   },
   {
     question: 'NOXIA fonctionne-t-il hors ligne ?',
-    answer: 'L\'application mobile native (iOS/Android) dispose d\'un mode hors ligne qui synchronise les données dès que la connexion est rétablie.',
-    trigger: 'hors ligne'
+    answer:
+      "NOXIA est une application web accessible depuis un navigateur, elle nécessite donc une connexion internet pour fonctionner (comme la caisse, les stocks et les bots reposent sur des données synchronisées en temps réel). En revanche, la gestion via WhatsApp/Telegram reste disponible dès qu'une connexion mobile basique est présente, ce qui couvre la majorité des usages terrain même avec un réseau limité.",
+  },
+  {
+    question: "Quels types d'établissements peuvent utiliser NOXIA ?",
+    answer:
+      "NOXIA est conçu pour les bars, snack-bars, boîtes de nuit et restaurants. La plateforme s'adapte aussi bien à un établissement unique qu'à un groupe multi-établissements, avec un tableau de bord centralisé pour suivre l'activité de chaque site séparément ou dans leur ensemble.",
+  },
+  {
+    question: "Y a-t-il des frais cachés ou d'engagement ?",
+    answer:
+      "Non. Le prix affiché pour chaque plan est le prix final, sans frais d'installation ni surcoût caché. L'abonnement est sans engagement de durée : vous pouvez l'annuler à tout moment depuis votre espace Abonnement, sans pénalité.",
   },
 ]
 
 export function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null)
 
-  // Fonction pour ouvrir le chatbot et envoyer la question
-  const handleFAQClick = (question: string, trigger: string) => {
-    // 1. Ouvrir la bulle du chatbot
-    const chatbotButton = document.querySelector('.chatbot-trigger') as HTMLElement
-    if (chatbotButton) {
-      chatbotButton.click()
-    }
-
-    // 2. Attendre que le chat s'ouvre, puis envoyer la question
-    setTimeout(() => {
-      // Trouver l'input du chatbot
-      const input = document.querySelector('.chatbot-input') as HTMLInputElement
-      if (input) {
-        // Mettre la question dans l'input
-        input.value = trigger
-        // Déclencher l'événement input pour mettre à jour l'état
-        input.dispatchEvent(new Event('input', { bubbles: true }))
-        
-        // 3. Simuler l'envoi après un court délai
-        setTimeout(() => {
-          const sendButton = document.querySelector('.chatbot-send') as HTMLElement
-          if (sendButton) {
-            sendButton.click()
-          }
-        }, 300)
-      } else {
-        // Fallback: si l'input n'est pas trouvé, ouvrir le chat et alert
-        alert(`🤖 Question envoyée au chatbot : "${question}"`)
-      }
-    }, 500)
-  }
-
   return (
-    <section 
-      id="faq" 
+    <section
+      id="faq"
       className="py-20"
-      style={{ 
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #312e81 70%, #4f46e5 100%)' 
+      style={{
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #312e81 70%, #4f46e5 100%)'
       }}
     >
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -87,7 +65,7 @@ export function FAQ() {
             Questions fréquentes
           </h2>
           <p className="text-lg" style={{ color: '#94a3b8' }}>
-            Cliquez sur une question pour la poser directement à notre assistant
+            Tout ce qu'il faut savoir avant de vous lancer
           </p>
         </motion.div>
 
@@ -105,33 +83,20 @@ export function FAQ() {
                 backdropFilter: 'blur(10px)',
                 border: openIndex === index ? '1px solid #6366f1' : '1px solid rgba(255,255,255,0.1)'
               }}
-              onClick={() => {
-                setOpenIndex(openIndex === index ? null : index)
-                // Envoyer la question au chatbot
-                handleFAQClick(faq.question, faq.trigger)
-              }}
+              onClick={() => setOpenIndex(openIndex === index ? null : index)}
             >
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-4">
                 <span className="font-semibold text-white group-hover:text-primary-400 transition">
                   {faq.question}
                 </span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
-                    <Bot className="w-3 h-3 inline mr-1" />
-                    Poser au bot
-                  </span>
-                  <ChevronDown 
-                    className={`w-5 h-5 transition-transform duration-200 ${openIndex === index ? 'rotate-180' : ''}`}
-                    style={{ color: '#94a3b8' }}
-                  />
-                </div>
+                <ChevronDown
+                  className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${openIndex === index ? 'rotate-180' : ''}`}
+                  style={{ color: '#94a3b8' }}
+                />
               </div>
               {openIndex === index && (
                 <div className="mt-3 p-3 rounded-lg" style={{ background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.1)' }}>
-                  <p className="text-sm" style={{ color: '#94a3b8' }}>{faq.answer}</p>
-                  <p className="text-xs mt-2" style={{ color: '#22c55e' }}>
-                    ✅ Question envoyée à l&apos;assistant
-                  </p>
+                  <p className="text-sm leading-relaxed" style={{ color: '#cbd5e1' }}>{faq.answer}</p>
                 </div>
               )}
             </motion.div>

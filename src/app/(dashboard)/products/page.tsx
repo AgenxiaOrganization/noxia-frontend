@@ -1,18 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
+import {
   Plus, Search, Trash2, Package, Coffee, Utensils, Sparkles,
-  X, Save, AlertCircle, Check, PlusCircle, MinusCircle 
+  X, Save, AlertCircle, Check, PlusCircle, MinusCircle, QrCode
 } from 'lucide-react'
 import { getProducts, createProduct, updateProduct, deleteProduct as deleteProductApi, getCategories, createCategory, createCategoryCharacteristic, uploadProductPhoto } from '../../../lib/api/catalog'
 import { getSuppliers, createSupplier, Supplier } from '../../../lib/api/inventory'
-import { ensureArray } from '@/lib/api'
+import { ensureArray, invalidateApiCache } from '@/lib/api'
 import { useWebSockets } from '../../../lib/hooks/useWebSockets'
 import Loader from '@/components/ui/Loader'
 import { FeatureLockedScreen, isFeatureNotIncludedError } from '@/components/ui/FeatureLockedScreen'
 import ProductGrid from '@/components/products/ProductGrid'
 import ProductFormModal from '@/components/products/ProductFormModal'
+import QrMenuModal from '@/components/products/QrMenuModal'
 import { toast } from 'sonner'
 
 // --- Types ---
@@ -45,6 +46,7 @@ export default function ProductsPage() {
   // Modale Produit
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCharacteristicsModalOpen, setIsCharacteristicsModalOpen] = useState(false)
+  const [isQrMenuModalOpen, setIsQrMenuModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
 
   const [isSaving, setIsSaving] = useState(false)
@@ -166,6 +168,17 @@ export default function ProductsPage() {
     loadData()
   }, [])
 
+  // Une vente POS decremente le stock cote backend (sales/signals.py) — sans
+  // cette ecoute, les quantites affichees ici restent perimees jusqu'au
+  // prochain rechargement manuel de la page (voir meme pattern sur /stock).
+  useWebSockets('/ws/sales/', () => {
+    // Le cache client (60s, voir lib/api.ts CACHE_TTL_MS) doit etre purge
+    // avant de recharger, sinon loadData() re-sert des stocks perimes.
+    invalidateApiCache('/catalog')
+    invalidateApiCache('/inventory')
+    loadData(true)
+  })
+
   const categories = ['all', ...categoriesData.map(c => c.name)]
 
   const filteredProducts = products.filter(p => {
@@ -254,6 +267,17 @@ export default function ProductsPage() {
           >
             <Sparkles className="w-4 h-4" />
             Modèles de caractéristiques
+          </button>
+          <button
+            onClick={() => setIsQrMenuModalOpen(true)}
+            className="px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 border border-slate-700"
+            style={{
+              background: 'rgba(51, 65, 85, 0.5)',
+              color: '#94a3b8'
+            }}
+          >
+            <QrCode className="w-4 h-4" />
+            Menu par QR code
           </button>
           <button
             onClick={() => openModal()}
@@ -463,6 +487,10 @@ export default function ProductsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {isQrMenuModalOpen && (
+        <QrMenuModal onClose={() => setIsQrMenuModalOpen(false)} />
       )}
     </div>
   )

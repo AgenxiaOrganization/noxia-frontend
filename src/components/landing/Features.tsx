@@ -1,19 +1,19 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Package, CreditCard, Bot, MessageSquare, FileBarChart, Users } from 'lucide-react'
+import { Package, CreditCard, Bot, MessageSquare, FileBarChart, Users, QrCode, ShieldCheck, Eye } from 'lucide-react'
 
 const features = [
   {
     icon: Package,
     title: 'Gestion des Stocks',
-    description: 'Suivez vos stocks en temps réel. Alertes automatiques quand un produit atteint le seuil critique. Transferts entre établissements.',
+    description: 'Suivez vos stocks en temps réel. Alertes automatiques quand un produit atteint le seuil critique.',
     color: '#6366f1'
   },
   {
     icon: CreditCard,
     title: 'Caisse Tactile (POS)',
-    description: 'Interface de vente optimisée. Multi-caisses, tickets, factures, multi-paiements (espèces, Mobile Money, carte bancaire).',
+    description: 'Interface de vente optimisée. Multi-caisses, tickets, factures.',
     color: '#10b981'
   },
   {
@@ -31,14 +31,32 @@ const features = [
   {
     icon: FileBarChart,
     title: 'Rapports Automatiques',
-    description: 'Rapports journaliers, hebdomadaires, mensuels. Export PDF et Excel. Envoi automatique par email ou messagerie.',
+    description: 'Rapports journaliers, hebdomadaires, mensuels. Export PDF et Excel.',
     color: '#f59e0b'
   },
   {
     icon: Users,
     title: "Gestion d'Équipe",
-    description: 'Rôles et permissions granulaires. Suivi des performances. Historique d\'audit complet. Liaison WhatsApp automatisée.',
+    description: 'Rôles et permissions granulaires. Suivi des performances. Historique d\'audit complet. Liaison WhatsApp automatisée et bien plus encore...',
     color: '#ec4899'
+  },
+  {
+    icon: QrCode,
+    title: 'Menu par QR Code',
+    description: 'Générez un QR code à afficher en établissement. Vos clients scannent et consultent instantanément vos produits avec photos et prix, sans passer par la caisse.',
+    color: '#06b6d4'
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Documents Certifiés',
+    description: 'Fiches de paie, factures et bilans financiers en PDF, chacun signé d\'un QR code de vérification pour prouver leur authenticité en un scan.',
+    color: '#22c55e'
+  },
+  {
+    icon: Eye,
+    title: 'Supervision en Temps Réel',
+    description: 'Définissez précisément les droits de chaque employé et gardez un œil sur tout : qui a fait quoi, à quelle heure, grâce au journal d\'audit détaillé de l\'établissement.',
+    color: '#a855f7'
   }
 ]
 
@@ -103,20 +121,29 @@ export function Features() {
           {features.map((feature, index) => {
             const Icon = feature.icon
             return (
-              <motion.div 
-                key={index} 
+              <motion.div
+                key={index}
                 variants={cardVariants}
-                className="group rounded-2xl p-6 border border-dark-800/40 glass-card hover:glass-card-hover hover:border-primary-500/20 relative overflow-hidden"
+                whileHover={{ y: -4 }}
+                className="group rounded-2xl p-6 border border-dark-800/40 glass-card hover:glass-card-hover relative overflow-hidden transition-[border-color,box-shadow] duration-300"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = `${feature.color}40`
+                  e.currentTarget.style.boxShadow = `0 20px 40px -20px ${feature.color}30`
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = ''
+                  e.currentTarget.style.boxShadow = ''
+                }}
               >
                 {/* Lueur de survol subtile aux couleurs du feature */}
-                <div 
+                <div
                   className="absolute -right-10 -top-10 w-24 h-24 rounded-full blur-2xl opacity-10 transition-opacity duration-300 group-hover:opacity-30"
                   style={{ background: feature.color }}
                 />
 
-                <div 
+                <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-105"
-                  style={{ 
+                  style={{
                     background: `${feature.color}15`,
                     color: feature.color,
                     border: `1px solid ${feature.color}25`
