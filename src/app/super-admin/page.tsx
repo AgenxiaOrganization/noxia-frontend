@@ -255,11 +255,11 @@ function GlobalDashboard() {
 
         <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-medium uppercase tracking-wider" style={{ color: '#94a3b8' }}>Commission</p>
+            <p className="text-xs font-medium uppercase tracking-wider" style={{ color: '#94a3b8' }}>Revenus abonnements</p>
             <Zap className="w-4 h-4" style={{ color: '#f59e0b' }} />
           </div>
-          <p className="text-2xl font-bold text-white">{formatCurrency(stats.commission)}</p>
-          <p className="text-xs mt-1" style={{ color: '#64748b' }}>{stats.commissionRate}% sur les transactions</p>
+          <p className="text-2xl font-bold text-white">{formatCurrency(stats.subscriptionRevenue)}</p>
+          <p className="text-xs mt-1" style={{ color: '#64748b' }}>{stats.subscriptionPaymentsCount} paiement{stats.subscriptionPaymentsCount > 1 ? 's' : ''} ce mois-ci</p>
         </div>
 
         <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
@@ -368,8 +368,8 @@ function GlobalDashboard() {
               <p className="text-xl font-bold text-white">{formatCurrency(stats.totalRevenue)}</p>
             </div>
             <div className="flex items-center justify-between text-sm py-1 border-t" style={{ borderColor: '#334155' }}>
-              <span style={{ color: '#94a3b8' }}>Commission ({stats.commissionRate}%)</span>
-              <span className="font-medium" style={{ color: '#f59e0b' }}>{formatCurrency(stats.commission)}</span>
+              <span style={{ color: '#94a3b8' }}>Revenus abonnements NOXIA</span>
+              <span className="font-medium" style={{ color: '#f59e0b' }}>{formatCurrency(stats.subscriptionRevenue)}</span>
             </div>
             <div className="flex items-center justify-between text-sm py-1 border-t" style={{ borderColor: '#334155' }}>
               <span style={{ color: '#94a3b8' }}>Ce mois-ci</span>

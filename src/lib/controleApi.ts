@@ -48,6 +48,11 @@ export interface DashboardStats {
   monthlyOrdersChange: number
   commission: number
   commissionRate: number
+  /** Revenu direct de la plateforme NOXIA (abonnements Starter/Premium/
+   * Business payes via MyPVit ce mois-ci) — distinct de monthlyRevenue,
+   * qui est le CA des établissements clients via leurs propres ventes. */
+  subscriptionRevenue: number
+  subscriptionPaymentsCount: number
   monthlyRevenue: number
   planDistribution: {
     essai: number

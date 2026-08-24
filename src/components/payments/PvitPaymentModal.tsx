@@ -28,10 +28,10 @@ const POLL_TIMEOUT_MS = 3 * 60 * 1000 // 3 minutes — au-dela, statut incertain
 
 type Step = 'select-method' | 'enter-number' | 'processing' | 'redirecting' | 'success' | 'failed' | 'timeout'
 
-const methodOptions: { value: PvitMethod; label: string; hint: string }[] = [
+const methodOptions: { value: PvitMethod; label: string; hint: string; disabled?: boolean }[] = [
   { value: 'AIRTEL_MONEY', label: 'Airtel Money', hint: 'Paiement mobile' },
   { value: 'MOOV_MONEY', label: 'Moov Money', hint: 'Paiement mobile' },
-  { value: 'VISA_MASTERCARD', label: 'Visa / Mastercard', hint: 'Carte bancaire' },
+  { value: 'VISA_MASTERCARD', label: 'Visa / Mastercard', hint: 'Bientôt disponible', disabled: true },
 ]
 
 export default function PvitPaymentModal({
@@ -96,6 +96,7 @@ export default function PvitPaymentModal({
   }
 
   const handleSelectMethod = (selected: PvitMethod) => {
+    if (methodOptions.find((o) => o.value === selected)?.disabled) return
     setMethod(selected)
     if (selected === 'VISA_MASTERCARD') {
       submitPayment(selected, '')
@@ -151,40 +152,49 @@ export default function PvitPaymentModal({
       onClick={isBlocking ? undefined : onClose}
     >
       <div
-        className="w-full max-w-md rounded-2xl p-6"
-        style={{ background: '#1e293b', border: '1px solid #334155' }}
+        className="w-full max-w-lg rounded-2xl p-7 sm:p-8"
+        style={{ background: '#1e293b', border: '1px solid #334155', boxShadow: '0 25px 60px -15px rgba(0,0,0,0.5)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-bold text-white">Payer l'abonnement</h2>
-            <p className="text-xs" style={{ color: '#94a3b8' }}>
-              {plan.name} — {displayAmount.toLocaleString()} FCFA/{periodSuffix}
+            <h2 className="text-xl font-bold text-white">Payer l'abonnement</h2>
+            <p className="text-sm mt-0.5" style={{ color: '#94a3b8' }}>
+              {plan.name} — <span className="font-semibold" style={{ color: '#a5b4fc' }}>{displayAmount.toLocaleString()} FCFA</span>/{periodSuffix}
             </p>
           </div>
           {!isBlocking && (
-            <button onClick={onClose} className="p-1 rounded hover:bg-white/10" style={{ color: '#94a3b8' }}>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 transition" style={{ color: '#94a3b8' }}>
               <X className="w-5 h-5" />
             </button>
           )}
         </div>
 
         {step === 'select-method' && (
-          <div className="space-y-2">
-            <p className="text-xs mb-2" style={{ color: '#94a3b8' }}>Choisissez un moyen de paiement</p>
+          <div className="space-y-3">
+            <p className="text-sm mb-3" style={{ color: '#94a3b8' }}>Choisissez un moyen de paiement</p>
             {methodOptions.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => handleSelectMethod(opt.value)}
-                className="w-full flex items-center gap-3 p-3 rounded-lg border transition hover:bg-white/5"
-                style={{ borderColor: '#334155' }}
+                disabled={opt.disabled}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border transition"
+                style={{
+                  borderColor: '#334155',
+                  opacity: opt.disabled ? 0.5 : 1,
+                  cursor: opt.disabled ? 'not-allowed' : 'pointer',
+                }}
+                onMouseEnter={(e) => {
+                  if (!opt.disabled) e.currentTarget.style.background = 'rgba(255,255,255,0.05)'
+                }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
               >
-                <div className="w-20 h-12 rounded-lg flex items-center justify-center shrink-0 px-2" style={{ background: 'white' }}>
-                  <PaymentMethodLogo method={opt.value} className="h-7" />
+                <div className="w-24 h-14 rounded-xl flex items-center justify-center shrink-0 px-3" style={{ background: 'white' }}>
+                  <PaymentMethodLogo method={opt.value} className="h-8" />
                 </div>
-                <div className="text-left">
-                  <p className="text-sm font-medium text-white">{opt.label}</p>
-                  <p className="text-xs" style={{ color: '#64748b' }}>{opt.hint}</p>
+                <div className="text-left flex-1">
+                  <p className="text-base font-semibold text-white">{opt.label}</p>
+                  <p className="text-xs mt-0.5" style={{ color: opt.disabled ? '#f59e0b' : '#64748b' }}>{opt.hint}</p>
                 </div>
               </button>
             ))}
@@ -192,32 +202,43 @@ export default function PvitPaymentModal({
         )}
 
         {step === 'enter-number' && method && (
-          <form onSubmit={handleSubmitNumber} className="space-y-3">
+          <form onSubmit={handleSubmitNumber} className="space-y-4">
             <button
               type="button"
               onClick={() => setStep('select-method')}
-              className="flex items-center gap-1 text-xs mb-1"
+              className="flex items-center gap-1.5 text-sm transition hover:text-white"
               style={{ color: '#94a3b8' }}
             >
-              <ArrowLeft className="w-3 h-3" /> Changer de moyen
+              <ArrowLeft className="w-3.5 h-3.5" /> Changer de moyen
             </button>
-            <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
-              Numéro {methodOptions.find((o) => o.value === method)?.label}
-            </label>
-            <input
-              type="tel"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="Ex: 066123456"
-              autoFocus
-              className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-              style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
-              required
-            />
+
+            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #334155' }}>
+              <div className="w-16 h-10 rounded-lg flex items-center justify-center shrink-0 px-2" style={{ background: 'white' }}>
+                <PaymentMethodLogo method={method} className="h-6" />
+              </div>
+              <p className="text-sm font-medium text-white">{methodOptions.find((o) => o.value === method)?.label}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm mb-2" style={{ color: '#94a3b8' }}>
+                Numéro de téléphone
+              </label>
+              <input
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="Ex: 066123456"
+                autoFocus
+                className="w-full rounded-xl px-4 py-3.5 text-white text-base outline-none transition"
+                style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
+                required
+              />
+            </div>
+
             <button
               type="submit"
               disabled={isSubmitting || !phoneNumber.trim()}
-              className="w-full py-2.5 rounded-lg text-white text-sm font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-xl text-white text-base font-semibold transition disabled:opacity-50 flex items-center justify-center gap-2 hover:brightness-110"
               style={{ background: '#4f46e5', boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)' }}
             >
               {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
