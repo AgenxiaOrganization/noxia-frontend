@@ -60,17 +60,16 @@ export function Hero() {
             </div>
             
             {/* Titre Principal avec effet typographique GitHub */}
-            <motion.h1 
-              variants={itemVariants}
-              className="text-4xl sm:text-5xl lg:text-6xl font-display font-extrabold leading-[1.05] text-white tracking-tight"
-            >
-              L'
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 via-indigo-400 to-accent-400 select-none">
-                OS intelligent
-              </span> 
-              pour votre bar ou restaurant
-            </motion.h1>
-            
+           <motion.h1 
+  variants={itemVariants}
+  className="text-4xl sm:text-5xl lg:text-6xl font-display font-extrabold leading-[1.05] text-white tracking-tight"
+>
+  Le&nbsp;
+  <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 via-indigo-400 to-accent-400 select-none">
+    Pilier intelligent
+  </span>
+  &nbsp;pour votre bar ou restaurant
+</motion.h1>
             {/* Description */}
             <motion.p 
               variants={itemVariants}

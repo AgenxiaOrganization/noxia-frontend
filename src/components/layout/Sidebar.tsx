@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Package, Box, CreditCard, Users,
   FileBarChart, DollarSign, Truck, Bell, MessageSquare, MessageCircle,
-  Settings, Key, Activity, ChevronLeft, ChevronRight, ShieldCheck
+  Settings, Key, Activity, ChevronLeft, ChevronRight, ShieldCheck, X
 } from 'lucide-react'
 
 const menuItems = [
@@ -43,20 +43,20 @@ export function Sidebar({
 
   return (
     <>
+      {/* Overlay mobile */}
       {open && (
         <div 
           className="fixed inset-0 z-40 md:hidden bg-black/60 backdrop-blur-sm" 
           onClick={onClose} 
         />
       )}
+      
       <aside 
         className={`fixed md:sticky top-0 z-50 h-screen flex flex-col border-r border-dark-800/60 bg-dark-900 transition-all duration-300 ${
           open ? 'translate-x-0 w-64' : '-translate-x-full md:translate-x-0'
-        } ${
-          !open && collapsed ? 'w-20' : 'w-64'
-        }`}
+        } ${!open && collapsed ? 'w-20' : 'w-64'}`}
       >
-        {/* Logo */}
+        {/* Logo + Bouton de fermeture mobile */}
         <div className={`p-5 flex items-center border-b border-dark-800/60 ${
           !open && collapsed ? 'justify-center' : 'gap-3'
         }`}>
@@ -69,10 +69,20 @@ export function Sidebar({
             />
           </div>
           {showText && (
-            <div className="animate-fade-in">
+            <div className="animate-fade-in flex-1">
               <span className="font-display font-bold text-sm tracking-wide text-primary-500">NOXIA</span>
               <span className="text-[10px] text-primary-400 font-medium block leading-none">Smart SaaS</span>
             </div>
+          )}
+          {/* ✅ Bouton de fermeture (visible uniquement sur mobile) */}
+          {open && (
+            <button
+              onClick={onClose}
+              className="md:hidden p-1.5 rounded-lg hover:bg-white/10 transition text-dark-400 hover:text-white"
+              aria-label="Fermer le menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
           )}
         </div>
         

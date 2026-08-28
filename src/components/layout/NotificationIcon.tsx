@@ -33,7 +33,7 @@ function timeAgo(dateString: string): string {
   const date = new Date(dateString)
   const diff = Math.floor((now.getTime() - date.getTime()) / 1000)
 
-  if (diff < 60) return 'À l\'instant'
+  if (diff < 60) return "À l'instant"
   if (diff < 3600) return `Il y a ${Math.floor(diff / 60)} min`
   if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)}h`
   if (diff < 604800) return `Il y a ${Math.floor(diff / 86400)}j`
@@ -177,7 +177,7 @@ export function NotificationIcon() {
         </AnimatePresence>
       </button>
 
-      {/* Dropdown des notifications */}
+      {/* Dropdown des notifications - CENTRÉ et RESPONSIVE */}
       <AnimatePresence>
         {isOpen && (
           <>
@@ -187,7 +187,7 @@ export function NotificationIcon() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.96 }}
               transition={{ duration: 0.18, ease: 'easeOut' }}
-              className="absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-2xl border border-dark-700/80 bg-dark-900/95 backdrop-blur-xl shadow-2xl z-50 overflow-hidden"
+              className="absolute left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 sm:translate-x-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-[400px] rounded-2xl border border-dark-700/80 bg-dark-900/95 backdrop-blur-xl shadow-2xl z-50 overflow-hidden"
             >
               {/* En-tête */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-dark-800/80 bg-dark-950/40">

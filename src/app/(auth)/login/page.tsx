@@ -7,10 +7,7 @@ import { loginWithEmployeeId, googleAuth, ApiError } from '@/lib/api'
 import { saveSession } from '@/lib/auth'
 import { toast } from 'sonner'
 
-// Types pour Google GIS sont déclarés globalement dans src/types/google-gis.d.ts
-
 // GOOGLE_CLIENT_ID must be set in .env.local as NEXT_PUBLIC_GOOGLE_CLIENT_ID.
-// Never hard-code credentials here — env vars are the only source of truth.
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ''
 if (!GOOGLE_CLIENT_ID) {
   console.error(
@@ -30,7 +27,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  // Modale d'alerte compte Google détecté
   const [googleNoticeModalOpen, setGoogleNoticeModalOpen] = useState(false)
   const [googleNoticeEmail, setGoogleNoticeEmail] = useState('')
 
@@ -48,7 +44,6 @@ export default function LoginPage() {
         }
 
         if (result.status === 'company_name_required') {
-          // The user does not exist → redirect to register with pre-filled Google data
           const params = new URLSearchParams({
             via: 'google',
             id_token: response.credential,
@@ -60,7 +55,6 @@ export default function LoginPage() {
           return
         }
 
-        // Authenticated ✅
         saveSession(result)
         setSuccess(true)
         toast.success("Connexion réussie !")
@@ -85,7 +79,7 @@ export default function LoginPage() {
         text: "signin_with",
         shape: "rectangular",
         logo_alignment: "left",
-        width: 382
+        width: "100%"
       })
     }
   }, [])
@@ -99,7 +93,6 @@ export default function LoginPage() {
         use_fedcm_for_prompt: false,
       } as any)
 
-      // If button div is already mounted, render it
       const btnDiv = document.getElementById("google-button-div")
       if (btnDiv) {
         window.google.accounts.id.renderButton(btnDiv, {
@@ -109,7 +102,7 @@ export default function LoginPage() {
           text: "signin_with",
           shape: "rectangular",
           logo_alignment: "left",
-          width: 382
+          width: "100%"
         })
       }
     }
@@ -171,8 +164,16 @@ export default function LoginPage() {
     >
       <div className="w-full max-w-md">
 
-        {/* En-tête */}
+        {/* Logo NOXIA */}
         <div className="text-center mb-8 animate-slide-up">
+          <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-dark-900/50 p-2 border border-dark-800/60 overflow-hidden shadow-md">
+            <div className="absolute inset-0 bg-primary-500/10 blur-md rounded-full" />
+            <img 
+              src="/logos/NOXIA_Orbit_Logo.svg" 
+              alt="NOXIA" 
+              className="relative w-full h-full object-contain"
+            />
+          </div>
           <h1 className="text-3xl font-display font-extrabold text-white tracking-tight">NOXIA</h1>
           <p className="text-sm text-dark-400 mt-1.5 font-medium">OS Intelligent pour Bars & Restaurants</p>
         </div>
@@ -304,12 +305,14 @@ export default function LoginPage() {
                 <div className="flex-1 h-px" style={{ background: '#334155' }} />
               </div>
 
-              {/* Google Login */}
-              <div 
-                ref={googleButtonRef}
-                id="google-button-div" 
-                className="w-full flex justify-center hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-              />
+              {/* Google Login - Responsive */}
+              <div className="w-full flex justify-center">
+                <div 
+                  ref={googleButtonRef}
+                  id="google-button-div" 
+                  className="w-full max-w-[382px] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                />
+              </div>
 
               <p className="text-center text-xs mt-4" style={{ color: '#64748b' }}>
                 La connexion Google vérifie aussi votre accès employé.

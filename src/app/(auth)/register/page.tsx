@@ -12,14 +12,11 @@ import { saveSession } from '@/lib/auth'
 import { countriesData } from '@/lib/countriesData'
 import { getPlans, type Plan } from '@/lib/api/subscription'
 import { toast } from 'sonner'
-
-// Types pour Google GIS sont déclarés globalement dans src/types/google-gis.d.ts
+import { CGUModal } from '@/components/ui/CGUModal'
 
 // GOOGLE_CLIENT_ID must be set in .env.local as NEXT_PUBLIC_GOOGLE_CLIENT_ID.
-// Never hard-code credentials here — env vars are the only source of truth.
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ''
 if (!GOOGLE_CLIENT_ID) {
-  // Warn at module-load time so it surfaces immediately in the browser console.
   console.error(
     '[Noxia] NEXT_PUBLIC_GOOGLE_CLIENT_ID is not defined. ' +
     'Add it to .env.local and restart the dev server.',
@@ -38,7 +35,6 @@ const COMPANY_TYPES = [
 function RegisterForm() {
   const searchParams = useSearchParams()
 
-  // When the user arrives from /login after a failed Google login (new account)
   const viaGoogle = searchParams.get('via') === 'google'
   const googleIdToken = searchParams.get('id_token') ?? ''
   const googleEmail = searchParams.get('email') ?? ''
@@ -65,6 +61,8 @@ function RegisterForm() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [isCguModalOpen, setIsCguModalOpen] = useState(false)
+  const [cguAccepted, setCguAccepted] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -79,7 +77,6 @@ function RegisterForm() {
         const result = await googleAuth(response.credential)
 
         if (result.status === 'authenticated') {
-          // User already has an account — just log them in
           saveSession(result)
           setSuccess(true)
           toast.success("Connexion réussie !")
@@ -94,7 +91,6 @@ function RegisterForm() {
         }
 
         if (result.status === 'company_name_required') {
-          // New account: pre-fill name/email and ask for company info
           setIsGoogleMode(true)
           setPendingGoogleToken(response.credential)
           setFormData((prev) => ({
@@ -103,7 +99,7 @@ function RegisterForm() {
             firstName: result.first_name,
             lastName: result.last_name,
           }))
-          setStep(2) // skip to company step
+          setStep(2)
         }
       } catch (err) {
         const errMsg = err instanceof ApiError ? err.message : 'Erreur Google. Réessayez.'
@@ -125,7 +121,7 @@ function RegisterForm() {
         text: "signup_with",
         shape: "rectangular",
         logo_alignment: "left",
-        width: 382
+        width: "100%"
       })
     }
   }, [])
@@ -140,7 +136,6 @@ function RegisterForm() {
           use_fedcm_for_prompt: false,
         } as any)
 
-        // If button div is already mounted, render it
         const btnDiv = document.getElementById("google-button-div")
         if (btnDiv) {
           window.google.accounts.id.renderButton(btnDiv, {
@@ -150,7 +145,7 @@ function RegisterForm() {
             text: "signup_with",
             shape: "rectangular",
             logo_alignment: "left",
-            width: 382
+            width: "100%"
           })
         }
       }
@@ -174,16 +169,12 @@ function RegisterForm() {
     document.head.appendChild(script)
   }, [handleGoogleCredential, viaGoogle])
 
-  // If user arrived via Google redirect, go directly to step 2
   useEffect(() => {
     if (viaGoogle && googleIdToken) {
       setStep(2)
     }
   }, [viaGoogle, googleIdToken])
 
-  // Pré-remplit (sans jamais l'imposer) le pays via géolocalisation IP —
-  // le <select> reste modifiable dans tous les cas, et un échec de
-  // détection laisse simplement le défaut 'Gabon'.
   useEffect(() => {
     detectCountry().then((detected) => {
       if (detected && countriesData.some((c) => c.name === detected)) {
@@ -192,10 +183,6 @@ function RegisterForm() {
     })
   }, [])
 
-  // Catalogue de plans pour l'étape 3 (choix de l'offre) — le plan gratuit
-  // est présélectionné par défaut, jamais un plan payant, pour qu'un
-  // utilisateur qui n'atteint jamais cette étape (ou clique directement sur
-  // "Créer mon compte") reçoive toujours l'essai gratuit.
   useEffect(() => {
     getPlans()
       .then((list) => {
@@ -212,6 +199,13 @@ function RegisterForm() {
   // ── Form submit ────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Vérifier l'acceptation des CGU
+    if (!cguAccepted) {
+      toast.error("Veuillez accepter les Conditions Générales d'Utilisation")
+      return
+    }
+
     setIsLoading(true)
     setError(null)
 
@@ -219,7 +213,6 @@ function RegisterForm() {
       let result
 
       if (isGoogleMode && pendingGoogleToken) {
-        // Complete Google registration with company info
         result = await googleAuth(pendingGoogleToken, {
           company_name: formData.companyName,
           company_type: formData.companyType,
@@ -228,11 +221,9 @@ function RegisterForm() {
           plan_code: formData.planCode,
         })
         if (result.status !== 'authenticated') {
-          // Throw so the catch block handles the error and finally always runs.
           throw new Error('Une erreur inattendue est survenue. Réessayez.')
         }
       } else {
-        // Classic registration (generates a random password — user logs in via employee code)
         result = await registerAccount({
           email: formData.email,
           password: generateStrongPassword(),
@@ -249,10 +240,6 @@ function RegisterForm() {
       saveSession(result)
       setSuccess(true)
 
-      // Le compte est toujours créé en essai (voir accounts.serializers —
-      // un plan payant n'active jamais rien sans paiement reel). Si
-      // l'utilisateur a choisi un plan payant, on l'envoie payer juste
-      // apres — sinon direction le tableau de bord comme avant.
       const chosenPlan = plans.find((p) => p.code === formData.planCode)
       const isPaidPlanChosen = chosenPlan && !chosenPlan.is_free && Number(chosenPlan.price) > 0
 
@@ -272,9 +259,6 @@ function RegisterForm() {
   }
 
   // ── Render ────────────────────────────────────────────────────────────────────
-  // Mode Google saute l'étape 1 (perso, déjà fournie par Google) : établissement + plan.
-  // Mode classique : perso + établissement + plan. Les deux modes finissent
-  // à l'étape 3 (choix du plan) qui déclenche handleSubmit.
   const totalSteps = 3
   const headerSubtitle =
     step === 3
@@ -292,10 +276,15 @@ function RegisterForm() {
     >
       <div className="w-full max-w-md">
 
-        {/* Logo */}
+        {/* Logo NOXIA */}
         <div className="text-center mb-6 animate-slide-up">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white font-bold text-2xl mx-auto mb-3">
-            N
+          <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 bg-dark-900/50 p-2 border border-dark-800/60 overflow-hidden shadow-md">
+            <div className="absolute inset-0 bg-primary-500/10 blur-md rounded-full" />
+            <img 
+              src="/logos/NOXIA_Orbit_Logo.svg" 
+              alt="NOXIA" 
+              className="relative w-full h-full object-contain"
+            />
           </div>
           <h1 className="text-2xl font-bold text-white">Créer votre compte NOXIA</h1>
           <p className="text-sm" style={{ color: '#94a3b8' }}>
@@ -451,11 +440,13 @@ function RegisterForm() {
                     <div className="flex-1 h-px" style={{ background: '#334155' }} />
                   </div>
 
-                  <div 
-                    ref={googleButtonRef}
-                    id="google-button-div" 
-                    className="w-full flex justify-center hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
-                  />
+                  <div className="w-full flex justify-center">
+                    <div 
+                      ref={googleButtonRef}
+                      id="google-button-div" 
+                      className="w-full max-w-[382px] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                    />
+                  </div>
 
                   <button
                     id="register-next-btn"
@@ -581,7 +572,7 @@ function RegisterForm() {
                 </div>
               )}
 
-              {/* ── ÉTAPE 3 : Choix de l'offre ── */}
+              {/* ── ÉTAPE 3 : Choix de l'offre + CGU ── */}
               {step === 3 && (
                 <div className="space-y-4">
                   <h2 className="text-base font-semibold text-white mb-0.5">Choisissez votre offre</h2>
@@ -646,6 +637,38 @@ function RegisterForm() {
                     )
                   })()}
 
+                  {/* ✅ CGU Checkbox */}
+                  <div className="flex items-start gap-3 pt-2">
+                    <div className="mt-0.5">
+                      <input
+                        type="checkbox"
+                        id="cgu-checkbox"
+                        checked={cguAccepted}
+                        onChange={(e) => setCguAccepted(e.target.checked)}
+                        className="w-4 h-4 rounded accent-primary-500 cursor-pointer"
+                        style={{ 
+                          accentColor: '#4f46e5',
+                          background: cguAccepted ? '#4f46e5' : 'rgba(51,65,85,0.5)',
+                          border: '1px solid #334155'
+                        }}
+                      />
+                    </div>
+                    <label htmlFor="cgu-checkbox" className="text-xs cursor-pointer" style={{ color: '#94a3b8' }}>
+                      En créant votre compte, vous acceptez les{' '}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          setIsCguModalOpen(true)
+                        }}
+                        className="text-primary-400 hover:text-primary-300 underline transition font-medium"
+                      >
+                        Conditions Générales d'Utilisation
+                      </button>
+                      {' '}de NOXIA.
+                    </label>
+                  </div>
+
                   <div className="flex gap-3 pt-1">
                     <button
                       id="register-back-btn-2"
@@ -688,13 +711,18 @@ function RegisterForm() {
         </p>
 
       </div>
+
+      {/* Modal CGU */}
+      <CGUModal 
+        isOpen={isCguModalOpen} 
+        onClose={() => setIsCguModalOpen(false)} 
+      />
     </div>
   )
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Generates a cryptographically random password — never shown to the user. */
 function generateStrongPassword(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*'
   const arr = new Uint8Array(24)
