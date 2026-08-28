@@ -49,7 +49,7 @@ export function CGUModal({ isOpen, onClose }: CGUModalProps) {
             <h3 className="text-white font-semibold mb-2">2. Description des services</h3>
             <p>
               NOXIA est une plateforme SaaS (Software as a Service) de gestion pour bars, restaurants, snack-bars et 
-              boîtes de nuit. Elle propose notamment :
+              boîtes de nuit. Parmi les nombreuses fonctionnalités proposées, on retrouve notamment :
             </p>
             <ul className="list-disc list-inside mt-2 space-y-1" style={{ color: '#94a3b8' }}>
               <li>Gestion des stocks et des produits</li>
@@ -58,7 +58,17 @@ export function CGUModal({ isOpen, onClose }: CGUModalProps) {
               <li>Tableaux de bord et rapports d'analyse</li>
               <li>Intégration avec WhatsApp, Telegram et assistant IA</li>
               <li>Gestion des abonnements et des paiements</li>
+              <li>Gestion des fournisseurs et des commandes</li>
+              <li>Certification des établissements</li>
+              <li>Multi-établissements et multi-caisses</li>
+              <li>API publique pour intégrations tierces</li>
+              <li>Export des rapports en PDF/Excel</li>
+              <li>Gestion financière et comptable</li>
             </ul>
+            <p className="mt-2 text-xs" style={{ color: '#64748b' }}>
+              ⚠️ Cette liste n'est pas exhaustive. De nouvelles fonctionnalités sont régulièrement ajoutées pour améliorer 
+              votre expérience.
+            </p>
           </div>
 
           <div className="p-4 rounded-lg" style={{ background: 'rgba(51,65,85,0.3)' }}>
@@ -67,6 +77,22 @@ export function CGUModal({ isOpen, onClose }: CGUModalProps) {
               L'utilisateur s'engage à fournir des informations exactes et à jour lors de la création de son compte. 
               Chaque compte est strictement personnel et ne peut être transféré. L'utilisateur est responsable de la 
               confidentialité de ses identifiants et de toutes les activités réalisées via son compte.
+            </p>
+            <p className="mt-2" style={{ color: '#94a3b8' }}>
+              <span className="font-semibold text-white">🔐 Documents légaux requis :</span><br />
+              Conformément à la réglementation en vigueur en République gabonaise, pour bénéficier des fonctionnalités 
+              avancées (à partir du plan Premium), l'utilisateur devra fournir les documents légaux suivants :
+            </p>
+            <ul className="list-disc list-inside mt-2 space-y-1" style={{ color: '#94a3b8' }}>
+              <li>Registre de commerce (extrait Kbis ou équivalent)</li>
+              <li>Attestation fiscale ou NIF (Numéro d'Identification Fiscale)</li>
+              <li>Licence d'exploitation ou autorisation administrative</li>
+              <li>Pièce d'identité du gérant ou représentant légal</li>
+              <li>Statuts de l'entreprise (si applicable)</li>
+            </ul>
+            <p className="mt-2 text-xs" style={{ color: '#64748b' }}>
+              Ces documents permettent de vérifier la légalité de l'activité et de garantir la conformité de l'établissement 
+              avec les normes en vigueur.
             </p>
           </div>
 
@@ -77,14 +103,22 @@ export function CGUModal({ isOpen, onClose }: CGUModalProps) {
               en FCFA (hors taxes). Les abonnements sont renouvelés automatiquement sauf annulation par l'utilisateur 
               avant la date d'échéance. Les paiements sont sécurisés via Mobile Money ou carte bancaire.
             </p>
+            <p className="mt-2 font-semibold" style={{ color: '#f87171' }}>
+              ⚠️ Important : L'annulation de l'abonnement n'est pas remboursable. Tout paiement effectué est définitif 
+              et non remboursable, même en cas d'annulation anticipée.
+            </p>
           </div>
 
           <div className="p-4 rounded-lg" style={{ background: 'rgba(51,65,85,0.3)' }}>
             <h3 className="text-white font-semibold mb-2">5. Protection des données</h3>
             <p>
               NOXIA s'engage à protéger les données personnelles de ses utilisateurs conformément au Règlement Général 
-              sur la Protection des Données (RGPD). Les données sont hébergées sur des serveurs sécurisés et ne sont 
-              jamais partagées avec des tiers sans consentement explicite.
+              sur la Protection des Données (RGPD). Les données sont hébergées sur des serveurs sécurisés situés en 
+              <span className="font-semibold text-white"> République gabonaise</span> et sont donc soumises à la 
+              réglementation en vigueur en République gabonaise.
+            </p>
+            <p className="mt-2" style={{ color: '#94a3b8' }}>
+              Les données ne sont jamais partagées avec des tiers sans consentement explicite de l'utilisateur.
             </p>
           </div>
 
@@ -124,10 +158,15 @@ export function CGUModal({ isOpen, onClose }: CGUModalProps) {
           </div>
 
           <div className="p-4 rounded-lg" style={{ background: 'rgba(51,65,85,0.3)' }}>
-            <h3 className="text-white font-semibold mb-2">10. Loi applicable</h3>
+            <h3 className="text-white font-semibold mb-2">10. Loi applicable et juridiction compétente</h3>
             <p>
-              Les présentes CGU sont régies par le droit gabonais. Tout litige relatif à l'utilisation de NOXIA sera soumis 
-              aux tribunaux compétents de Libreville, Gabon.
+              Les présentes CGU sont régies par le droit gabonais. Tout litige relatif à l'interprétation, l'exécution 
+              ou la validité des présentes CGU sera soumis aux tribunaux compétents de 
+              <span className="font-semibold text-white"> Libreville, République gabonaise</span>.
+            </p>
+            <p className="mt-2" style={{ color: '#94a3b8' }}>
+              La République gabonaise est seule habilitée à interpréter les présentes CGU et à en apprécier la portée 
+              en cas de contestation.
             </p>
           </div>
 

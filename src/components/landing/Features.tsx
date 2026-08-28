@@ -85,7 +85,7 @@ export function Features() {
   return (
     <section 
       id="features"
-      className="py-24 relative overflow-hidden bg-dark-950/40 border-t border-dark-800/20"
+      className="py-12 relative overflow-hidden bg-dark-950/40 border-t border-dark-800/20"
     >
       {/* Lueurs radiales de décor arrière */}
       <div className="absolute inset-0 z-0">

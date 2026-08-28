@@ -29,7 +29,7 @@ export function Hero() {
 
   return (
     <section 
-      className="relative min-h-screen flex items-center pt-28 pb-20 overflow-hidden bg-dark-950 github-grid"
+      className="relative min-h-screen flex items-center pt-6 pb-2 overflow-hidden bg-dark-950 github-grid"
     >
       {/* Lueurs d'arrière-plan de style GitHub (radial glows) */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
@@ -92,13 +92,13 @@ export function Hero() {
                 Démarrer gratuitement
                 <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
               </a>
-              <a 
+              {/* <a 
                 href="#demo" 
                 className="px-8 py-4 rounded-xl text-dark-200 hover:text-white font-bold text-base border border-dark-800 hover:border-dark-700 bg-dark-900/40 hover:bg-dark-900/80 hover:scale-[1.01] active:scale-[0.99] transition-all text-center flex items-center justify-center gap-2 backdrop-blur-md"
               >
                 <Play className="w-4 h-4 fill-current text-primary-400" />
                 Voir la démo
-              </a>
+              </a> */}
             </motion.div>
 
             {/* Preuve sociale / Avis */}
