@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './Topbar'
 
-export function Layout({ children }: { children: React.ReactNode }) {
+export function Layout({ children, banner }: { children: React.ReactNode; banner?: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
@@ -44,6 +44,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         onToggleCollapse={toggleSidebarCollapse}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
+        {banner}
         <TopBar onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto">
           {children}

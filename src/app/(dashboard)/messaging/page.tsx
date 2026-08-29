@@ -7,7 +7,7 @@ import {
   Bot, Radio, Phone, Menu, X, Play, Video,
   Mail
 } from 'lucide-react'
-import { getMe } from '@/lib/api'
+import { getMe, ApiError } from '@/lib/api'
 import { getEmployees, regenerateEmployeeCode, sendEmployeeCode, updateCompanyMe, deleteBotSession } from '@/lib/api/companies'
 import { toast } from 'sonner'
 
@@ -45,7 +45,14 @@ export default function MessagingPage() {
   const [employees, setEmployees] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  const botNumber = '+1 (XXX) XXX-XXXX'
+  // Numero unique a l'instance NOXIA (pas par entreprise), configure cote
+  // backoffice (Instance.whatsapp_bot_number) et recopie dans le .env de
+  // cette instance (settings.WHATSAPP_BOT_NUMBER) — expose via GET /auth/me/.
+  // wa.me n'accepte que des chiffres (pas de '+', espaces ou parentheses),
+  // d'ou le nettoyage avant construction du lien.
+  const [botNumber, setBotNumber] = useState('')
+  const whatsappDigits = botNumber.replace(/\D/g, '')
+  const whatsappLink = `https://wa.me/${whatsappDigits}?text=${encodeURIComponent(`${companyId}`)}`
   const telegramLink = `https://t.me/noxia_user_bot?start=${companyId}_${userId}`
 
   const loadData = async (silent = false) => {
@@ -64,6 +71,7 @@ export default function MessagingPage() {
       if (freshMe.membership) {
         setUserId(freshMe.membership.activation_code || '---')
       }
+      setBotNumber(freshMe.whatsapp_bot_number || '')
 
       setEmployees((apiEmployees || []).map((emp: any) => ({
         id: emp.id,
@@ -80,7 +88,11 @@ export default function MessagingPage() {
       })))
     } catch (err) {
       console.error(err)
-      toast.error("Erreur lors de la récupération des données de messagerie")
+      if (err instanceof ApiError && err.statusCode === 403) {
+        toast.error("Votre rôle ne vous donne pas accès à la liaison des employés. Contactez un administrateur ou un responsable pour modifier vos permissions.")
+      } else {
+        toast.error("Erreur lors de la récupération des données de messagerie")
+      }
     } finally {
       if (!silent) setIsLoading(false)
     }
@@ -383,15 +395,40 @@ export default function MessagingPage() {
             </div>
 
             <div className="space-y-3">
-              <div 
+              <div
                 className="rounded-lg p-3"
                 style={{ background: 'rgba(51, 65, 85, 0.3)' }}
               >
                 <p className="text-xs" style={{ color: '#94a3b8' }}>Numéro du bot</p>
-                <p className="font-semibold text-white">{botNumber}</p>
+                {botNumber ? (
+                  <>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="font-semibold text-white">{botNumber}</p>
+                      <button
+                        onClick={() => copyToClipboard(botNumber, "Numéro du bot")}
+                        className="p-1 rounded hover:bg-white/10 transition"
+                        style={{ color: '#94a3b8' }}
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <a
+                      href={whatsappLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium mt-2 hover:underline"
+                      style={{ color: '#22c55e' }}
+                    >
+                      <Smartphone className="w-3.5 h-3.5" />
+                      Ouvrir la conversation WhatsApp
+                    </a>
+                  </>
+                ) : (
+                  <p className="text-sm mt-1" style={{ color: '#64748b' }}>Non configuré</p>
+                )}
               </div>
-              
-              <div 
+
+              <div
                 className="rounded-lg p-3"
                 style={{ background: 'rgba(51, 65, 85, 0.3)' }}
               >
@@ -428,7 +465,17 @@ export default function MessagingPage() {
               <div className="space-y-1 text-xs" style={{ color: '#94a3b8' }}>
                 <p className="font-medium text-white">Procédure d'activation :</p>
                 <ol className="list-decimal list-inside space-y-1 ml-2">
-                  <li>Contactez le numéro <span className="text-white">{botNumber}</span> sur WhatsApp</li>
+                  <li>
+                    Contactez le numéro{' '}
+                    {botNumber ? (
+                      <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="text-white hover:underline">
+                        {botNumber}
+                      </a>
+                    ) : (
+                      <span className="text-white">(non configuré)</span>
+                    )}{' '}
+                    sur WhatsApp
+                  </li>
                   <li>Envoyez l'ID Entreprise : <span className="font-mono text-primary-400">{companyId}</span></li>
                   <li>Envoyez votre ID Employé : <span className="font-mono text-primary-400">{userId}</span></li>
                   <li>Le bot vérifie et active votre session</li>

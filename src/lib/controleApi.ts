@@ -34,6 +34,17 @@ export interface ExpiredTrial {
   instance_name: string
 }
 
+export interface RecentPayment {
+  company_name: string
+  plan_code: string
+  plan_name: string
+  amount: string
+  method: string
+  confirmed_at: string
+  instance_code: string
+  instance_name: string
+}
+
 export interface DashboardStats {
   totalCompanies: number
   activeCompanies: number
@@ -54,12 +65,16 @@ export interface DashboardStats {
   subscriptionRevenue: number
   subscriptionPaymentsCount: number
   monthlyRevenue: number
-  planDistribution: {
-    essai: number
-    decouverte: number
-    business: number
-    pro: number
-  }
+  /** CA des établissements clients (Sale), ventilé par période — distinct
+   * de subscriptionRevenue (ce que les établissements paient à NOXIA). */
+  revenueToday: number
+  revenueThisMonth: number
+  revenueLastMonth: number
+  /** Clé = nom réel du plan (Plan.name), dynamique — plus de catégories
+   * figées (essai/decouverte/business/pro) qui perdaient tout plan custom
+   * créé par le super-admin. 'Essai' regroupe tous les abonnements en
+   * TRIALING quel que soit le plan associé. */
+  planDistribution: Record<string, number>
   countryDistribution: Record<string, number>
   serversStats: {
     id: string
@@ -69,6 +84,7 @@ export interface DashboardStats {
     revenue: number
   }[]
   expiredTrials: ExpiredTrial[]
+  recentPayments: RecentPayment[]
 }
 
 export async function platformLogin(

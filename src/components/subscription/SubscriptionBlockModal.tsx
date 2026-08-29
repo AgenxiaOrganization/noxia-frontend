@@ -8,7 +8,7 @@ import { clearSession } from '@/lib/auth'
 
 /**
  * Modal plein ecran, non fermable (pas de croix, pas de clic exterieur) —
- * affiche des que l'abonnement de l'entreprise est EXPIRED (voir
+ * affiche des que l'abonnement de l'entreprise est EXPIRED ou CANCELED (voir
  * useSubscriptionGuard). L'utilisateur ne peut faire que deux choses :
  * payer (stub Phase 1, aucune passerelle reelle) ou se deconnecter. Toute
  * autre action est bloquee cote backend de toute facon (403
@@ -16,7 +16,13 @@ import { clearSession } from '@/lib/auth'
  * incontournable plutot que de laisser l'utilisateur cogner contre des
  * erreurs 403 sur chaque page.
  */
-export default function SubscriptionBlockModal({ onResolved }: { onResolved: () => void }) {
+export default function SubscriptionBlockModal({
+  status,
+  onResolved,
+}: {
+  status: 'expired' | 'canceled'
+  onResolved: () => void
+}) {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [payingCode, setPayingCode] = useState<Plan['code'] | null>(null)
@@ -27,6 +33,15 @@ export default function SubscriptionBlockModal({ onResolved }: { onResolved: () 
       .catch((e) => console.error('Erreur chargement abonnement (modal blocage)', e))
       .finally(() => setIsLoading(false))
   }, [])
+
+  // Le statut reel remonte par l'API (une fois chargee) est la source de
+  // verite la plus fraiche — `status` passe en prop peut n'etre qu'un
+  // repli 'expired' pose par l'evenement reseau global avant confirmation
+  // (voir useSubscriptionGuard).
+  const effectiveStatus = subscription?.status === 'canceled' || subscription?.status === 'expired'
+    ? subscription.status
+    : status
+  const hasTrialed = Boolean(subscription?.has_trialed)
 
   const handlePay = async (planCode: Plan['code']) => {
     try {
@@ -56,11 +71,19 @@ export default function SubscriptionBlockModal({ onResolved }: { onResolved: () 
             <AlertTriangle className="w-7 h-7" style={{ color: '#ef4444' }} />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white">Votre abonnement a expiré</h1>
+            <h1 className="text-lg font-bold text-white">
+              {effectiveStatus === 'canceled' ? 'Votre abonnement a été annulé' : 'Votre abonnement a expiré'}
+            </h1>
             <p className="text-sm mt-2" style={{ color: '#94a3b8' }}>
-              L'accès à NOXIA est suspendu pour cet établissement jusqu'au renouvellement de votre abonnement.
-              Choisissez un plan ci-dessous pour continuer.
+              {effectiveStatus === 'canceled'
+                ? "Vous avez annulé votre abonnement NOXIA : l'accès à tous les services est suspendu pour cet établissement. Choisissez un plan ci-dessous pour réactiver l'accès."
+                : "L'accès à NOXIA est suspendu pour cet établissement jusqu'au renouvellement de votre abonnement. Choisissez un plan ci-dessous pour continuer."}
             </p>
+            {hasTrialed && (
+              <p className="text-xs mt-2" style={{ color: '#64748b' }}>
+                L'essai gratuit ayant déjà été utilisé, seuls les plans payants sont disponibles ci-dessous.
+              </p>
+            )}
           </div>
         </div>
 

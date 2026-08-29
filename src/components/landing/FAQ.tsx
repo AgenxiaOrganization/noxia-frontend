@@ -8,12 +8,12 @@ const faqs = [
   {
     question: "Comment fonctionne l'essai gratuit ?",
     answer:
-      "L'essai gratuit dure 30 jours et donne accès à l'ensemble des fonctionnalités du plan Business dès l'inscription : caisse (POS), gestion des stocks, catalogue produits, bots WhatsApp/Telegram et assistant IA. Aucune carte bancaire n'est demandée pour démarrer. À la fin des 30 jours, vous choisissez le plan qui correspond à votre activité — si vous ne renouvelez pas, votre compte reste accessible en lecture le temps de récupérer vos données, sans perte d'historique.",
+      "L'essai gratuit donne accès à l'ensemble des fonctionnalités du plan Business dès l'inscription : caisse (POS), gestion des stocks, catalogue produits, bots WhatsApp/Telegram et assistant IA. Aucune carte bancaire n'est demandée pour démarrer. À la fin de l'essai, vous choisissez le plan qui correspond à votre activité.",
   },
   {
     question: 'Puis-je changer de plan à tout moment ?',
     answer:
-      "Oui. Vous pouvez passer à un plan supérieur ou inférieur directement depuis votre espace Abonnement, sans interruption de service. Le changement est appliqué immédiatement et l'ensemble de vos données (produits, stocks, historique de ventes, employés) est conservé intégralement, quel que soit le plan choisi.",
+      "Oui. Vous pouvez passer à un plan supérieur ou inférieur directement depuis votre espace Abonnement, sans interruption de service. Le changement est appliqué immédiatement et les fonctionalités sont également appliquées selon le plan choisi.",
   },
   {
     question: 'Comment mes employés accèdent-ils au bot ?',
@@ -28,17 +28,17 @@ const faqs = [
   {
     question: 'NOXIA fonctionne-t-il hors ligne ?',
     answer:
-      "NOXIA est une application web accessible depuis un navigateur, elle nécessite donc une connexion internet pour fonctionner (comme la caisse, les stocks et les bots reposent sur des données synchronisées en temps réel). En revanche, la gestion via WhatsApp/Telegram reste disponible dès qu'une connexion mobile basique est présente, ce qui couvre la majorité des usages terrain même avec un réseau limité.",
+      "NOXIA est une application web accessible depuis un navigateur, elle nécessite donc une connexion internet pour fonctionner (comme la caisse, les stocks et les bots reposent sur des données synchronisées en temps réel). En revanche, la gestion via WhatsApp/Telegram reste disponible dès qu'une connexion mobile basique est présente, ce qui couvre la majorité des usages terrain même avec un réseau limité. Les verions Mobiles et Desktop ne sont pas encore disponible et elles permettrons le fonctionnement hors ligne",
   },
   {
     question: "Quels types d'établissements peuvent utiliser NOXIA ?",
     answer:
-      "NOXIA est conçu pour les bars, snack-bars, boîtes de nuit et restaurants. La plateforme s'adapte aussi bien à un établissement unique qu'à un groupe multi-établissements, avec un tableau de bord centralisé pour suivre l'activité de chaque site séparément ou dans leur ensemble.",
+      "NOXIA est conçu pour les bars, snack-bars, boîtes de nuit et restaurants.",
   },
   {
     question: "Y a-t-il des frais cachés ou d'engagement ?",
     answer:
-      "Non. Le prix affiché pour chaque plan est le prix final, sans frais d'installation ni surcoût caché. L'abonnement est sans engagement de durée : vous pouvez l'annuler à tout moment depuis votre espace Abonnement, sans pénalité.",
+      "Non. Le prix affiché pour chaque plan est le prix final, sans frais d'installation ni surcoût caché. L'abonnement est sans engagement de durée : vous pouvez l'annuler à tout moment depuis votre espace Abonnement, sans pénalité mais sans remboursement de la durée du plan en cours. L'annulation suspend immédiatement l'accès à tous les services jusqu'à ce que vous repreniez un plan (aucune perte de vos données ni de votre historique, qui sont conservés). Si vous avez déjà utilisé l'essai gratuit, vous ne pourrez reprendre qu'un plan payant.",
   },
 ]
 

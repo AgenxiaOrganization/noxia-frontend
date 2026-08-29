@@ -3,7 +3,7 @@
 import { useState, useEffect, FormEvent } from 'react'
 import {
   Bell, AlertTriangle, CheckCircle, XCircle,
-  Package, DollarSign, Smartphone, Mail, MessageSquare,
+  Package, Smartphone, Mail, MessageSquare,
   Settings, Search, Clock, Zap, X
 } from 'lucide-react'
 import React from 'react'
@@ -14,7 +14,7 @@ import { toast } from 'sonner'
 // --- Types ---
 interface Alert {
   id: number
-  type: 'stock_faible' | 'stock_epuise' | 'caisse_ecart'
+  type: 'stock_faible' | 'stock_epuise'
   product: string
   stock: number | null
   threshold: number | null
@@ -47,9 +47,6 @@ export default function AlertsPage() {
   const [selectedStockItem, setSelectedStockItem] = useState<StockItem | null>(null)
   const [adjustQty, setAdjustQty] = useState(10)
   const [adjustNote, setAdjustNote] = useState('Approvisionnement suite alerte')
-
-  // Permet de simuler la résolution de l'alerte de caisse ou autre
-  const [resolvedAlertIds, setResolvedAlertIds] = useState<number[]>([])
 
   const loadData = async (silent = false) => {
     try {
@@ -95,20 +92,6 @@ export default function AlertsPage() {
       })
     }
   })
-
-  // Ajout de l'alerte de caisse de démonstration si non résolue
-  if (!resolvedAlertIds.includes(999)) {
-    alerts.push({
-      id: 999,
-      type: 'caisse_ecart',
-      product: 'Caisse Principale',
-      stock: null,
-      threshold: null,
-      status: 'actif',
-      date: '2026-07-16 12:00',
-      channels: ['email']
-    })
-  }
 
   const filteredAlerts = alerts.filter(a => {
     const matchesSearch = a.product.toLowerCase().includes(searchTerm.toLowerCase())
@@ -180,12 +163,6 @@ export default function AlertsPage() {
     }
   }
 
-  // Résoudre l'alerte de caisse
-  const handleResolveCaisse = () => {
-    setResolvedAlertIds(prev => [...prev, 999])
-    toast.success("✅ Alerte d'écart de caisse résolue !")
-  }
-
   if (isLoading) {
     return <Loader />
   }
@@ -239,20 +216,19 @@ export default function AlertsPage() {
           />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
-          {['all', 'stock_faible', 'stock_epuise', 'caisse_ecart'].map(type => (
+          {['all', 'stock_faible', 'stock_epuise'].map(type => (
             <button
               key={type}
               onClick={() => setFilterType(type)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
-                filterType === type 
-                  ? 'bg-primary-500/10 border border-primary-500/30 text-primary-400 font-bold' 
+                filterType === type
+                  ? 'bg-primary-500/10 border border-primary-500/30 text-primary-400 font-bold'
                   : 'bg-dark-900 border border-dark-800/40 text-dark-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              {type === 'all' ? 'Tous' : 
-               type === 'stock_faible' ? 'Stock faible' : 
-               type === 'stock_epuise' ? 'Rupture' : 
-               'Caisse'}
+              {type === 'all' ? 'Tous' :
+               type === 'stock_faible' ? 'Stock faible' :
+               'Rupture'}
             </button>
           ))}
         </div>
@@ -267,9 +243,7 @@ export default function AlertsPage() {
           </div>
         ) : (
           filteredAlerts.map((alert) => {
-            const Icon = alert.type === 'stock_faible' ? AlertTriangle : 
-                          alert.type === 'stock_epuise' ? XCircle : 
-                          DollarSign
+            const Icon = alert.type === 'stock_faible' ? AlertTriangle : XCircle
             
             const statusColor = alert.status === 'critique' ? '#ef4444' : 
                                 alert.status === 'actif' ? '#f59e0b' : 
@@ -301,10 +275,8 @@ export default function AlertsPage() {
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div 
                       className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ 
-                        background: alert.type === 'stock_faible' ? 'rgba(245, 158, 11, 0.15)' :
-                                   alert.type === 'stock_epuise' ? 'rgba(239, 68, 68, 0.15)' :
-                                   'rgba(99, 102, 241, 0.15)'
+                      style={{
+                        background: alert.type === 'stock_faible' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)'
                       }}
                     >
                       <Icon className="w-5 h-5" style={{ color: statusColor }} />
@@ -362,12 +334,6 @@ export default function AlertsPage() {
                         </div>
                       )}
                       
-                      {alert.type === 'caisse_ecart' && (
-                        <div className="mt-1 flex items-center gap-3 flex-wrap">
-                          <span className="text-xs font-semibold text-orange-400">Écart de caisse détecté</span>
-                          <span className="text-xs" style={{ color: '#94a3b8' }}>Vérifiez les clôtures du POS</span>
-                        </div>
-                      )}
                     </div>
                   </div>
 
@@ -392,27 +358,17 @@ export default function AlertsPage() {
                       })}
                     </div>
                     
-                    {alert.type !== 'caisse_ecart' ? (
-                      <button
-                        onClick={() => openAdjustmentModal(alert.id)}
-                        className="px-3 py-1 rounded text-xs font-medium transition flex items-center gap-1 hover:brightness-110 active:scale-95"
-                        style={{ 
-                          background: alert.type === 'stock_epuise' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)',
-                          color: alert.type === 'stock_epuise' ? '#ef4444' : '#22c55e'
-                        }}
-                      >
-                        {alert.type === 'stock_epuise' ? <Zap className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
-                        {alert.type === 'stock_epuise' ? 'Agir' : 'Résoudre'}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleResolveCaisse}
-                        className="px-3 py-1 rounded text-xs font-medium transition flex items-center gap-1 hover:brightness-110 active:scale-95 bg-green-500/20 text-green-400"
-                      >
-                        <CheckCircle className="w-3 h-3" />
-                        Résoudre
-                      </button>
-                    )}
+                    <button
+                      onClick={() => openAdjustmentModal(alert.id)}
+                      className="px-3 py-1 rounded text-xs font-medium transition flex items-center gap-1 hover:brightness-110 active:scale-95"
+                      style={{
+                        background: alert.type === 'stock_epuise' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)',
+                        color: alert.type === 'stock_epuise' ? '#ef4444' : '#22c55e'
+                      }}
+                    >
+                      {alert.type === 'stock_epuise' ? <Zap className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
+                      {alert.type === 'stock_epuise' ? 'Agir' : 'Résoudre'}
+                    </button>
                   </div>
                 </div>
               </div>

@@ -35,6 +35,7 @@ export interface PlanFeature {
   key: string | null
   label: string
   description: string
+  category: string
   included: boolean
 }
 
@@ -53,6 +54,7 @@ export interface FeatureRegistryEntry {
   key: string
   label: string
   description: string
+  category: string
 }
 
 export interface InstancePlan {
@@ -75,6 +77,10 @@ export interface InstancePlan {
   display_order: number
   is_active: boolean
   features: PlanFeature[]
+  /** 0 = illimité. Distinct de `features` (binaire) : une vraie limite
+   * numérique n'a pas de sens comme simple {key, included}. */
+  max_employees: number
+  max_cash_registers: number
 }
 
 export interface PlanPayload {
@@ -95,6 +101,8 @@ export interface PlanPayload {
   display_order?: number
   is_active?: boolean
   features: PlanFeatureInput[]
+  max_employees?: number
+  max_cash_registers?: number
 }
 
 /**

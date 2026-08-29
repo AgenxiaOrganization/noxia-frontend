@@ -11,7 +11,7 @@
  * en injection plutot que d'etre dupliques pour le super-admin.
  */
 
-import { getPlatformAuthHeaders, clearPlatformSession } from './platformAuth'
+import { getPlatformAuthHeaders, clearPlatformSession, getPlatformUser } from './platformAuth'
 
 const CONTROLE_BASE_URL =
   process.env.NEXT_PUBLIC_CONTROLE_API_URL ?? 'http://127.0.0.1:8001/api/v1'
@@ -139,6 +139,21 @@ export interface ProxyCompanyDetail {
   monthly_revenue: string
   monthly_orders: number
   documents_count: number
+  is_suspended: boolean
+  suspended_at: string | null
+  suspended_reason: string
+  suspension_allowed_modules: string[]
+}
+
+export type SuspensionModule = 'documents' | 'parametres' | 'abonnement'
+
+export interface CompanySuspensionState {
+  id: number
+  name: string
+  is_suspended: boolean
+  suspended_at: string | null
+  suspended_reason: string
+  suspension_allowed_modules: string[]
 }
 
 /** Liste complète (toutes, pas seulement actives) des entreprises d'une
@@ -208,4 +223,70 @@ export async function approveVerificationDocument(instanceCode: string, companyI
 /** Rejette un document KYB avec motif obligatoire — le responsable pourra le re-televerser. */
 export async function rejectVerificationDocument(instanceCode: string, companyId: number, documentId: number, reason: string): Promise<ProxyVerificationDocument> {
   return createSuperAdminClient(instanceCode, companyId).post<ProxyVerificationDocument>(`/companies/me/documents/${documentId}/reject/`, { reason })
+}
+
+/**
+ * Suspend un établissement : bloque l'accès du gérant sauf sur les modules
+ * explicitement laissés actifs (voir companies.permissions._check_company_suspended
+ * côté noxia-backend). Réservé au rôle super_admin — un compte admin reçoit
+ * un 403 avant même d'atteindre l'instance (voir proxy/permissions.py
+ * ADMIN_FORBIDDEN_ROUTES côté noxia-backoffice).
+ */
+export async function suspendCompany(
+  instanceCode: string,
+  companyId: number,
+  payload: { reason: string; allowedModules: SuspensionModule[] },
+): Promise<CompanySuspensionState> {
+  const adminEmail = getPlatformUser()?.email ?? ''
+  return createSuperAdminClient(instanceCode, companyId).patch<CompanySuspensionState>(
+    `/companies/${companyId}/deactivate/`,
+    { reason: payload.reason, allowed_modules: payload.allowedModules, admin_email: adminEmail },
+  )
+}
+
+/** Lève une suspension précédemment posée par suspendCompany. */
+export async function reactivateCompany(instanceCode: string, companyId: number): Promise<CompanySuspensionState> {
+  const adminEmail = getPlatformUser()?.email ?? ''
+  return createSuperAdminClient(instanceCode, companyId).patch<CompanySuspensionState>(
+    `/companies/${companyId}/activate/`, { admin_email: adminEmail },
+  )
+}
+
+/**
+ * Supprime DÉFINITIVEMENT un établissement et déclenche le téléchargement de
+ * l'export Excel complet renvoyé dans la même réponse HTTP (voir
+ * delete_company_completely côté noxia-backend) — aucune copie n'est
+ * conservée côté serveur. Ne passe pas par `createSuperAdminClient` (réponse
+ * binaire, pas JSON), même pattern que les exports existants
+ * (getProxyDownloadTarget).
+ */
+export async function deleteCompanyPermanently(
+  instanceCode: string,
+  companyId: number,
+  companyName: string,
+): Promise<void> {
+  const adminEmail = getPlatformUser()?.email ?? ''
+  const { url, headers } = getProxyDownloadTarget(
+    instanceCode, companyId, `/companies/${companyId}/?admin_email=${encodeURIComponent(adminEmail)}`,
+  )
+
+  const response = await fetch(url, { method: 'DELETE', headers })
+  if (response.status === 401) {
+    clearPlatformSession()
+    throw new SuperAdminApiError('Session expirée', 401, null)
+  }
+  if (!response.ok) {
+    throw new SuperAdminApiError('Erreur lors de la suppression de l\'établissement.', response.status, null)
+  }
+
+  const blob = await response.blob()
+  const objectUrl = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = objectUrl
+  const safeName = companyName.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'etablissement'
+  link.download = `NOXIA_Export_Suppression_${safeName}_${companyId}.xlsx`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(objectUrl)
 }

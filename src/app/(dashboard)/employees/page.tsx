@@ -5,7 +5,7 @@ import { Plus, Award } from 'lucide-react'
 import { Search } from 'lucide-react'
 import { getCompany } from '../../../lib/auth'
 import { getEmployees, createEmployee, patchEmployee, deleteEmployee, regenerateEmployeeCode, sendEmployeeCode, getCompanyMe, updateCompanyMe, uploadEmployeePhoto } from '../../../lib/api/companies'
-import { ensureArray } from '@/lib/api'
+import { ensureArray, ApiError } from '@/lib/api'
 import { toast } from 'sonner'
 import Loader from '@/components/ui/Loader'
 import EmployeeTable from '@/components/employees/EmployeeTable'
@@ -76,7 +76,11 @@ export default function EmployeesPage() {
       setPermissionsList(buildPermissionsList(companyData?.role_permissions))
     } catch (err) {
       console.error('Erreur lors du chargement des employes et permissions', err)
-      toast.error('Erreur lors du chargement des employés')
+      if (err instanceof ApiError && err.statusCode === 403) {
+        toast.error("Votre rôle ne vous donne pas accès à la gestion des employés. Contactez un administrateur ou un responsable pour modifier vos permissions.")
+      } else {
+        toast.error('Erreur lors du chargement des employés')
+      }
     } finally {
       if (!silent) setIsLoading(false)
     }

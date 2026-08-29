@@ -4,7 +4,9 @@ import { Layout } from '@/components/layout/Layout'
 import { AssistantButton } from '@/components/ui/AssistantButton'
 import { useSessionGuard } from '@/lib/hooks/useSessionGuard'
 import { useSubscriptionGuard } from '@/lib/hooks/useSubscriptionGuard'
+import { useCompanySuspensionGuard } from '@/lib/hooks/useCompanySuspensionGuard'
 import SubscriptionBlockModal from '@/components/subscription/SubscriptionBlockModal'
+import CompanySuspendedBanner from '@/components/company/CompanySuspendedBanner'
 
 export default function DashboardLayout({
   children,
@@ -12,13 +14,21 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   useSessionGuard()
-  const { isExpired, setIsExpired } = useSubscriptionGuard()
+  const { status: subscriptionBlockStatus, setStatus: setSubscriptionBlockStatus } = useSubscriptionGuard()
+  const { isSuspended, reason, allowedModules } = useCompanySuspensionGuard()
 
   return (
     <>
-      <Layout>{children}</Layout>
+      <Layout banner={isSuspended && <CompanySuspendedBanner reason={reason} allowedModules={allowedModules} />}>
+        {children}
+      </Layout>
       <AssistantButton />
-      {isExpired && <SubscriptionBlockModal onResolved={() => setIsExpired(false)} />}
+      {subscriptionBlockStatus && (
+        <SubscriptionBlockModal
+          status={subscriptionBlockStatus}
+          onResolved={() => setSubscriptionBlockStatus(null)}
+        />
+      )}
     </>
   )
 }

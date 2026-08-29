@@ -32,8 +32,12 @@ export default function SuperAdminInstances() {
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [urlApi, setUrlApi] = useState('')
+  const [whatsappBotNumber, setWhatsappBotNumber] = useState('')
 
   const [newApiKey, setNewApiKey] = useState<{ code: string; key: string } | null>(null)
+  const [editingWhatsappId, setEditingWhatsappId] = useState<number | null>(null)
+  const [editingWhatsappValue, setEditingWhatsappValue] = useState('')
+  const [isSavingWhatsapp, setIsSavingWhatsapp] = useState(false)
 
   const loadData = () => {
     setIsLoading(true)
@@ -53,11 +57,14 @@ export default function SuperAdminInstances() {
     e.preventDefault()
     try {
       setIsSaving(true)
-      const created = await createInstance({ code: code.trim().toLowerCase(), name: name.trim(), url_api: urlApi.trim() })
+      const created = await createInstance({
+        code: code.trim().toLowerCase(), name: name.trim(), url_api: urlApi.trim(),
+        whatsapp_bot_number: whatsappBotNumber.trim(),
+      })
       toast.success(`Instance "${created.name}" créée avec succès.`)
       setNewApiKey(created.api_key ? { code: created.code, key: created.api_key } : null)
       setIsFormOpen(false)
-      setCode(''); setName(''); setUrlApi('')
+      setCode(''); setName(''); setUrlApi(''); setWhatsappBotNumber('')
       loadData()
       refreshServers()
     } catch (err) {
@@ -77,6 +84,26 @@ export default function SuperAdminInstances() {
     } catch (err) {
       console.error(err)
       toast.error(err instanceof Error ? err.message : 'Erreur lors de la mise à jour.')
+    }
+  }
+
+  const startEditingWhatsapp = (instance: PlatformInstance) => {
+    setEditingWhatsappId(instance.id)
+    setEditingWhatsappValue(instance.whatsapp_bot_number || '')
+  }
+
+  const handleSaveWhatsapp = async (instance: PlatformInstance) => {
+    try {
+      setIsSavingWhatsapp(true)
+      await updateInstance(instance.id, { whatsapp_bot_number: editingWhatsappValue.trim() })
+      toast.success('Numéro WhatsApp mis à jour.')
+      setEditingWhatsappId(null)
+      loadData()
+    } catch (err) {
+      console.error(err)
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la mise à jour.')
+    } finally {
+      setIsSavingWhatsapp(false)
     }
   }
 
@@ -166,6 +193,7 @@ export default function SuperAdminInstances() {
                 <th className="px-4 py-3 text-left text-xs text-dark-400">Instance</th>
                 <th className="px-4 py-3 text-left text-xs text-dark-400">Code</th>
                 <th className="px-4 py-3 text-left text-xs text-dark-400">Base URL API</th>
+                <th className="px-4 py-3 text-left text-xs text-dark-400">Numéro WhatsApp</th>
                 <th className="px-4 py-3 text-left text-xs text-dark-400">Statut</th>
                 <th className="px-4 py-3 text-left text-xs text-dark-400">Dernier heartbeat</th>
                 <th className="px-4 py-3 text-right text-xs text-dark-400">Actions</th>
@@ -174,7 +202,7 @@ export default function SuperAdminInstances() {
             <tbody>
               {instances.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center">
+                  <td colSpan={7} className="px-4 py-8 text-center">
                     <Server className="w-10 h-10 mx-auto mb-2" style={{ color: '#334155' }} />
                     <p className="text-sm" style={{ color: '#64748b' }}>Aucune instance enregistrée.</p>
                   </td>
@@ -185,6 +213,41 @@ export default function SuperAdminInstances() {
                     <td className="px-4 py-3 text-white font-medium">{instance.name}</td>
                     <td className="px-4 py-3 text-dark-400 font-mono text-xs">{instance.code}</td>
                     <td className="px-4 py-3 text-dark-400 font-mono text-xs">{instance.url_api}</td>
+                    <td className="px-4 py-3 text-dark-400 font-mono text-xs">
+                      {editingWhatsappId === instance.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            autoFocus
+                            value={editingWhatsappValue}
+                            onChange={(e) => setEditingWhatsappValue(e.target.value)}
+                            placeholder="+241074821635"
+                            className="w-36 rounded-lg px-2 py-1 text-white text-xs outline-none bg-dark-950/50 border border-dark-800/60 focus:border-primary-500"
+                          />
+                          <button
+                            onClick={() => handleSaveWhatsapp(instance)}
+                            disabled={isSavingWhatsapp}
+                            className="text-xs px-2 py-1 rounded-lg bg-primary-500 text-white hover:brightness-110 disabled:opacity-50"
+                          >
+                            OK
+                          </button>
+                          <button
+                            onClick={() => setEditingWhatsappId(null)}
+                            className="text-dark-400 hover:text-white transition"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => startEditingWhatsapp(instance)}
+                          className="hover:text-primary-400 transition"
+                          title="Modifier le numéro WhatsApp"
+                        >
+                          {instance.whatsapp_bot_number || <span className="text-dark-600 italic">Non défini</span>}
+                        </button>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <select
                         value={instance.status}
@@ -260,6 +323,15 @@ export default function SuperAdminInstances() {
                   type="url" required
                   value={urlApi} onChange={(e) => setUrlApi(e.target.value)}
                   placeholder="https://api.noxia.fr/api/v1"
+                  className="w-full rounded-lg px-3 py-2 text-white text-sm outline-none bg-dark-950/50 border border-dark-800/60 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1 text-dark-400">Numéro WhatsApp du bot (optionnel)</label>
+                <input
+                  type="text"
+                  value={whatsappBotNumber} onChange={(e) => setWhatsappBotNumber(e.target.value)}
+                  placeholder="+241074821635"
                   className="w-full rounded-lg px-3 py-2 text-white text-sm outline-none bg-dark-950/50 border border-dark-800/60 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition"
                 />
               </div>

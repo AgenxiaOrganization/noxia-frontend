@@ -5,64 +5,25 @@ import React from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   CreditCard, Check, X, Crown, Star,
-  Package, BarChart, Globe,
-  Headphones, Calendar, Gift, Loader2, Receipt, Download, Trash2,
+  Package, BarChart,
+  Headphones, Calendar, Gift, Loader2, Receipt, Download, Trash2, Ban,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   getMySubscription, subscribeToPlan, getPlans, getFeatureRegistry,
-  listMyTransactions, hideTransaction, downloadTransactionInvoicePdf,
+  listMyTransactions, hideTransaction, downloadTransactionInvoicePdf, cancelSubscription,
   type Subscription, type Plan, type FeatureRegistryEntry, type PvitTransaction,
   type BillingPeriod,
 } from '@/lib/api/subscription'
 import Loader from '@/components/ui/Loader'
 import PvitPaymentModal from '@/components/payments/PvitPaymentModal'
+import CancelSubscriptionModal from '@/components/subscription/CancelSubscriptionModal'
 
 const featureCategories = [
   { id: 'base', label: 'Fonctionnalités de base', icon: Package },
   { id: 'advanced', label: 'Fonctionnalités avancées', icon: BarChart },
-  { id: 'integration', label: 'Intégrations & API', icon: Globe },
   { id: 'support', label: 'Support & Assistance', icon: Headphones },
 ]
-
-/**
- * Categorisation purement visuelle pour regrouper le tableau comparatif —
- * doit rester alignee avec les `label` de
- * subscriptions.feature_registry.FEATURE_REGISTRY cote noxia-backend. Meme
- * mapping que Pricing.tsx/FeatureComparison.tsx (landing) et
- * super-admin/abonnements — cette page doit afficher exactement la meme
- * offre que celle vue publiquement/configuree par le super-admin.
- */
-const FEATURE_CATEGORY_KEYWORDS: Record<string, string> = {
-  'catalogue produits': 'base',
-  'gestion des stocks': 'base',
-  'caisse enregistreuse (pos)': 'base',
-  'fournisseurs & commandes': 'advanced',
-  'export des rapports de ventes': 'advanced',
-  'charges & dépenses': 'advanced',
-  'fiches de paie': 'advanced',
-  'synthèse financière': 'advanced',
-  'export des bilans financiers': 'advanced',
-  'tableau de bord avancé': 'advanced',
-  "journal d'audit": 'support',
-  'multi-utilisateurs': 'advanced',
-  'multi-caisses': 'advanced',
-  'assistant ia': 'integration',
-  'multi-établissements': 'advanced',
-  'api publique': 'integration',
-  'whatsapp & telegram': 'integration',
-  'alertes automatiques': 'integration',
-  'support prioritaire 24/7': 'support',
-  'formation équipe': 'support',
-  'déploiement personnalisé': 'support',
-  'intégrations sur mesure': 'integration',
-  'sla garanti': 'support',
-  'menu par qr code': 'advanced',
-}
-
-function featureCategoryOf(label: string): string {
-  return FEATURE_CATEGORY_KEYWORDS[label.trim().toLowerCase()] ?? 'base'
-}
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   trialing: { label: 'Essai', color: '#3b82f6' },
@@ -93,6 +54,8 @@ function SubscriptionPageContent() {
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly')
   const [downloadingRef, setDownloadingRef] = useState<string | null>(null)
   const [hidingRef, setHidingRef] = useState<string | null>(null)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [isCanceling, setIsCanceling] = useState(false)
 
   const loadData = () => {
     setIsLoading(true)
@@ -162,6 +125,21 @@ function SubscriptionPageContent() {
     }
   }
 
+  const handleCancelSubscription = async () => {
+    setIsCanceling(true)
+    try {
+      const updated = await cancelSubscription()
+      setSubscription(updated)
+      setShowCancelModal(false)
+      toast.success('Abonnement annulé. Tous les services sont suspendus jusqu\'à la reprise d\'un plan.')
+    } catch (err) {
+      console.error(err)
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'annulation de l'abonnement.")
+    } finally {
+      setIsCanceling(false)
+    }
+  }
+
   const handleHideTransaction = async (tx: PvitTransaction) => {
     if (!confirm('Retirer cette transaction de votre historique ?')) return
     setHidingRef(tx.merchant_reference)
@@ -188,6 +166,13 @@ function SubscriptionPageContent() {
     new Set(plans.flatMap((p) => p.features.filter((f) => !f.key).map((f) => f.label))),
   )
   const allFeatureLabels = Array.from(new Set([...registryLabels, ...freeLabels]))
+
+  // Categorie reelle depuis le registre backend (subscriptions.feature_registry) —
+  // plus de mapping par mot-cle duplique et desynchronisable cote frontend.
+  // Un label decoratif libre (sans cle) n'a pas de categorie backend : classe
+  // en 'support', seule categorie purement decorative restante.
+  const featureCategoryOf = (label: string): string =>
+    featureRegistry.find((f) => f.label === label)?.category ?? 'support'
 
   return (
     <div className="p-4 space-y-4">
@@ -240,6 +225,16 @@ function SubscriptionPageContent() {
               </div>
             )}
           </div>
+          {(subscription?.status === 'active' || subscription?.status === 'trialing') && (
+            <button
+              onClick={() => setShowCancelModal(true)}
+              className="flex items-center gap-1.5 text-xs font-medium transition hover:opacity-80 self-start sm:self-auto"
+              style={{ color: '#ef4444' }}
+            >
+              <Ban className="w-3.5 h-3.5" />
+              Annuler mon abonnement
+            </button>
+          )}
         </div>
       </div>
 
@@ -278,19 +273,25 @@ function SubscriptionPageContent() {
           const isFree = plan.is_free || parseFloat(plan.price) === 0
           const isChanging = selectedPlanCode === plan.code && isChangingPlan
           const planFeatures = plan.features.filter((f) => f.included)
+          // Un compte ayant deja beneficie de l'essai gratuit (has_trialed,
+          // voir SubscribeSerializer.validate_plan_code cote backend) ne peut
+          // plus jamais y re-souscrire — la carte reste visible mais desactivee,
+          // le vrai blocage restant applique cote serveur.
+          const isTrialUnavailable = isFree && !isCurrent && Boolean(subscription?.has_trialed)
 
           return (
             <div
               key={plan.code}
               className={`rounded-xl border p-5 transition-all relative ${
-                isCurrent ? 'border-primary-500' : 'hover:border-primary-500'
+                isCurrent ? 'border-primary-500' : isTrialUnavailable ? '' : 'hover:border-primary-500'
               }`}
               style={{
                 background: isCurrent
                   ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(49, 46, 129, 0.1))'
                   : '#1e293b',
                 borderColor: isCurrent ? '#6366f1' : '#334155',
-                transform: plan.is_featured ? 'translateY(-4px)' : 'none'
+                transform: plan.is_featured ? 'translateY(-4px)' : 'none',
+                opacity: isTrialUnavailable ? 0.6 : 1,
               }}
             >
               {plan.is_featured && (
@@ -352,27 +353,36 @@ function SubscriptionPageContent() {
                 )}
               </ul>
 
-              <button
-                onClick={() => handlePlanChange(plan)}
-                disabled={isCurrent || isChangingPlan}
-                className={`w-full py-2 rounded-lg text-white text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
-                  isCurrent
-                    ? 'bg-dark-600 text-dark-400 cursor-default'
-                    : isFree
-                    ? 'bg-green-600 hover:bg-green-500'
-                    : 'bg-primary-600 hover:bg-primary-500'
-                } disabled:opacity-50`}
-                style={{
-                  boxShadow: !isCurrent && !isChangingPlan
-                    ? isFree
-                      ? '0 10px 25px -5px rgba(34, 197, 94, 0.3)'
-                      : '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
-                    : 'none'
-                }}
-              >
-                {isChanging && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                {isCurrent ? 'Plan actuel' : isChanging ? 'Changement...' : plan.cta_label || 'Choisir ce plan'}
-              </button>
+              {isTrialUnavailable ? (
+                <p
+                  className="w-full py-2 rounded-lg text-xs text-center font-medium"
+                  style={{ background: 'rgba(148, 163, 184, 0.1)', color: '#94a3b8' }}
+                >
+                  Essai déjà utilisé — choisissez un plan payant
+                </p>
+              ) : (
+                <button
+                  onClick={() => handlePlanChange(plan)}
+                  disabled={isCurrent || isChangingPlan}
+                  className={`w-full py-2 rounded-lg text-white text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
+                    isCurrent
+                      ? 'bg-dark-600 text-dark-400 cursor-default'
+                      : isFree
+                      ? 'bg-green-600 hover:bg-green-500'
+                      : 'bg-primary-600 hover:bg-primary-500'
+                  } disabled:opacity-50`}
+                  style={{
+                    boxShadow: !isCurrent && !isChangingPlan
+                      ? isFree
+                        ? '0 10px 25px -5px rgba(34, 197, 94, 0.3)'
+                        : '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
+                      : 'none'
+                  }}
+                >
+                  {isChanging && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {isCurrent ? 'Plan actuel' : isChanging ? 'Changement...' : plan.cta_label || 'Choisir ce plan'}
+                </button>
+              )}
             </div>
           )
         })}
@@ -600,6 +610,15 @@ function SubscriptionPageContent() {
           billingPeriod={billingPeriod === 'yearly' && paymentModalPlan.yearly_price !== null ? 'yearly' : 'monthly'}
           onClose={() => setPaymentModalPlan(null)}
           onSuccess={() => { setPaymentModalPlan(null); loadData() }}
+        />
+      )}
+
+      {showCancelModal && (
+        <CancelSubscriptionModal
+          hasTrialed={Boolean(subscription?.has_trialed)}
+          isSubmitting={isCanceling}
+          onClose={() => setShowCancelModal(false)}
+          onConfirm={handleCancelSubscription}
         />
       )}
     </div>

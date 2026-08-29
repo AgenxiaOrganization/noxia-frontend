@@ -41,6 +41,10 @@ interface FormState {
   // Fonctionnalites decoratives libres (sans lien avec un endpoint reel),
   // ex: "Support prioritaire 24/7" — affichees sur le comparatif public.
   freeFeatures: PlanFeatureInput[]
+  // Limites numeriques (distinctes de features, qui est binaire) — '0' =
+  // illimite, voir subscriptions.models.Plan.max_employees/max_cash_registers.
+  max_employees: string
+  max_cash_registers: string
 }
 
 function emptyForm(): FormState {
@@ -53,6 +57,8 @@ function emptyForm(): FormState {
     is_active: true,
     excludedFeatureKeys: new Set(),
     freeFeatures: [emptyFeature()],
+    max_employees: '0',
+    max_cash_registers: '0',
   }
 }
 
@@ -86,6 +92,8 @@ function planToForm(plan: InstancePlan): FormState {
       features.filter((f) => f.key && !f.included).map((f) => f.key as string),
     ),
     freeFeatures: freeFeatures.length > 0 ? freeFeatures : [emptyFeature()],
+    max_employees: String(plan.max_employees ?? 0),
+    max_cash_registers: String(plan.max_cash_registers ?? 0),
   }
 }
 
@@ -180,6 +188,8 @@ export default function SuperAdminPlans() {
         badge_label: form.badge_label.trim(),
         cta_label: form.cta_label.trim() || 'Choisir ce plan',
         is_active: form.is_active,
+        max_employees: parseInt(form.max_employees, 10) || 0,
+        max_cash_registers: parseInt(form.max_cash_registers, 10) || 0,
         // Modele deny-list : on n'envoie que les cles EXPLICITEMENT
         // decochees (included: false) — les cles absentes restent
         // accessibles par defaut (voir PlanFeaturePermission cote backend).
@@ -591,6 +601,31 @@ export default function SuperAdminPlans() {
                   <input type="checkbox" checked={form.is_active} onChange={(e) => setForm((f) => ({ ...f, is_active: e.target.checked }))} className="rounded" />
                   <span className="text-sm text-white">Visible sur la landing</span>
                 </label>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-dark-400 flex items-center gap-1.5 mb-1">
+                  <Lock className="w-3 h-3" />
+                  Limites numériques (contrôle réel, 0 = illimité)
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs" style={{ color: '#64748b' }}>Nombre d'employés</label>
+                    <input
+                      type="number" min="0" value={form.max_employees}
+                      onChange={(e) => setForm((f) => ({ ...f, max_employees: e.target.value }))}
+                      className="w-full rounded-lg px-3 py-1.5 text-white text-sm outline-none bg-dark-950/50 border border-dark-800/60 focus:border-primary-500 transition"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs" style={{ color: '#64748b' }}>Nombre de caisses</label>
+                    <input
+                      type="number" min="0" value={form.max_cash_registers}
+                      onChange={(e) => setForm((f) => ({ ...f, max_cash_registers: e.target.value }))}
+                      className="w-full rounded-lg px-3 py-1.5 text-white text-sm outline-none bg-dark-950/50 border border-dark-800/60 focus:border-primary-500 transition"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div>

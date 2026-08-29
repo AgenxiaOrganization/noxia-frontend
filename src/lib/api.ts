@@ -45,6 +45,11 @@ export interface AuthResponse {
     activation_code: string | null
     photo_profile?: string | null
   } | null
+  /** Config globale a l'instance (pas a l'entreprise) — numero WhatsApp du
+   * bot NOXIA, configure cote backoffice (Instance.whatsapp_bot_number) et
+   * recopie dans le .env de cette instance (settings.WHATSAPP_BOT_NUMBER).
+   * Present uniquement sur la reponse de GET /auth/me/, absent du login. */
+  whatsapp_bot_number?: string
 }
 
 export interface GoogleCompanyRequiredResponse {
@@ -180,6 +185,22 @@ async function parseResponse<T>(res: Response, ctx: RequestContext): Promise<T> 
     if (res.status === 403 && (data as Record<string, unknown>)?.code === 'subscription_expired') {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('subscription-expired'))
+      }
+    }
+
+    // 403 "etablissement suspendu" (voir companies.permissions.CompanySuspendedError
+    // cote backend) : ecoute par useCompanySuspensionGuard pour afficher le
+    // bandeau de blocage avec le motif — contrairement a l'abonnement expire,
+    // ne bloque QUE les modules non explicitement laisses actifs par le
+    // super-admin (voir allowed_modules), donc pas de modal plein ecran ici.
+    if (res.status === 403 && (data as Record<string, unknown>)?.code === 'company_suspended') {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('company-suspended', {
+          detail: {
+            reason: (data as Record<string, unknown>)?.reason ?? '',
+            allowedModules: (data as Record<string, unknown>)?.allowed_modules ?? [],
+          },
+        }))
       }
     }
 

@@ -3,16 +3,21 @@
 import { useState, useEffect, useContext, useMemo, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { ServerContext } from '../layout'
-import { listInstanceCompaniesDetailed, createSuperAdminClient, sendManualNotification, type ProxyCompanyDetail } from '@/lib/superAdminClient'
+import { listInstanceCompaniesDetailed, createSuperAdminClient, sendManualNotification, reactivateCompany, type ProxyCompanyDetail } from '@/lib/superAdminClient'
 import { listInstancePlans, type InstancePlan } from '@/lib/api/plans'
 import { createSubscriptionApi } from '@/lib/api/subscription'
 import { ensureArray } from '@/lib/api'
+import { getPlatformUser } from '@/lib/platformAuth'
+import { canPerform } from '@/lib/permissions'
+import SuspendCompanyModal from '@/components/super-admin/SuspendCompanyModal'
+import DeleteCompanyModal from '@/components/super-admin/DeleteCompanyModal'
 import Loader from '@/components/ui/Loader'
 import { toast } from 'sonner'
 import {
   Building2, Search, Eye, X, Users, MapPin, Phone, Mail,
   Clock, AlertTriangle, CheckCircle, Download, ChevronDown, Loader2,
   Server, Globe, ShoppingBag, DollarSign, Package, FileText, BellRing,
+  ShieldAlert, ShieldCheck, Trash2,
 } from 'lucide-react'
 
 const subscriptionStatusConfig: Record<string, { label: string; color: string; bg: string; icon: typeof CheckCircle }> = {
@@ -150,6 +155,9 @@ export default function SuperAdminEntreprises() {
 function SuperAdminEntreprisesContent() {
   const { selectedServer, isGlobalMode } = useContext(ServerContext)
   const searchParams = useSearchParams()
+  const platformUser = getPlatformUser()
+  const canManageSuspension = canPerform(platformUser, 'company.toggle_status')
+  const canDelete = canPerform(platformUser, 'company.delete')
 
   const [companies, setCompanies] = useState<ProxyCompanyDetail[]>([])
   const [plans, setPlans] = useState<InstancePlan[]>([])
@@ -161,6 +169,9 @@ function SuperAdminEntreprisesContent() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [changingPlanForId, setChangingPlanForId] = useState<number | null>(null)
   const [relaunchingForId, setRelaunchingForId] = useState<number | null>(null)
+  const [reactivatingForId, setReactivatingForId] = useState<number | null>(null)
+  const [suspendModalCompany, setSuspendModalCompany] = useState<ProxyCompanyDetail | null>(null)
+  const [deleteModalCompany, setDeleteModalCompany] = useState<ProxyCompanyDetail | null>(null)
 
   const loadData = () => {
     if (isGlobalMode) {
@@ -238,6 +249,36 @@ function SuperAdminEntreprisesContent() {
     } finally {
       setRelaunchingForId(null)
     }
+  }
+
+  const handleReactivate = async (company: ProxyCompanyDetail) => {
+    setReactivatingForId(company.id)
+    try {
+      await reactivateCompany(selectedServer.id, company.id)
+      setCompanies((prev) => prev.map((c) => c.id === company.id
+        ? { ...c, is_suspended: false, suspended_reason: '', suspension_allowed_modules: [] }
+        : c))
+      setSelectedCompany((prev) => prev && prev.id === company.id
+        ? { ...prev, is_suspended: false, suspended_reason: '', suspension_allowed_modules: [] }
+        : prev)
+      toast.success(`Suspension levée pour "${company.name}".`)
+    } catch (err) {
+      console.error(err)
+      toast.error(err instanceof Error ? err.message : 'Erreur lors de la réactivation.')
+    } finally {
+      setReactivatingForId(null)
+    }
+  }
+
+  const handleSuspended = (company: ProxyCompanyDetail, updated: { is_suspended: boolean; suspended_reason: string; suspension_allowed_modules: string[] }) => {
+    setCompanies((prev) => prev.map((c) => c.id === company.id ? { ...c, ...updated } : c))
+    setSelectedCompany((prev) => prev && prev.id === company.id ? { ...prev, ...updated } : prev)
+  }
+
+  const handleDeleted = (companyId: number) => {
+    setCompanies((prev) => prev.filter((c) => c.id !== companyId))
+    setSelectedCompany((prev) => prev && prev.id === companyId ? null : prev)
+    setIsModalOpen(false)
   }
 
   const filteredCompanies = useMemo(() => companies.filter((c) => {
@@ -387,7 +428,18 @@ function SuperAdminEntreprisesContent() {
                         {company.name.split(' ').map((w) => w[0]).join('').substring(0, 2).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-white truncate">{company.name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium text-white truncate">{company.name}</p>
+                          {company.is_suspended && (
+                            <span
+                              className="text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shrink-0"
+                              style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}
+                              title={company.suspended_reason}
+                            >
+                              <ShieldAlert className="w-2.5 h-2.5" />Suspendue
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1">
                           <MapPin className="w-3 h-3 shrink-0" style={{ color: '#64748b' }} />
                           <span className="text-xs truncate" style={{ color: '#64748b' }}>{company.country}</span>
@@ -444,14 +496,48 @@ function SuperAdminEntreprisesContent() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => { setSelectedCompany(company); setIsModalOpen(true) }}
-                      className="p-1.5 rounded transition hover:bg-white/10"
-                      style={{ color: '#94a3b8' }}
-                      title="Voir les détails"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => { setSelectedCompany(company); setIsModalOpen(true) }}
+                        className="p-1.5 rounded transition hover:bg-white/10"
+                        style={{ color: '#94a3b8' }}
+                        title="Voir les détails"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      {canManageSuspension && (
+                        company.is_suspended ? (
+                          <button
+                            onClick={() => handleReactivate(company)}
+                            disabled={reactivatingForId === company.id}
+                            className="p-1.5 rounded transition hover:bg-white/10 disabled:opacity-50"
+                            style={{ color: '#22c55e' }}
+                            title="Lever la suspension"
+                          >
+                            {reactivatingForId === company.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setSuspendModalCompany(company)}
+                            className="p-1.5 rounded transition hover:bg-white/10"
+                            style={{ color: '#f59e0b' }}
+                            title="Suspendre l'établissement"
+                          >
+                            <ShieldAlert className="w-4 h-4" />
+                          </button>
+                        )
+                      )}
+                      {canDelete && (
+                        <button
+                          onClick={() => setDeleteModalCompany(company)}
+                          className="p-1.5 rounded transition hover:bg-white/10"
+                          style={{ color: '#ef4444' }}
+                          title="Supprimer définitivement"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -559,12 +645,60 @@ function SuperAdminEntreprisesContent() {
                   {new Date(selectedCompany.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
                 </p>
               </div>
+
+              {selectedCompany.is_suspended && (
+                <div className="p-3 rounded-lg" style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                  <p className="text-xs flex items-center gap-1 font-medium" style={{ color: '#ef4444' }}>
+                    <ShieldAlert className="w-3.5 h-3.5" />Établissement suspendu
+                  </p>
+                  <p className="text-sm text-white mt-1">{selectedCompany.suspended_reason}</p>
+                  {selectedCompany.suspension_allowed_modules.length > 0 && (
+                    <p className="text-xs mt-2" style={{ color: '#94a3b8' }}>
+                      Modules restés actifs : {selectedCompany.suspension_allowed_modules.join(', ')}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="flex gap-3 mt-6 pt-4 border-t" style={{ borderColor: '#334155' }}>
+            <div className="flex flex-col gap-2 mt-6 pt-4 border-t" style={{ borderColor: '#334155' }}>
+              <div className="flex gap-3">
+                {canManageSuspension && (
+                  selectedCompany.is_suspended ? (
+                    <button
+                      onClick={() => handleReactivate(selectedCompany)}
+                      disabled={reactivatingForId === selectedCompany.id}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 disabled:opacity-50"
+                      style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e' }}
+                    >
+                      {reactivatingForId === selectedCompany.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                      Lever la suspension
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setSuspendModalCompany(selectedCompany)}
+                      className="flex-1 py-2.5 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2"
+                      style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}
+                    >
+                      <ShieldAlert className="w-4 h-4" />
+                      Suspendre
+                    </button>
+                  )
+                )}
+                {canDelete && (
+                  <button
+                    onClick={() => setDeleteModalCompany(selectedCompany)}
+                    className="flex-1 py-2.5 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2"
+                    style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Supprimer
+                  </button>
+                )}
+              </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-medium transition"
+                className="w-full py-2.5 rounded-lg text-sm font-medium transition"
                 style={{ background: 'transparent', border: '1px solid #334155', color: '#94a3b8' }}
               >
                 Fermer
@@ -572,6 +706,25 @@ function SuperAdminEntreprisesContent() {
             </div>
           </div>
         </div>
+      )}
+
+      {suspendModalCompany && (
+        <SuspendCompanyModal
+          instanceCode={selectedServer.id}
+          company={suspendModalCompany}
+          onClose={() => setSuspendModalCompany(null)}
+          onSuspended={(updated) => handleSuspended(suspendModalCompany, updated)}
+        />
+      )}
+
+      {deleteModalCompany && (
+        <DeleteCompanyModal
+          instanceCode={selectedServer.id}
+          companyId={deleteModalCompany.id}
+          companyName={deleteModalCompany.name}
+          onClose={() => setDeleteModalCompany(null)}
+          onDeleted={() => handleDeleted(deleteModalCompany.id)}
+        />
       )}
     </div>
   )

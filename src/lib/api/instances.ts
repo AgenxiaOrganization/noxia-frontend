@@ -31,6 +31,10 @@ export interface PlatformInstance {
   code: string
   name: string
   url_api: string
+  /** Numero WhatsApp du bot NOXIA pour cette instance (format international
+   * avec '+', ex: +241074821635) — affiche sur la page Messagerie du
+   * dashboard client. Un seul numero par instance, pas par entreprise. */
+  whatsapp_bot_number: string
   status: InstanceStatus
   last_heartbeat: string | null
   is_stale: boolean
@@ -42,6 +46,7 @@ export interface CreateInstancePayload {
   code: string
   name: string
   url_api: string
+  whatsapp_bot_number?: string
   status?: InstanceStatus
 }
 

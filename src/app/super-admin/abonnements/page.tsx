@@ -3,7 +3,7 @@
 import { useContext, useEffect, useState } from 'react'
 import {
   CreditCard, Check, X, Crown, Star,
-  Package, BarChart, Globe as GlobeIcon,
+  Package, BarChart,
   Headphones, Calendar, Gift,
   Globe, Building2, Loader2,
 } from 'lucide-react'
@@ -18,49 +18,8 @@ import Loader from '@/components/ui/Loader'
 const featureCategories = [
   { id: 'base', label: 'Fonctionnalités de base', icon: Package },
   { id: 'advanced', label: 'Fonctionnalités avancées', icon: BarChart },
-  { id: 'integration', label: 'Intégrations & API', icon: GlobeIcon },
   { id: 'support', label: 'Support & Assistance', icon: Headphones },
 ]
-
-/**
- * Categorisation purement visuelle pour regrouper le tableau comparatif —
- * les labels viennent du vrai `Plan.features` de l'instance (voir
- * lib/api/plans.ts), ce mapping ne fait que trier des libelles connus dans
- * une colonne plutot qu'une autre. Doit rester aligne avec les `label` de
- * subscriptions.feature_registry.FEATURE_REGISTRY cote noxia-backend. Un
- * libelle absent de la liste (ex: fonctionnalite decorative libre ajoutee
- * par le super-admin) tombe dans "base" par defaut.
- */
-const FEATURE_CATEGORY_KEYWORDS: Record<string, string> = {
-  'catalogue produits': 'base',
-  'gestion des stocks': 'base',
-  'caisse enregistreuse (pos)': 'base',
-  'fournisseurs & commandes': 'advanced',
-  'export des rapports de ventes': 'advanced',
-  'charges & dépenses': 'advanced',
-  'fiches de paie': 'advanced',
-  'synthèse financière': 'advanced',
-  'export des bilans financiers': 'advanced',
-  'tableau de bord avancé': 'advanced',
-  "journal d'audit": 'support',
-  'multi-utilisateurs': 'advanced',
-  'multi-caisses': 'advanced',
-  'assistant ia': 'integration',
-  'multi-établissements': 'advanced',
-  'api publique': 'integration',
-  'whatsapp & telegram': 'integration',
-  'alertes automatiques': 'integration',
-  'support prioritaire 24/7': 'support',
-  'formation équipe': 'support',
-  'déploiement personnalisé': 'support',
-  'intégrations sur mesure': 'integration',
-  'sla garanti': 'support',
-  'menu par qr code': 'advanced',
-}
-
-function featureCategoryOf(label: string): string {
-  return FEATURE_CATEGORY_KEYWORDS[label.trim().toLowerCase()] ?? 'base'
-}
 
 export default function SuperAdminAbonnements() {
   const { isGlobalMode, selectedServer, selectedCompany } = useContext(ServerContext)
@@ -158,6 +117,11 @@ export default function SuperAdminAbonnements() {
     ),
   )
   const allFeatureLabels = Array.from(new Set([...registryLabels, ...freeLabels]))
+
+  // Categorie reelle depuis le registre backend (subscriptions.feature_registry) —
+  // plus de mapping par mot-cle duplique et desynchronisable cote frontend.
+  const featureCategoryOf = (label: string): string =>
+    featureRegistry.find((f) => f.label === label)?.category ?? 'support'
 
   return (
     <div className="p-4 space-y-4">

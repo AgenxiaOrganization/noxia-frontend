@@ -8,6 +8,7 @@ export interface PlanFeature {
   key: string | null
   label: string
   description: string
+  category: string
   included: boolean
 }
 
@@ -15,6 +16,7 @@ export interface FeatureRegistryEntry {
   key: string
   label: string
   description: string
+  category: string
 }
 
 export interface Plan {
@@ -36,6 +38,8 @@ export interface Plan {
   cta_label: string
   display_order: number
   features: PlanFeature[]
+  max_employees: number
+  max_cash_registers: number
 }
 
 export interface Subscription {
@@ -46,6 +50,10 @@ export interface Subscription {
   current_period_end: string | null
   payment_reference: string
   created_at: string
+  /** A deja beneficie de l'essai gratuit une fois (voir start_trial cote
+   * backend) — ne redevient jamais false, sert a interdire un retour a
+   * l'essai apres une annulation ou une expiration. */
+  has_trialed: boolean
 }
 
 export type PvitMethod = 'AIRTEL_MONEY' | 'MOOV_MONEY' | 'VISA_MASTERCARD'
@@ -129,6 +137,13 @@ export function createSubscriptionApi(client: ApiClient) {
      * (jamais un vrai DELETE en base, refuse sur une transaction PENDING). */
     hideTransaction: (reference: string) =>
       client.del<void>(`/subscriptions/mypvit/transactions/${encodeURIComponent(reference)}/hide/`),
+
+    /** POST /subscriptions/cancel/ — annule l'abonnement courant : bloque
+     * immediatement l'acces a tous les services (comme une expiration), sans
+     * remboursement de la duree en cours. Reversible uniquement en
+     * re-souscrivant a un plan (gratuit si jamais utilise, payant sinon). */
+    cancelSubscription: () =>
+      client.post<Subscription>('/subscriptions/cancel/', {}),
   }
 }
 
@@ -136,7 +151,7 @@ const defaultSubscriptionApi = createSubscriptionApi({ get, post, put, patch, de
 
 export const {
   getMySubscription, subscribeToPlan, initiatePvitPayment, getPvitTransactionStatus,
-  listMyTransactions, hideTransaction,
+  listMyTransactions, hideTransaction, cancelSubscription,
 } = defaultSubscriptionApi
 
 /** Telecharge la facture PDF d'une transaction reussie — meme pattern que

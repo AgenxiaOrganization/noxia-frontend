@@ -31,7 +31,7 @@ type Step = 'select-method' | 'enter-number' | 'processing' | 'redirecting' | 's
 const methodOptions: { value: PvitMethod; label: string; hint: string; disabled?: boolean }[] = [
   { value: 'AIRTEL_MONEY', label: 'Airtel Money', hint: 'Paiement mobile' },
   { value: 'MOOV_MONEY', label: 'Moov Money', hint: 'Paiement mobile' },
-  { value: 'VISA_MASTERCARD', label: 'Visa / Mastercard', hint: 'Bientôt disponible', disabled: true },
+  { value: 'VISA_MASTERCARD', label: 'Visa / Mastercard', hint: 'Paiement sécurisé par carte' },
 ]
 
 export default function PvitPaymentModal({

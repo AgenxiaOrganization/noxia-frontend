@@ -321,39 +321,10 @@ function GlobalDashboard() {
             <h3 className="font-semibold text-sm text-white">Répartition des plans</h3>
             <PieChart className="w-4 h-4" style={{ color: '#64748b' }} />
           </div>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full" style={{ background: '#22c55e' }} />
-                <span style={{ color: '#94a3b8' }}>Essai gratuit</span>
-              </div>
-              <span className="font-medium text-white">{stats.planDistribution.essai}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full" style={{ background: '#818cf8' }} />
-                <span style={{ color: '#94a3b8' }}>Découverte</span>
-              </div>
-              <span className="font-medium text-white">{stats.planDistribution.decouverte}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full" style={{ background: '#f59e0b' }} />
-                <span style={{ color: '#94a3b8' }}>Business</span>
-              </div>
-              <span className="font-medium text-white">{stats.planDistribution.business}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full" style={{ background: '#8b5cf6' }} />
-                <span style={{ color: '#94a3b8' }}>Pro</span>
-              </div>
-              <span className="font-medium text-white">{stats.planDistribution.pro}</span>
-            </div>
-            <div className="pt-2 border-t flex items-center justify-between" style={{ borderColor: '#334155' }}>
-              <span className="text-sm font-medium" style={{ color: '#94a3b8' }}>Total MRR</span>
-              <span className="text-sm font-bold text-white">{formatCurrency(stats.mrr)}</span>
-            </div>
+          <GeoDistributionList items={toRankedShares(stats.planDistribution)} />
+          <div className="pt-3 mt-3 border-t flex items-center justify-between" style={{ borderColor: '#334155' }}>
+            <span className="text-sm font-medium" style={{ color: '#94a3b8' }}>Total MRR</span>
+            <span className="text-sm font-bold text-white">{formatCurrency(stats.mrr)}</span>
           </div>
         </div>
 
@@ -364,16 +335,20 @@ function GlobalDashboard() {
           </div>
           <div className="space-y-3">
             <div>
-              <p className="text-xs" style={{ color: '#94a3b8' }}>Revenus clients (cumul)</p>
-              <p className="text-xl font-bold text-white">{formatCurrency(stats.totalRevenue)}</p>
+              <p className="text-xs" style={{ color: '#94a3b8' }}>Ce mois-ci</p>
+              <p className="text-xl font-bold text-white">{formatCurrency(stats.revenueThisMonth)}</p>
+            </div>
+            <div className="flex items-center justify-between text-sm py-1 border-t" style={{ borderColor: '#334155' }}>
+              <span style={{ color: '#94a3b8' }}>Aujourd'hui</span>
+              <span className="font-medium text-white">{formatCurrency(stats.revenueToday)}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm py-1 border-t" style={{ borderColor: '#334155' }}>
+              <span style={{ color: '#94a3b8' }}>Mois dernier</span>
+              <span className="font-medium text-white">{formatCurrency(stats.revenueLastMonth)}</span>
             </div>
             <div className="flex items-center justify-between text-sm py-1 border-t" style={{ borderColor: '#334155' }}>
               <span style={{ color: '#94a3b8' }}>Revenus abonnements NOXIA</span>
               <span className="font-medium" style={{ color: '#f59e0b' }}>{formatCurrency(stats.subscriptionRevenue)}</span>
-            </div>
-            <div className="flex items-center justify-between text-sm py-1 border-t" style={{ borderColor: '#334155' }}>
-              <span style={{ color: '#94a3b8' }}>Ce mois-ci</span>
-              <span className="font-medium text-white">{formatCurrency(stats.monthlyRevenue)}</span>
             </div>
             <div className="flex items-center justify-between text-sm py-1 border-t" style={{ borderColor: '#334155' }}>
               <span style={{ color: '#94a3b8' }}>Moyenne par boutique</span>
@@ -409,6 +384,42 @@ function GlobalDashboard() {
           <div className="space-y-2 max-h-[320px] overflow-y-auto">
             {stats.expiredTrials.map((trial) => (
               <TrialAlertRow key={`${trial.instance_code}-${trial.company_id}`} trial={trial} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Paiements récents (7 derniers jours, toutes instances) — visibilité
+          sur les paiements d'abonnement sans canal temps réel dédié, alimenté
+          par le même cycle de 10 min que le reste du dashboard. */}
+      <div className="p-4 rounded-xl border" style={{ background: '#1e293b', borderColor: '#334155' }}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-sm text-white">Paiements récents</h3>
+          <Zap className="w-4 h-4" style={{ color: '#f59e0b' }} />
+        </div>
+        {stats.recentPayments.length === 0 ? (
+          <div className="text-center py-6">
+            <p className="text-sm" style={{ color: '#64748b' }}>Aucun paiement confirmé cette semaine.</p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[320px] overflow-y-auto">
+            {stats.recentPayments.slice(0, 10).map((payment, i) => (
+              <div
+                key={`${payment.instance_code}-${payment.confirmed_at}-${i}`}
+                className="flex items-center justify-between text-sm py-2 border-b last:border-0"
+                style={{ borderColor: '#334155' }}
+              >
+                <div className="min-w-0">
+                  <p className="text-white truncate">{payment.company_name}</p>
+                  <p className="text-xs truncate" style={{ color: '#64748b' }}>{payment.plan_name} · {payment.instance_name}</p>
+                </div>
+                <div className="text-right shrink-0 ml-2">
+                  <p className="font-medium" style={{ color: '#22c55e' }}>{formatCurrency(parseFloat(payment.amount))}</p>
+                  <p className="text-xs" style={{ color: '#64748b' }}>
+                    {new Date(payment.confirmed_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
             ))}
           </div>
         )}
