@@ -155,9 +155,19 @@ export default function SuperAdminEntreprises() {
 function SuperAdminEntreprisesContent() {
   const { selectedServer, isGlobalMode } = useContext(ServerContext)
   const searchParams = useSearchParams()
-  const platformUser = getPlatformUser()
-  const canManageSuspension = canPerform(platformUser, 'company.toggle_status')
-  const canDelete = canPerform(platformUser, 'company.delete')
+  // getPlatformUser() lit localStorage, inexistant au rendu serveur — calculer
+  // ces permissions directement au rendu produirait un HTML different entre
+  // le SSR (toujours false) et l'hydratation cote client, provoquant un
+  // hydration mismatch React sur les boutons Suspendre/Supprimer (voir le
+  // meme correctif sur super-admin/instances et super-admin/plans).
+  const [canManageSuspension, setCanManageSuspension] = useState(false)
+  const [canDelete, setCanDelete] = useState(false)
+
+  useEffect(() => {
+    const platformUser = getPlatformUser()
+    setCanManageSuspension(canPerform(platformUser, 'company.toggle_status'))
+    setCanDelete(canPerform(platformUser, 'company.delete'))
+  }, [])
 
   const [companies, setCompanies] = useState<ProxyCompanyDetail[]>([])
   const [plans, setPlans] = useState<InstancePlan[]>([])

@@ -81,6 +81,10 @@ export interface InstancePlan {
    * numérique n'a pas de sens comme simple {key, included}. */
   max_employees: number
   max_cash_registers: number
+  /** Controle si une entreprise non certifiee (KYB, voir Company.is_certified
+   * cote noxia-backend) peut souscrire/payer ce plan — verifie uniquement a
+   * l'instant de la souscription, jamais retroactivement. */
+  certification_requirement: 'none' | 'warning' | 'blocking'
 }
 
 export interface PlanPayload {
@@ -103,6 +107,7 @@ export interface PlanPayload {
   features: PlanFeatureInput[]
   max_employees?: number
   max_cash_registers?: number
+  certification_requirement?: 'none' | 'warning' | 'blocking'
 }
 
 /**

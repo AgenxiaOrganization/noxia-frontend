@@ -45,6 +45,9 @@ interface FormState {
   // illimite, voir subscriptions.models.Plan.max_employees/max_cash_registers.
   max_employees: string
   max_cash_registers: string
+  // Controle si une entreprise non certifiee (KYB) peut souscrire/payer ce
+  // plan — voir subscriptions.models.Plan.certification_requirement.
+  certification_requirement: 'none' | 'warning' | 'blocking'
 }
 
 function emptyForm(): FormState {
@@ -59,6 +62,7 @@ function emptyForm(): FormState {
     freeFeatures: [emptyFeature()],
     max_employees: '0',
     max_cash_registers: '0',
+    certification_requirement: 'none',
   }
 }
 
@@ -94,6 +98,7 @@ function planToForm(plan: InstancePlan): FormState {
     freeFeatures: freeFeatures.length > 0 ? freeFeatures : [emptyFeature()],
     max_employees: String(plan.max_employees ?? 0),
     max_cash_registers: String(plan.max_cash_registers ?? 0),
+    certification_requirement: plan.certification_requirement ?? 'none',
   }
 }
 
@@ -105,8 +110,14 @@ function formatFcfa(value: string | number): string {
 
 export default function SuperAdminPlans() {
   const { isGlobalMode, selectedServer } = useContext(ServerContext)
-  const platformUser = getPlatformUser()
-  const isSuperAdmin = platformUser?.role === 'super_admin'
+  // getPlatformUser() lit localStorage, inexistant au rendu serveur — voir
+  // le meme correctif sur super-admin/instances/page.tsx pour le detail du
+  // hydration mismatch que ce calcul direct provoquait.
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    setIsSuperAdmin(getPlatformUser()?.role === 'super_admin')
+  }, [])
 
   const [plans, setPlans] = useState<InstancePlan[]>([])
   const [featureRegistry, setFeatureRegistry] = useState<FeatureRegistryEntry[]>([])
@@ -190,6 +201,7 @@ export default function SuperAdminPlans() {
         is_active: form.is_active,
         max_employees: parseInt(form.max_employees, 10) || 0,
         max_cash_registers: parseInt(form.max_cash_registers, 10) || 0,
+        certification_requirement: form.certification_requirement,
         // Modele deny-list : on n'envoie que les cles EXPLICITEMENT
         // decochees (included: false) — les cles absentes restent
         // accessibles par defaut (voir PlanFeaturePermission cote backend).
@@ -256,6 +268,8 @@ export default function SuperAdminPlans() {
       toast.error('Erreur lors du réordonnancement.')
     }
   }
+
+  if (isSuperAdmin === null) return <Loader />
 
   if (!isSuperAdmin) {
     return (
@@ -626,6 +640,25 @@ export default function SuperAdminPlans() {
                     />
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-dark-400 flex items-center gap-1.5 mb-1">
+                  <Shield className="w-3 h-3" />
+                  Exigence de certification KYB
+                </label>
+                <p className="text-xs mb-2" style={{ color: '#64748b' }}>
+                  Contrôle si une entreprise non certifiée peut souscrire/payer ce plan.
+                </p>
+                <select
+                  value={form.certification_requirement}
+                  onChange={(e) => setForm((f) => ({ ...f, certification_requirement: e.target.value as FormState['certification_requirement'] }))}
+                  className="w-full rounded-lg px-3 py-1.5 text-white text-sm outline-none bg-dark-950/50 border border-dark-800/60 focus:border-primary-500 transition"
+                >
+                  <option value="none">Aucune exigence</option>
+                  <option value="warning">Avertissement (souscription autorisée, client averti)</option>
+                  <option value="blocking">Obligatoire (souscription/paiement refusé si non certifié)</option>
+                </select>
               </div>
 
               <div>

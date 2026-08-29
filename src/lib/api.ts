@@ -22,6 +22,7 @@ export interface AuthResponse {
     type: string
     is_active: boolean
     verification_status: string
+    is_certified?: boolean
     verification_code?: string | null
     verification_reviewed_at?: string | null
     verification_rejection_reason?: string

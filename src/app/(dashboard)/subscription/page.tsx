@@ -9,6 +9,7 @@ import {
   Headphones, Calendar, Gift, Loader2, Receipt, Download, Trash2, Ban,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { getMe } from '@/lib/api'
 import {
   getMySubscription, subscribeToPlan, getPlans, getFeatureRegistry,
   listMyTransactions, hideTransaction, downloadTransactionInvoicePdf, cancelSubscription,
@@ -56,15 +57,20 @@ function SubscriptionPageContent() {
   const [hidingRef, setHidingRef] = useState<string | null>(null)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [isCanceling, setIsCanceling] = useState(false)
+  // Company.is_certified (KYB) — determine si un plan `warning` doit
+  // declencher un toast d'avertissement post-activation (voir
+  // Plan.certification_requirement cote backend).
+  const [isCertified, setIsCertified] = useState(false)
 
   const loadData = () => {
     setIsLoading(true)
-    Promise.all([getMySubscription(), getPlans(), getFeatureRegistry(), listMyTransactions()])
-      .then(([sub, planList, registry, txs]) => {
+    Promise.all([getMySubscription(), getPlans(), getFeatureRegistry(), listMyTransactions(), getMe()])
+      .then(([sub, planList, registry, txs, me]) => {
         setSubscription(sub)
         setPlans([...planList].sort((a, b) => a.display_order - b.display_order))
         setFeatureRegistry(registry)
         setTransactions(txs)
+        setIsCertified(Boolean(me.company?.is_certified))
       })
       .catch((e) => console.error('Erreur chargement abonnement', e))
       .finally(() => setIsLoading(false))
@@ -102,9 +108,15 @@ function SubscriptionPageContent() {
         const updated = await subscribeToPlan(plan.code)
         setSubscription(updated)
         toast.success(`Plan ${updated.plan.name} activé.`)
+        if (updated.plan.certification_requirement === 'warning' && !isCertified) {
+          toast.warning(
+            `Le plan ${updated.plan.name} recommande une entreprise certifiée. Faites certifier votre établissement.`,
+            { action: { label: 'Certifier mon établissement', onClick: () => router.push('/certification') } },
+          )
+        }
       } catch (err) {
         console.error(err)
-        toast.error("Erreur lors de l'activation du plan.")
+        toast.error(err instanceof Error ? err.message : "Erreur lors de l'activation du plan.")
       } finally {
         setIsChangingPlan(false)
       }
@@ -609,7 +621,16 @@ function SubscriptionPageContent() {
           plan={paymentModalPlan}
           billingPeriod={billingPeriod === 'yearly' && paymentModalPlan.yearly_price !== null ? 'yearly' : 'monthly'}
           onClose={() => setPaymentModalPlan(null)}
-          onSuccess={() => { setPaymentModalPlan(null); loadData() }}
+          onSuccess={() => {
+            if (paymentModalPlan.certification_requirement === 'warning' && !isCertified) {
+              toast.warning(
+                `Le plan ${paymentModalPlan.name} recommande une entreprise certifiée. Faites certifier votre établissement.`,
+                { action: { label: 'Certifier mon établissement', onClick: () => router.push('/certification') } },
+              )
+            }
+            setPaymentModalPlan(null)
+            loadData()
+          }}
         />
       )}
 

@@ -20,8 +20,17 @@ const statusColors: Record<InstanceStatus, string> = {
 
 export default function SuperAdminInstances() {
   const { refreshServers } = useContext(ServerContext)
-  const platformUser = getPlatformUser()
-  const isSuperAdmin = platformUser?.role === 'super_admin'
+  // getPlatformUser() lit localStorage, inexistant au rendu serveur — calculer
+  // isSuperAdmin directement au rendu produirait un HTML different entre le
+  // SSR (toujours false) et l'hydratation cote client (valeur reelle),
+  // provoquant un hydration mismatch React. On le resout donc apres montage,
+  // avec null comme etat "pas encore determine" (identique cote serveur et
+  // client au premier rendu).
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    setIsSuperAdmin(getPlatformUser()?.role === 'super_admin')
+  }, [])
 
   const [instances, setInstances] = useState<PlatformInstance[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -124,6 +133,8 @@ export default function SuperAdminInstances() {
     navigator.clipboard.writeText(key)
     toast.success('Clé API copiée dans le presse-papiers.')
   }
+
+  if (isSuperAdmin === null) return <Loader />
 
   if (!isSuperAdmin) {
     return (

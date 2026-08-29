@@ -40,6 +40,10 @@ export interface Plan {
   features: PlanFeature[]
   max_employees: number
   max_cash_registers: number
+  /** Controle si une entreprise non certifiee (KYB) peut souscrire/payer ce
+   * plan — voir Company.is_certified. Verifie uniquement a l'instant de la
+   * souscription/du paiement, jamais retroactivement. */
+  certification_requirement: 'none' | 'warning' | 'blocking'
 }
 
 export interface Subscription {
