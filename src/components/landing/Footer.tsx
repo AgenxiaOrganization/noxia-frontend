@@ -1,3 +1,5 @@
+// src/components/landing/Footer.tsx
+
 export function Footer() {
   return (
     <footer 
@@ -32,7 +34,6 @@ export function Footer() {
             <ul className="space-y-2 text-sm">
               <li><a href="#features" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Fonctionnalités</a></li>
               <li><a href="#pricing" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Tarifs</a></li>
-              {/* <li><a href="#demo" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Démo</a></li> */}
             </ul>
           </div>
 
@@ -40,6 +41,8 @@ export function Footer() {
             <h4 className="font-semibold mb-4 text-white">Ressources</h4>
             <ul className="space-y-2 text-sm">
               <li><a href="#faq" className="hover:text-white transition" style={{ color: '#94a3b8' }}>FAQ</a></li>
+              <li><a href="/cgu" className="hover:text-white transition" style={{ color: '#94a3b8' }}>CGU</a></li>
+              <li><a href="/politique-confidentialite" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Politique de confidentialité</a></li>
               <li><a href="mailto:agenxia3@gmail.com" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Support</a></li>
             </ul>
           </div>
@@ -59,8 +62,10 @@ export function Footer() {
           <p className="text-sm" style={{ color: '#64748b' }}>
             &copy; 2026 NOXIA. Tous droits réservés.
             {' · '}
-            <a href="/mentions-legales" className="hover:text-white transition" style={{ color: '#64748b' }}>
-              Mentions légales
+            <a href="/cgu" className="hover:text-white transition" style={{ color: '#64748b' }}>CGU</a>
+            {' · '}
+            <a href="/politique-confidentialite" className="hover:text-white transition" style={{ color: '#64748b' }}>
+              Politique de confidentialité
             </a>
           </p>
           <p className="text-sm" style={{ color: '#64748b' }}>
