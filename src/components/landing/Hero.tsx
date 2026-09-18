@@ -30,9 +30,10 @@ export function Hero() {
   return (
     <section 
       className="relative min-h-screen flex items-center pt-6 pb-2 overflow-hidden bg-dark-950 github-grid"
+      aria-label="Section principale de présentation"
     >
       {/* Lueurs d'arrière-plan de style GitHub (radial glows) */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div className="absolute top-[10%] left-[5%] w-[600px] h-[600px] github-glow-indigo rounded-full opacity-60 animate-pulse" style={{ animationDuration: '8s' }} />
         <div className="absolute bottom-[10%] right-[5%] w-[800px] h-[800px] github-glow-emerald rounded-full opacity-40 animate-pulse" style={{ animationDuration: '12s' }} />
         <div className="absolute top-[30%] left-[40%] w-[300px] h-[300px] bg-violet-500/5 blur-[120px] rounded-full" />
@@ -53,23 +54,23 @@ export function Hero() {
                 variants={itemVariants}
                 className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-dark-900/60 border border-primary-500/30 text-primary-400 backdrop-blur-md shadow-inner"
               >
-                <span className="w-2 h-2 rounded-full bg-accent-400 animate-ping" />
-                <span className="w-1.5 h-1.5 rounded-full bg-accent-500 absolute left-[18px]" />
+                <span className="w-2 h-2 rounded-full bg-accent-400 animate-ping" aria-hidden="true" />
+                <span className="w-1.5 h-1.5 rounded-full bg-accent-500 absolute left-[18px]" aria-hidden="true" />
                 Lancement beta
               </motion.div>
             </div>
             
             {/* Titre Principal avec effet typographique GitHub */}
-           <motion.h1 
-  variants={itemVariants}
-  className="text-4xl sm:text-5xl lg:text-6xl font-display font-extrabold leading-[1.05] text-white tracking-tight"
->
-  Le&nbsp;
-  <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 via-indigo-400 to-accent-400 select-none">
-    Pilier intelligent
-  </span>
-  &nbsp;pour votre bar ou restaurant
-</motion.h1>
+            <motion.h1 
+              variants={itemVariants}
+              className="text-4xl sm:text-5xl lg:text-6xl font-display font-extrabold leading-[1.05] text-white tracking-tight"
+            >
+              Le&nbsp;
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 via-indigo-400 to-accent-400 select-none">
+                Pilier intelligent
+              </span>
+              &nbsp;pour votre bar ou restaurant
+            </motion.h1>
             {/* Description */}
             <motion.p 
               variants={itemVariants}
@@ -87,36 +88,33 @@ export function Hero() {
               <a 
                 href="/register" 
                 className="px-8 py-4 rounded-xl text-white font-bold text-base bg-gradient-to-r from-primary-500 to-indigo-600 hover:from-primary-400 hover:to-indigo-500 shadow-xl shadow-primary-500/20 hover:shadow-primary-500/30 hover:scale-[1.01] active:scale-[0.99] transition-all text-center flex items-center justify-center gap-2 group relative overflow-hidden"
+                aria-label="Démarrer gratuitement avec NOXIA"
               >
-                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true" />
                 Démarrer gratuitement
-                <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" />
+                <ArrowRight className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" aria-hidden="true" />
               </a>
-              {/* <a 
-                href="#demo" 
-                className="px-8 py-4 rounded-xl text-dark-200 hover:text-white font-bold text-base border border-dark-800 hover:border-dark-700 bg-dark-900/40 hover:bg-dark-900/80 hover:scale-[1.01] active:scale-[0.99] transition-all text-center flex items-center justify-center gap-2 backdrop-blur-md"
-              >
-                <Play className="w-4 h-4 fill-current text-primary-400" />
-                Voir la démo
-              </a> */}
             </motion.div>
 
             {/* Preuve sociale / Avis */}
             <motion.div 
               variants={itemVariants}
               className="flex items-center gap-4 pt-6 text-sm text-dark-400"
+              aria-label="Plus de 15 établissements utilisent NOXIA"
             >
-              <div className="flex -space-x-2.5">
+              <div className="flex -space-x-2.5" role="img" aria-label="Avatars de clients NOXIA">
                 {['JD', 'MK', 'AL'].map((initials, i) => (
                   <div 
                     key={i} 
                     className="w-8 h-8 rounded-full border-2 border-dark-950 flex items-center justify-center text-xs font-bold text-white bg-gradient-to-br from-primary-500 to-indigo-600 shadow-md"
+                    aria-hidden="true"
                   >
                     {initials}
                   </div>
                 ))}
                 <div 
                   className="w-8 h-8 rounded-full border-2 border-dark-950 flex items-center justify-center text-xs font-bold bg-dark-900 text-dark-400 border-dark-800/80"
+                  aria-hidden="true"
                 >
                   +12
                 </div>
@@ -130,6 +128,7 @@ export function Hero() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
             className="lg:col-span-5 relative hidden lg:block"
+            aria-hidden="true"
           >
             {/* Lueur arrière de la maquette style GitHub */}
             <div className="absolute inset-0 bg-primary-500/15 blur-[100px] rounded-3xl" />
@@ -185,7 +184,7 @@ export function Hero() {
                   <div 
                     className="flex items-center gap-2 rounded-xl p-3 text-xs border border-red-500/15 bg-red-500/5 text-red-300"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse shrink-0" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse shrink-0" aria-hidden="true" />
                     <span className="font-medium truncate">Stock critique : Bière Castel (8 restants)</span>
                   </div>
                 </div>

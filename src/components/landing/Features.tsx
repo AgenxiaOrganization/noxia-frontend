@@ -86,9 +86,10 @@ export function Features() {
     <section 
       id="features"
       className="py-12 relative overflow-hidden bg-dark-950/40 border-t border-dark-800/20"
+      aria-labelledby="features-title"
     >
       {/* Lueurs radiales de décor arrière */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0" aria-hidden="true">
         <div className="absolute left-[20%] top-[30%] w-[400px] h-[400px] rounded-full bg-primary-500/5 blur-[120px] pointer-events-none" />
         <div className="absolute right-[10%] bottom-[20%] w-[500px] h-[500px] rounded-full bg-accent-500/5 blur-[150px] pointer-events-none" />
       </div>
@@ -102,7 +103,7 @@ export function Features() {
           transition={{ duration: 0.6 }}
           className="text-center max-w-2xl mx-auto mb-20"
         >
-          <h2 className="font-display text-3xl sm:text-4xl font-extrabold mb-4 text-white tracking-tight">
+          <h2 id="features-title" className="font-display text-3xl sm:text-4xl font-extrabold mb-4 text-white tracking-tight">
             Tout ce dont vous avez besoin
           </h2>
           <p className="text-base sm:text-lg text-dark-300 font-medium">
@@ -117,6 +118,8 @@ export function Features() {
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+          role="list"
+          aria-label="Liste des fonctionnalités de NOXIA"
         >
           {features.map((feature, index) => {
             const Icon = feature.icon
@@ -125,6 +128,7 @@ export function Features() {
                 key={index}
                 variants={cardVariants}
                 whileHover={{ y: -4 }}
+                role="listitem"
                 className="group rounded-2xl p-6 border border-dark-800/40 glass-card hover:glass-card-hover relative overflow-hidden transition-[border-color,box-shadow] duration-300"
                 onMouseEnter={(e) => {
                   e.currentTarget.style.borderColor = `${feature.color}40`
@@ -139,6 +143,7 @@ export function Features() {
                 <div
                   className="absolute -right-10 -top-10 w-24 h-24 rounded-full blur-2xl opacity-10 transition-opacity duration-300 group-hover:opacity-30"
                   style={{ background: feature.color }}
+                  aria-hidden="true"
                 />
 
                 <div
@@ -148,6 +153,7 @@ export function Features() {
                     color: feature.color,
                     border: `1px solid ${feature.color}25`
                   }}
+                  aria-hidden="true"
                 >
                   <Icon className="w-5.5 h-5.5" />
                 </div>

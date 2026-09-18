@@ -55,15 +55,12 @@ export function FeatureComparison() {
   if (!isLoading && plans.length === 0) return null
 
   // Lignes "clé connue" : une par entrée du registre backend
-  // (subscriptions.feature_registry.FEATURE_REGISTRY), catégorie réelle —
-  // plus de tableau FEATURE_CATALOG inventé en dur côté frontend.
   const registryRows: FeatureRow[] = featureRegistry.map((f) => ({
     key: f.key, label: f.label, category: f.category,
   }))
 
   // Lignes "décoratives" : tous les labels libres distincts présents sur au
-  // moins un plan (support 24/7, formation équipe, SLA...) — catégorie
-  // 'support', seule catégorie purement décorative restante.
+  // moins un plan (support 24/7, formation équipe, SLA...)
   const freeLabels = new Set<string>()
   for (const plan of plans) {
     for (const f of plan.features ?? []) {
@@ -76,9 +73,6 @@ export function FeatureComparison() {
 
   const allRows = [...registryRows, ...freeRows]
 
-  // Limites numériques (max_employees/max_cash_registers) : nature
-  // différente d'une coche binaire (un nombre, pas oui/non) — affichées à
-  // part, dans leur propre section sous le tableau de coches.
   const hasNumericLimits = plans.some((p) => p.max_employees > 0 || p.max_cash_registers > 0)
 
   return (
@@ -87,6 +81,7 @@ export function FeatureComparison() {
       style={{
         background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #312e81 70%, #4f46e5 100%)'
       }}
+      aria-labelledby="comparison-title"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -96,7 +91,7 @@ export function FeatureComparison() {
           viewport={{ once: true }}
           className="text-center max-w-2xl mx-auto mb-12"
         >
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-white">
+          <h2 id="comparison-title" className="text-3xl sm:text-4xl font-bold mb-4 text-white">
             Comparaison des fonctionnalités
           </h2>
           <p className="text-lg" style={{ color: '#94a3b8' }}>
@@ -117,12 +112,20 @@ export function FeatureComparison() {
           }}
         >
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" role="table" aria-label="Comparaison des fonctionnalités par plan d'abonnement">
               <thead>
-                <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                  <th className="px-4 py-3 text-left text-xs" style={{ color: '#94a3b8' }}>Fonctionnalité</th>
+                <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.1)' }} role="row">
+                  <th scope="col" className="px-4 py-3 text-left text-xs" style={{ color: '#94a3b8' }} role="columnheader">
+                    Fonctionnalité
+                  </th>
                   {plans.map((plan) => (
-                    <th key={plan.code} className="px-4 py-3 text-center text-xs font-semibold" style={{ color: '#f1f5f9' }}>
+                    <th 
+                      key={plan.code} 
+                      scope="col"
+                      className="px-4 py-3 text-center text-xs font-semibold" 
+                      style={{ color: '#f1f5f9' }}
+                      role="columnheader"
+                    >
                       {plan.name}
                     </th>
                   ))}
@@ -133,25 +136,35 @@ export function FeatureComparison() {
                   const categoryRows = allRows.filter((row) => row.category === category.id)
                   if (categoryRows.length === 0) return null
 
+                  const CategoryIcon = category.icon
+
                   return (
                     <React.Fragment key={category.id}>
-                      <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                        <td colSpan={1 + plans.length} className="px-4 py-2 text-xs font-semibold" style={{ color: '#818cf8' }}>
-                          <category.icon className="w-3 h-3 inline mr-1" />
+                      <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }} role="row">
+                        <td colSpan={1 + plans.length} className="px-4 py-2 text-xs font-semibold" style={{ color: '#818cf8' }} role="cell">
+                          <CategoryIcon className="w-3 h-3 inline mr-1" aria-hidden="true" />
                           {category.label}
                         </td>
                       </tr>
                       {categoryRows.map((row) => (
-                        <tr key={row.key ?? row.label} className="border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                          <td className="px-4 py-2 text-xs" style={{ color: '#94a3b8' }}>{row.label}</td>
+                        <tr key={row.key ?? row.label} className="border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }} role="row">
+                          <td className="px-4 py-2 text-xs" style={{ color: '#94a3b8' }} role="cell">{row.label}</td>
                           {plans.map((plan) => {
                             const hasFeature = planHasFeature(plan, row)
                             return (
-                              <td key={`${plan.code}-${row.key ?? row.label}`} className="px-4 py-2 text-center">
+                              <td key={`${plan.code}-${row.key ?? row.label}`} className="px-4 py-2 text-center" role="cell">
                                 {hasFeature ? (
-                                  <Check className="w-4 h-4 mx-auto" style={{ color: '#22c55e' }} />
+                                  <Check 
+                                    className="w-4 h-4 mx-auto" 
+                                    style={{ color: '#22c55e' }} 
+                                    aria-label="Inclus"
+                                  />
                                 ) : (
-                                  <X className="w-4 h-4 mx-auto" style={{ color: '#475569' }} />
+                                  <X 
+                                    className="w-4 h-4 mx-auto" 
+                                    style={{ color: '#475569' }} 
+                                    aria-label="Non inclus"
+                                  />
                                 )}
                               </td>
                             )
@@ -160,18 +173,18 @@ export function FeatureComparison() {
                       ))}
                       {category.id === 'advanced' && hasNumericLimits && (
                         <>
-                          <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                            <td className="px-4 py-2 text-xs" style={{ color: '#94a3b8' }}>Nombre d'employés</td>
+                          <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }} role="row">
+                            <td className="px-4 py-2 text-xs" style={{ color: '#94a3b8' }} role="cell">Nombre d'employés</td>
                             {plans.map((plan) => (
-                              <td key={`${plan.code}-max-employees`} className="px-4 py-2 text-center text-xs font-medium" style={{ color: '#e2e8f0' }}>
+                              <td key={`${plan.code}-max-employees`} className="px-4 py-2 text-center text-xs font-medium" style={{ color: '#e2e8f0' }} role="cell">
                                 {plan.max_employees > 0 ? plan.max_employees : 'Illimité'}
                               </td>
                             ))}
                           </tr>
-                          <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
-                            <td className="px-4 py-2 text-xs" style={{ color: '#94a3b8' }}>Nombre de caisses</td>
+                          <tr className="border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }} role="row">
+                            <td className="px-4 py-2 text-xs" style={{ color: '#94a3b8' }} role="cell">Nombre de caisses</td>
                             {plans.map((plan) => (
-                              <td key={`${plan.code}-max-registers`} className="px-4 py-2 text-center text-xs font-medium" style={{ color: '#e2e8f0' }}>
+                              <td key={`${plan.code}-max-registers`} className="px-4 py-2 text-center text-xs font-medium" style={{ color: '#e2e8f0' }} role="cell">
                                 {plan.max_cash_registers > 0 ? plan.max_cash_registers : 'Illimité'}
                               </td>
                             ))}
@@ -189,11 +202,11 @@ export function FeatureComparison() {
           <div className="p-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
             <div className="flex flex-wrap items-center gap-4 text-xs" style={{ color: '#94a3b8' }}>
               <div className="flex items-center gap-1.5">
-                <Check className="w-3 h-3" style={{ color: '#22c55e' }} />
+                <Check className="w-3 h-3" style={{ color: '#22c55e' }} aria-hidden="true" />
                 <span>Inclus</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <X className="w-3 h-3" style={{ color: '#475569' }} />
+                <X className="w-3 h-3" style={{ color: '#475569' }} aria-hidden="true" />
                 <span>Non inclus</span>
               </div>
             </div>

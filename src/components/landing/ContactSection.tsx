@@ -88,18 +88,23 @@ export function ContactSection() {
             borderColor: 'rgba(255,255,255,0.1)'
           }}
         >
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" aria-label="Formulaire de contact">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nom complet *</label>
+                <label htmlFor="contact-name" className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
+                  Nom complet <span aria-hidden="true">*</span>
+                </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} aria-hidden="true" />
                   <input
+                    id="contact-name"
                     type="text"
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
                     placeholder="Jean Dupont"
+                    autoComplete="name"
+                    aria-required="true"
                     className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
                     style={{
                       background: 'rgba(51, 65, 85, 0.5)',
@@ -110,15 +115,20 @@ export function ContactSection() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Email *</label>
+                <label htmlFor="contact-email" className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
+                  Email <span aria-hidden="true">*</span>
+                </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} aria-hidden="true" />
                   <input
+                    id="contact-email"
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="contact@monbar.com"
+                    autoComplete="email"
+                    aria-required="true"
                     className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
                     style={{
                       background: 'rgba(51, 65, 85, 0.5)',
@@ -132,15 +142,17 @@ export function ContactSection() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Téléphone</label>
+                <label htmlFor="contact-phone" className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Téléphone</label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} aria-hidden="true" />
                   <input
+                    id="contact-phone"
                     type="tel"
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
                     placeholder="+241 77 00 00 00"
+                    autoComplete="tel"
                     className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
                     style={{
                       background: 'rgba(51, 65, 85, 0.5)',
@@ -150,15 +162,19 @@ export function ContactSection() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Sujet *</label>
+                <label htmlFor="contact-subject" className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
+                  Sujet <span aria-hidden="true">*</span>
+                </label>
                 <div className="relative">
-                  <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
+                  <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} aria-hidden="true" />
                   <input
+                    id="contact-subject"
                     type="text"
                     name="subject"
                     value={formData.subject}
                     onChange={handleChange}
                     placeholder="Demande d'information"
+                    aria-required="true"
                     className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
                     style={{
                       background: 'rgba(51, 65, 85, 0.5)',
@@ -171,13 +187,17 @@ export function ContactSection() {
             </div>
 
             <div>
-              <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Message *</label>
+              <label htmlFor="contact-message" className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
+                Message <span aria-hidden="true">*</span>
+              </label>
               <textarea
+                id="contact-message"
                 name="message"
                 value={formData.message}
                 onChange={handleChange}
                 rows={4}
                 placeholder="Décrivez votre demande..."
+                aria-required="true"
                 className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition resize-none"
                 style={{
                   background: 'rgba(51, 65, 85, 0.5)',
@@ -195,27 +215,30 @@ export function ContactSection() {
                 background: '#4f46e5',
                 boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
               }}
+              aria-label={isSubmitting ? "Envoi du message en cours" : "Envoyer le message"}
             >
               {isSubmitting ? (
                 'Envoi en cours...'
               ) : (
                 <>
-                  <Send className="w-4 h-4" />
+                  <Send className="w-4 h-4" aria-hidden="true" />
                   Envoyer le message
                 </>
               )}
             </button>
 
-            {submitted && (
-              <p className="text-center text-sm animate-fade-in" style={{ color: '#22c55e' }}>
-                ✅ Message envoyé avec succès ! Nous vous répondrons dans les plus brefs délais.
-              </p>
-            )}
-            {error && (
-              <p className="text-center text-sm animate-fade-in" style={{ color: '#f87171' }}>
-                ⚠️ {error}
-              </p>
-            )}
+            <div aria-live="polite" aria-atomic="true">
+              {submitted && (
+                <p className="text-center text-sm animate-fade-in" style={{ color: '#22c55e' }}>
+                  ✅ Message envoyé avec succès ! Nous vous répondrons dans les plus brefs délais.
+                </p>
+              )}
+              {error && (
+                <p className="text-center text-sm animate-fade-in" style={{ color: '#f87171' }}>
+                  ⚠️ {error}
+                </p>
+              )}
+            </div>
           </form>
         </motion.div>
       </div>

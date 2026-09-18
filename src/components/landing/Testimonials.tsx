@@ -76,6 +76,8 @@ function CompanyCard({ company, index }: { company: ShowcaseCompany; index: numb
         backdropFilter: 'blur(12px)',
         border: '1px solid rgba(255,255,255,0.1)',
       }}
+      role="listitem"
+      aria-label={`Établissement ${company.name}, ${company.type_display}, ${company.country}, client depuis ${company.client_since_year}`}
     >
       {company.verified && company.verification_code && (
         <Link
@@ -86,20 +88,22 @@ function CompanyCard({ company, index }: { company: ShowcaseCompany; index: numb
           title="Voir la certification de cet établissement"
           className="absolute top-3 right-3 flex items-center justify-center w-6 h-6 rounded-full transition hover:scale-110"
           style={{ background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)' }}
+          aria-label={`Voir la certification de ${company.name}`}
         >
-          <BadgeCheck className="w-3.5 h-3.5" style={{ color: '#4ade80' }} />
+          <BadgeCheck className="w-3.5 h-3.5" style={{ color: '#4ade80' }} aria-hidden="true" />
         </Link>
       )}
 
       <div
         className="w-16 h-16 rounded-full flex items-center justify-center p-0.5"
         style={{ background: gradientFor(company.id) }}
+        aria-hidden="true"
       >
         {company.logo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={company.logo}
-            alt={company.name}
+            alt={`Logo de ${company.name}`}
             className="w-full h-full rounded-full object-cover"
             style={{ border: '2px solid #1e293b' }}
           />
@@ -115,8 +119,8 @@ function CompanyCard({ company, index }: { company: ShowcaseCompany; index: numb
 
       <div>
         <p className="font-semibold text-sm text-white leading-tight">{company.name}</p>
-        <p className="flex items-center justify-center gap-1 text-xs mt-1" style={{ color: '#64748b' }}>
-          <MapPin className="w-3 h-3" />
+        <p className="flex items-center justify-center gap-1 text-xs mt-1" style={{ color: '#94a3b8' }}>
+          <MapPin className="w-3 h-3" aria-hidden="true" />
           {company.country}
         </p>
       </div>
@@ -130,7 +134,7 @@ function CompanyCard({ company, index }: { company: ShowcaseCompany; index: numb
             border: '1px solid rgba(99, 102, 241, 0.25)',
           }}
         >
-          <Store className="w-3 h-3" />
+          <Store className="w-3 h-3" aria-hidden="true" />
           {company.type_display}
         </span>
         <span
@@ -159,6 +163,7 @@ function SkeletonCard({ index }: { index: number }) {
         background: 'rgba(255,255,255,0.04)',
         border: '1px solid rgba(255,255,255,0.08)',
       }}
+      aria-hidden="true"
     >
       <div className="w-16 h-16 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }} />
       <div className="w-24 h-3 rounded" style={{ background: 'rgba(255,255,255,0.08)' }} />
@@ -193,8 +198,7 @@ export function Testimonials() {
     }
   }, [])
 
-  // Défilement horizontal automatique, en boucle, avec pause au survol —
-  // seulement une fois les vraies cartes chargées (pas pendant le skeleton).
+  // Défilement horizontal automatique, en boucle, avec pause au survol
   useEffect(() => {
     const scrollContainer = scrollRef.current
     if (!scrollContainer || !data || data.results.length === 0) return
@@ -228,8 +232,7 @@ export function Testimonials() {
   }, [data])
 
   // Rien de crédible à montrer tant que la liste réelle n'est pas chargée,
-  // et pas de fallback fictif en cas d'échec — la section disparaît plutôt
-  // que d'afficher de faux établissements.
+  // et pas de fallback fictif en cas d'échec
   if (error || (data && data.results.length === 0)) return null
 
   return (
@@ -238,6 +241,7 @@ export function Testimonials() {
       style={{
         background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #312e81 70%, #4f46e5 100%)'
       }}
+      aria-labelledby="testimonials-title"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
@@ -247,14 +251,14 @@ export function Testimonials() {
           viewport={{ once: true }}
           className="text-center max-w-2xl mx-auto mb-14"
         >
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-white">
+          <h2 id="testimonials-title" className="text-3xl sm:text-4xl font-bold mb-4 text-white">
             Ils nous font confiance
           </h2>
           <p className="text-lg" style={{ color: '#94a3b8' }}>
             {data ? (
               <>
                 Plus de{' '}
-                <span className="font-bold" style={{ color: '#a5b4fc' }}>
+                <span className="font-bold" style={{ color: '#a5b4fc' }} aria-live="polite">
                   <AnimatedCounter value={data.total_companies} />
                 </span>{' '}
                 établissements utilisent NOXIA au quotidien
@@ -267,14 +271,16 @@ export function Testimonials() {
       </div>
 
       <div className="relative">
-        {/* Dégradés de fondu sur les bords, pour suggérer que la liste continue. */}
+        {/* Dégradés de fondu sur les bords */}
         <div
           className="hidden sm:block absolute left-0 top-0 bottom-4 w-16 sm:w-24 z-10 pointer-events-none"
           style={{ background: 'linear-gradient(to right, #1e293b, transparent)' }}
+          aria-hidden="true"
         />
         <div
           className="hidden sm:block absolute right-0 top-0 bottom-4 w-16 sm:w-24 z-10 pointer-events-none"
           style={{ background: 'linear-gradient(to left, #4f46e5, transparent)' }}
+          aria-hidden="true"
         />
 
         <div
@@ -284,6 +290,8 @@ export function Testimonials() {
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
           }}
+          role="list"
+          aria-label="Liste des établissements clients de NOXIA"
         >
           {data
             ? data.results.map((company, index) => (

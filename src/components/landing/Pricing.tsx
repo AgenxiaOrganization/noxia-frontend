@@ -60,8 +60,6 @@ export function Pricing() {
     return () => { cancelled = true }
   }, [])
 
-  // Au moins un plan propose une offre annuelle : le toggle n'a de sens que
-  // dans ce cas (sinon "Annuel" n'affecterait jamais rien de visible).
   const anyPlanHasYearlyOffer = plans.some((p) => p.yearly_price !== null)
 
   const toggleExpanded = (code: string) => {
@@ -80,10 +78,11 @@ export function Pricing() {
       style={{
         background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #312e81 70%, #4f46e5 100%)'
       }}
+      aria-labelledby="pricing-title"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-2xl mx-auto mb-8">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-white animate-slide-up">
+          <h2 id="pricing-title" className="text-3xl sm:text-4xl font-bold mb-4 text-white animate-slide-up">
             Plans d'abonnement
           </h2>
           <p className="text-lg" style={{ color: '#94a3b8' }}>
@@ -93,7 +92,12 @@ export function Pricing() {
 
         {!isLoading && anyPlanHasYearlyOffer && (
           <div className="flex justify-center mb-10">
-            <div className="flex items-center gap-1 p-1 rounded-lg" style={{ background: 'rgba(255,255,255,0.08)' }}>
+            <div 
+              className="flex items-center gap-1 p-1 rounded-lg" 
+              style={{ background: 'rgba(255,255,255,0.08)' }}
+              role="group"
+              aria-label="Choix de la période de facturation"
+            >
               <button
                 onClick={() => setBillingPeriod('monthly')}
                 className="px-4 py-2 rounded-md text-sm font-medium transition"
@@ -101,6 +105,7 @@ export function Pricing() {
                   background: billingPeriod === 'monthly' ? '#4f46e5' : 'transparent',
                   color: billingPeriod === 'monthly' ? '#fff' : '#94a3b8',
                 }}
+                aria-pressed={billingPeriod === 'monthly'}
               >
                 Mensuel
               </button>
@@ -111,6 +116,7 @@ export function Pricing() {
                   background: billingPeriod === 'yearly' ? '#4f46e5' : 'transparent',
                   color: billingPeriod === 'yearly' ? '#fff' : '#94a3b8',
                 }}
+                aria-pressed={billingPeriod === 'yearly'}
               >
                 Annuel
               </button>
@@ -119,8 +125,8 @@ export function Pricing() {
         )}
 
         {isLoading ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#818cf8' }} />
+          <div className="flex justify-center py-16" aria-live="polite" aria-label="Chargement des plans d'abonnement">
+            <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#818cf8' }} aria-hidden="true" />
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto items-start">
@@ -133,9 +139,6 @@ export function Pricing() {
               const formattedOriginalPrice = originalPrice !== null
                 ? (isMounted ? formatPrice(originalPrice) : originalPrice.toString())
                 : null
-              // Liste complete (registre + decoratives), modele deny-list —
-              // voir resolveDisplayFeatures : une cle du registre absente du
-              // plan reste incluse par defaut, comme cote backend.
               const features = resolveDisplayFeatures(plan, featureRegistry)
               const includedFeatures = features.filter((f) => f.included)
               const excludedFeatures = features.filter((f) => !f.included)
@@ -161,13 +164,14 @@ export function Pricing() {
                       : '1px solid rgba(255,255,255,0.1)',
                     animation: `fadeIn 0.6s ease-out ${index * 0.1}s both`
                   }}
+                  aria-label={`Plan ${plan.name}`}
                 >
                   {plan.badge_label && (
                     <div
                       className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-white text-xs font-bold flex items-center gap-1 whitespace-nowrap"
                       style={{ background: plan.is_free ? '#22c55e' : '#6366f1' }}
                     >
-                      {plan.is_free ? <Gift className="w-3 h-3" /> : <Star className="w-3 h-3" />}
+                      {plan.is_free ? <Gift className="w-3 h-3" aria-hidden="true" /> : <Star className="w-3 h-3" aria-hidden="true" />}
                       {plan.badge_label}
                     </div>
                   )}
@@ -209,13 +213,13 @@ export function Pricing() {
                   <ul className="space-y-2 mb-3 text-sm">
                     {visibleIncluded.map((feature, i) => (
                       <li key={i} className="flex items-center gap-2">
-                        <Check className="w-4 h-4 shrink-0" style={{ color: '#22c55e' }} />
+                        <Check className="w-4 h-4 shrink-0" style={{ color: '#22c55e' }} aria-hidden="true" />
                         <span style={{ color: '#cbd5e1' }}>{feature.label}</span>
                       </li>
                     ))}
                     {visibleExcluded.map((feature, i) => (
                       <li key={i} className="flex items-center gap-2">
-                        <X className="w-4 h-4 shrink-0" style={{ color: '#475569' }} />
+                        <X className="w-4 h-4 shrink-0" style={{ color: '#475569' }} aria-hidden="true" />
                         <span style={{ color: '#475569' }}>{feature.label}</span>
                       </li>
                     ))}
@@ -227,11 +231,13 @@ export function Pricing() {
                       onClick={() => toggleExpanded(plan.code)}
                       className="flex items-center gap-1 text-xs font-medium mb-4 transition hover:opacity-80"
                       style={{ color: '#818cf8' }}
+                      aria-expanded={isExpanded}
+                      aria-controls={`plan-features-${plan.code}`}
                     >
                       {isExpanded ? (
-                        <>Voir moins <ChevronUp className="w-3.5 h-3.5" /></>
+                        <>Voir moins <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" /></>
                       ) : (
-                        <>Voir {hiddenCount} de plus <ChevronDown className="w-3.5 h-3.5" /></>
+                        <>Voir {hiddenCount} de plus <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" /></>
                       )}
                     </button>
                   )}
@@ -246,6 +252,7 @@ export function Pricing() {
                         ? 'bg-green-600 hover:bg-green-500 shadow-lg shadow-green-600/25 hover:shadow-xl hover:scale-105'
                         : 'border border-dark-600 hover:border-primary-500 hover:bg-primary-500/10'
                     }`}
+                    aria-label={`${plan.cta_label} pour le plan ${plan.name}`}
                   >
                     {plan.cta_label}
                   </a>

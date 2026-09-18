@@ -36,12 +36,14 @@ export function CTA() {
                 background: '#ffffff',
                 color: '#4f46e5'
               }}
+              aria-label="Démarrer maintenant avec NOXIA"
             >
               Démarrer maintenant
             </a>
             <a 
               href="#contact" 
               className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl border border-white/30 text-white font-semibold text-base sm:text-lg hover:bg-white/10 transition"
+              aria-label="Parler à un conseiller NOXIA"
             >
               Parler à un conseiller
             </a>

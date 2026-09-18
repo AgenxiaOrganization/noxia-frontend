@@ -70,37 +70,56 @@ export function FAQ() {
         </motion.div>
 
         <div className="space-y-4">
-          {faqs.map((faq, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.1 }}
-              viewport={{ once: true }}
-              className="rounded-xl p-4 sm:p-5 cursor-pointer transition-all hover:border-primary-500 group"
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                backdropFilter: 'blur(10px)',
-                border: openIndex === index ? '1px solid #6366f1' : '1px solid rgba(255,255,255,0.1)'
-              }}
-              onClick={() => setOpenIndex(openIndex === index ? null : index)}
-            >
-              <div className="flex justify-between items-center gap-4">
-                <span className="font-semibold text-white group-hover:text-primary-400 transition">
-                  {faq.question}
-                </span>
-                <ChevronDown
-                  className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${openIndex === index ? 'rotate-180' : ''}`}
-                  style={{ color: '#94a3b8' }}
-                />
-              </div>
-              {openIndex === index && (
-                <div className="mt-3 p-3 rounded-lg" style={{ background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.1)' }}>
-                  <p className="text-sm leading-relaxed" style={{ color: '#cbd5e1' }}>{faq.answer}</p>
-                </div>
-              )}
-            </motion.div>
-          ))}
+          {faqs.map((faq, index) => {
+            const isOpen = openIndex === index
+            const contentId = `faq-content-${index}`
+            const buttonId = `faq-button-${index}`
+
+            return (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: index * 0.1 }}
+                viewport={{ once: true }}
+                className="rounded-xl p-4 sm:p-5 transition-all hover:border-primary-500 group"
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  backdropFilter: 'blur(10px)',
+                  border: isOpen ? '1px solid #6366f1' : '1px solid rgba(255,255,255,0.1)'
+                }}
+              >
+                <button
+                  id={buttonId}
+                  type="button"
+                  onClick={() => setOpenIndex(isOpen ? null : index)}
+                  aria-expanded={isOpen}
+                  aria-controls={contentId}
+                  className="w-full flex justify-between items-center gap-4 text-left cursor-pointer"
+                >
+                  <span className="font-semibold text-white group-hover:text-primary-400 transition">
+                    {faq.question}
+                  </span>
+                  <ChevronDown
+                    className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                    style={{ color: '#94a3b8' }}
+                    aria-hidden="true"
+                  />
+                </button>
+                {isOpen && (
+                  <div 
+                    id={contentId}
+                    role="region"
+                    aria-labelledby={buttonId}
+                    className="mt-3 p-3 rounded-lg" 
+                    style={{ background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.1)' }}
+                  >
+                    <p className="text-sm leading-relaxed" style={{ color: '#cbd5e1' }}>{faq.answer}</p>
+                  </div>
+                )}
+              </motion.div>
+            )
+          })}
         </div>
       </div>
     </section>

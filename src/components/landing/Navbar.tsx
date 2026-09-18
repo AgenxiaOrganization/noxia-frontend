@@ -24,21 +24,26 @@ export function Navbar() {
           ? 'bg-dark-950/80 backdrop-blur-md border-b border-dark-800/40 py-3' 
           : 'bg-transparent py-5'
       )}
+      aria-label="Navigation principale"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-12">
           {/* Logo */}
-          <a href="/" className="flex items-center gap-3 group">
+          <a 
+            href="/" 
+            className="flex items-center gap-3 group"
+            aria-label="NOXIA - Retour à l'accueil"
+          >
             <div className="relative w-9 h-9 rounded-xl flex items-center justify-center bg-dark-900/50 p-1.5 border border-dark-800/60 overflow-hidden shadow-md transition-transform group-hover:scale-105">
-              <div className="absolute inset-0 bg-primary-500/10 blur-md rounded-full" />
+              <div className="absolute inset-0 bg-primary-500/10 blur-md rounded-full" aria-hidden="true" />
               <img 
                 src="/logos/NOXIA_Orbit_Logo.svg" 
-                alt="NOXIA" 
+                alt="Logo NOXIA" 
                 className="relative w-full h-full object-contain"
               />
             </div>
             <span className="text-xl font-display font-bold tracking-wide text-white">
-              NOXIA<span className="text-primary-500">.</span>
+              NOXIA<span className="text-primary-500" aria-hidden="true">.</span>
             </span>
           </a>
 
@@ -68,21 +73,38 @@ export function Navbar() {
           <button 
             onClick={() => setIsOpen(!isOpen)} 
             className="md:hidden text-dark-300 hover:text-white p-2 rounded-lg hover:bg-white/5 transition"
+            aria-label={isOpen ? "Fermer le menu" : "Ouvrir le menu"}
+            aria-expanded={isOpen}
+            aria-controls="mobile-menu"
           >
-            {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {isOpen ? (
+              <X className="w-5 h-5" aria-hidden="true" />
+            ) : (
+              <Menu className="w-5 h-5" aria-hidden="true" />
+            )}
           </button>
         </div>
       </div>
 
       {/* Mobile Menu */}
-      <div className={cn(
-        'md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300',
-        isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-      )} onClick={() => setIsOpen(false)}>
-        <div className={cn(
-          'absolute right-0 top-0 h-full w-64 glass-panel border-l border-dark-800/60 p-6 pt-20 flex flex-col gap-4 transition-transform duration-300 ease-out',
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        )} onClick={(e) => e.stopPropagation()}>
+      <div 
+        id="mobile-menu"
+        className={cn(
+          'md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300',
+          isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        )} 
+        onClick={() => setIsOpen(false)}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Menu de navigation mobile"
+      >
+        <div 
+          className={cn(
+            'absolute right-0 top-0 h-full w-64 glass-panel border-l border-dark-800/60 p-6 pt-20 flex flex-col gap-4 transition-transform duration-300 ease-out',
+            isOpen ? 'translate-x-0' : 'translate-x-full'
+          )} 
+          onClick={(e) => e.stopPropagation()}
+        >
           <a href="#features" className="block text-dark-300 hover:text-white py-2 font-medium" onClick={() => setIsOpen(false)}>Fonctionnalités</a>
           <a href="#pricing" className="block text-dark-300 hover:text-white py-2 font-medium" onClick={() => setIsOpen(false)}>Tarifs</a>
           <a href="#demo" className="block text-dark-300 hover:text-white py-2 font-medium" onClick={() => setIsOpen(false)}>Démo</a>

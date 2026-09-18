@@ -106,22 +106,30 @@ export function AssistantButton() {
       {/* Bouton flottant */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-className="chatbot-trigger fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center hover:scale-110"        style={{
+        className="chatbot-trigger fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl transition-all duration-300 flex items-center justify-center hover:scale-110"
+        style={{
           background: 'linear-gradient(135deg, #4f46e5, #818cf8)',
           boxShadow: '0 10px 40px rgba(99, 102, 241, 0.4)'
         }}
+        aria-label={isOpen ? "Fermer l'assistant IA" : "Ouvrir l'assistant IA"}
+        aria-expanded={isOpen}
+        aria-controls="landing-assistant-modal"
       >
         {isOpen ? (
-          <X className="w-6 h-6 text-white" />
+          <X className="w-6 h-6 text-white" aria-hidden="true" />
         ) : (
-          <Bot className="w-7 h-7 text-white" />
+          <Bot className="w-7 h-7 text-white" aria-hidden="true" />
         )}
-        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-400 border-2 border-dark-900 animate-pulse" />
+        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-green-400 border-2 border-dark-900 animate-pulse" aria-hidden="true" />
       </button>
 
       {/* Modal du chat */}
       {isOpen && (
         <div 
+          id="landing-assistant-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Assistant IA NOXIA"
           className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-2rem)] rounded-2xl shadow-2xl flex flex-col"
           style={{
             background: '#1e293b',
@@ -134,7 +142,7 @@ className="chatbot-trigger fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full sh
           <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: '#334155' }}>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(99, 102, 241, 0.15)' }}>
-                <Bot className="w-4 h-4" style={{ color: '#818cf8' }} />
+                <Bot className="w-4 h-4" style={{ color: '#818cf8' }} aria-hidden="true" />
               </div>
               <div>
                 <span className="font-semibold text-sm text-white">Assistant NOXIA</span>
@@ -151,8 +159,9 @@ className="chatbot-trigger fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full sh
               onClick={() => setIsOpen(false)}
               className="p-1 rounded hover:bg-white/10 transition"
               style={{ color: '#94a3b8' }}
+              aria-label="Fermer l'assistant"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4" aria-hidden="true" />
             </button>
           </div>
 
@@ -161,6 +170,8 @@ className="chatbot-trigger fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full sh
             id="landing-assistant-chat"
             className="flex-1 overflow-y-auto p-4 space-y-3"
             style={{ maxHeight: '400px' }}
+            aria-live="polite"
+            aria-label="Historique de la conversation"
           >
             {messages.map((msg) => (
               <div 
@@ -205,6 +216,7 @@ className="chatbot-trigger fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full sh
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyPress}
                 placeholder="Posez votre question..."
+                aria-label="Votre message pour l'assistant"
                 className="chatbot-input flex-1 rounded-lg px-3 py-2 text-white text-sm outline-none transition"
                 style={{ 
                   background: 'rgba(51, 65, 85, 0.5)',
@@ -214,12 +226,14 @@ className="chatbot-trigger fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full sh
               <button
                 onClick={sendMessage}
                 disabled={isLoading || !input.trim()}
-className="chatbot-send px-3 py-2 rounded-lg text-white text-sm font-semibold transition disabled:opacity-50"                style={{ 
+                className="chatbot-send px-3 py-2 rounded-lg text-white text-sm font-semibold transition disabled:opacity-50"
+                style={{ 
                   background: '#4f46e5',
                   boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
                 }}
+                aria-label="Envoyer le message"
               >
-                <Send className="w-4 h-4" />
+                <Send className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
             <div className="flex gap-1 mt-2 flex-wrap">
