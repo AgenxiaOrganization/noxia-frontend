@@ -164,3 +164,39 @@ export async function uploadInstanceProductPhoto(
   )
   return parsePhotoResponse<Product>(res)
 }
+
+export interface PublicPreOrderPayload {
+  customer_name: string
+  customer_phone?: string
+  requested_for: string
+  note?: string
+  items: { product: number; quantity: string | number }[]
+}
+
+export interface PublicPreOrderResult {
+  id: number
+  expires_at: string
+  total_amount: string
+}
+
+/**
+ * Creation d'une commande client depuis le menu public QR code (`/menu/[slug]`)
+ * — aucune authentification, meme principe de fetch direct que
+ * `src/app/menu/[slug]/page.tsx` (pas de client `ApiClient`, cette route
+ * n'a pas besoin de token ni de cache).
+ */
+export async function createPublicPreOrder(slug: string, payload: PublicPreOrderPayload): Promise<PublicPreOrderResult> {
+  const res = await fetch(`${API_BASE_URL}/catalog/public-menu/${encodeURIComponent(slug)}/preorder/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    const message = (data as Record<string, unknown>)?.detail as string
+      ?? Object.values(data as Record<string, unknown>).flat().join(' ')
+      ?? 'Impossible d\'envoyer votre commande.'
+    throw new Error(message || 'Impossible d\'envoyer votre commande.')
+  }
+  return res.json()
+}

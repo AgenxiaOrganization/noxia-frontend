@@ -32,6 +32,32 @@ export interface Sale {
   updated_at?: string
 }
 
+export interface PreOrderItem {
+  id: number
+  product: number
+  product_name?: string
+  quantity: string
+  unit_price: string
+  subtotal?: string
+}
+
+export interface PreOrder {
+  id: number
+  customer_name: string
+  customer_phone: string
+  requested_for: string
+  note: string
+  status: 'pending' | 'processed' | 'expired' | 'cancelled'
+  total_amount: string
+  expires_at: string
+  items: PreOrderItem[]
+  sale: number | null
+  processed_by_name: string | null
+  processed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 /**
  * Voir `catalog.ts` : meme principe d'injection de client, pour que
  * `super-admin` reutilise cette logique sans la dupliquer.
@@ -52,6 +78,14 @@ export function createSalesApi(client: ApiClient) {
     createSale: (data: Partial<Sale>) => client.post<Sale>('/sales/', data as any),
     updateSale: (id: number, data: Partial<Sale>) => client.put<Sale>(`/sales/${id}/`, data as any),
     deleteSale: (id: number) => client.del<void>(`/sales/${id}/`),
+
+    // Commandes en ligne (file d'attente, menu QR public)
+    getPreOrders: async (): Promise<PreOrder[]> => {
+      const res = await client.get<{ results: PreOrder[] } | PreOrder[]>('/sales/preorders/')
+      return Array.isArray(res) ? res : res.results ?? []
+    },
+    processPreOrder: (id: number) => client.post<PreOrder>(`/sales/preorders/${id}/process/`, {}),
+    cancelPreOrder: (id: number) => client.post<PreOrder>(`/sales/preorders/${id}/cancel/`, {}),
   }
 }
 
@@ -60,6 +94,7 @@ const defaultSalesApi = createSalesApi({ get, post, put, patch, del })
 export const {
   getCashRegisters, createCashRegister, updateCashRegister, deleteCashRegister,
   getSales, createSale, updateSale, deleteSale,
+  getPreOrders, processPreOrder, cancelPreOrder,
 } = defaultSalesApi
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api/v1'

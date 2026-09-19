@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Package, Box, CreditCard, Users,
   FileBarChart, DollarSign, Truck, Bell, MessageSquare, MessageCircle,
-  Settings, Key, Activity, ChevronLeft, ChevronRight, ShieldCheck, X
+  Settings, Key, Activity, ChevronLeft, ChevronRight, ShieldCheck, X, ClipboardList
 } from 'lucide-react'
 
 const menuItems = [
@@ -13,6 +13,7 @@ const menuItems = [
   { id: 'products', label: 'Produits', icon: Package },
   { id: 'stock', label: 'Stock', icon: Box },
   { id: 'pos', label: 'Caisse (POS)', icon: CreditCard },
+  { id: 'preorders', label: "File d'attente", icon: ClipboardList },
   { id: 'employees', label: 'Employés', icon: Users },
   { id: 'reports', label: 'Rapports', icon: FileBarChart },
   { id: 'finance', label: 'Finances', icon: DollarSign },

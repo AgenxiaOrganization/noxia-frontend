@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { MessageCircle, Bot, CreditCard, Clock, Sparkles, Check, CheckCheck, ShoppingBag, FileCheck, FileX, ShieldCheck, Trash2 } from 'lucide-react'
+import { MessageCircle, Bot, CreditCard, Clock, Sparkles, Check, CheckCheck, ShoppingBag, FileCheck, FileX, ShieldCheck, Trash2, ClipboardList } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   getNotifications,
@@ -25,6 +25,7 @@ const notifTypeConfig: Record<string, { icon: typeof MessageCircle; color: strin
   doc_approved: { icon: FileCheck, color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.15)' },
   doc_rejected: { icon: FileX, color: '#ef4444', bgColor: 'rgba(239, 68, 68, 0.15)' },
   company_certified: { icon: ShieldCheck, color: '#22c55e', bgColor: 'rgba(34, 197, 94, 0.15)' },
+  preorder_received: { icon: ClipboardList, color: '#818cf8', bgColor: 'rgba(129, 140, 248, 0.15)' },
 }
 
 // --- Formatage de la date relative ---

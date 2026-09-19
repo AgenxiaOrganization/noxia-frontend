@@ -2,6 +2,7 @@
 
 import { Layout } from '@/components/layout/Layout'
 import { AssistantButton } from '@/components/ui/AssistantButton'
+import { PreOrderToastListener } from '@/components/layout/PreOrderToastListener'
 import { useSessionGuard } from '@/lib/hooks/useSessionGuard'
 import { useSubscriptionGuard } from '@/lib/hooks/useSubscriptionGuard'
 import { useCompanySuspensionGuard } from '@/lib/hooks/useCompanySuspensionGuard'
@@ -23,6 +24,7 @@ export default function DashboardLayout({
         {children}
       </Layout>
       <AssistantButton />
+      <PreOrderToastListener />
       {subscriptionBlockStatus && (
         <SubscriptionBlockModal
           status={subscriptionBlockStatus}

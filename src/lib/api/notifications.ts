@@ -5,7 +5,7 @@ export interface Notification {
   id: number
   category: 'alert' | 'notification'
   type: 'stock_low' | 'stock_out' | 'bot_linked' | 'sub_change' | 'sub_expiry' | 'sub_reminder'
-    | 'sale_completed' | 'doc_approved' | 'doc_rejected' | 'company_certified'
+    | 'sale_completed' | 'doc_approved' | 'doc_rejected' | 'company_certified' | 'preorder_received'
   title: string
   message: string
   link: string

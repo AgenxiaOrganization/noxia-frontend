@@ -15,6 +15,13 @@ const connectSrcOrigins = [
   process.env.NEXT_PUBLIC_CONTROLE_API_URL,
   process.env.NEXT_PUBLIC_WS_URL,
   "ws://127.0.0.1:8000",
+  // "localhost" et "127.0.0.1" resolvent tous deux vers le meme serveur dev,
+  // mais window.location.hostname (voir useWebSockets.ts) renvoie la valeur
+  // litterale tapee dans la barre d'adresse — un dev qui ouvre localhost:3000
+  // se voit donc construire une URL ws://localhost:8000, distincte de
+  // ws://127.0.0.1:8000 pour la CSP (deux origines differentes, meme si le
+  // DNS pointe pareil). Les deux formes doivent etre autorisees.
+  "ws://localhost:8000",
   "wss://noxia.ga",
   "wss://noxia.ga:8000",
   "wss://*.noxia.ga",

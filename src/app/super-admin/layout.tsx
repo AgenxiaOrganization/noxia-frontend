@@ -4,15 +4,16 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Building2, Users, CreditCard, FileText, Settings,
+  LayoutDashboard, Building2, CreditCard, FileText, Settings,
   LogOut, Menu, X, Bell, ChevronDown, Shield, Activity,
-  Package, Truck, BarChart, Globe, AlertTriangle,
-  Database, Server, ShoppingBag, UserCog, Flag, Plus,
+  Globe, AlertTriangle,
+  Server, UserCog, Flag, Plus,
   Layers, Zap, Target, Award, Crown, Star, Gift,
-  MessageCircle, Bot, Tag, ShieldCheck, Sparkles, Search
+  MessageCircle, Tag, ShieldCheck, Search
 } from 'lucide-react'
 import React from 'react'
 import { usePlatformSessionGuard } from '@/lib/hooks/usePlatformSessionGuard'
+import { useRestrictedRouteGuard } from '@/lib/hooks/useRestrictedRouteGuard'
 import { clearPlatformSession, getPlatformUser } from '@/lib/platformAuth'
 import { listInstanceCompanies, listInstancePendingVerifications, type ProxyCompany } from '@/lib/superAdminClient'
 import { listInstances, type PlatformInstance } from '@/lib/api/instances'
@@ -68,28 +69,26 @@ function ServerBadge({ server, size = 'sm' }: { server: ServerInstance; size?: '
 // (URL, clé API) indépendant de l'instance/établissement choisis, il vit
 // juste sous le sélecteur de serveur (voir plus bas) plutôt que mélangé au
 // menu métier d'un établissement précis.
+//
+// Recommandation de l'Autorité de Protection des Données Personnelles (Gabon,
+// conversation du 2026-09-19) : le back-office plateforme ne doit plus donner
+// accès aux données d'activité des établissements clients (assimilable à de
+// la surveillance de compte) — seules les sections de supervision plateforme
+// (entreprises, vérifications KYB, abonnements, alertes, paramètres, audit)
+// restent exposées. Les pages retirées ici (produits, stock, ventes,
+// fournisseurs, rapports, assistant IA, utilisateurs, journal des contenus
+// IA) ne sont pas supprimées — voir lib/superAdminRestrictedRoutes.ts, qui
+// bloque aussi leur accès direct par URL (useRestrictedRouteGuard).
 const menuItems = [
   { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard, href: '/super-admin' },
   { id: 'entreprises', label: 'Entreprises', icon: Building2, href: '/super-admin/entreprises' },
   { id: 'verifications', label: 'Vérifications', icon: ShieldCheck, href: '/super-admin/verifications' },
-  { id: 'utilisateurs', label: 'Utilisateurs', icon: Users, href: '/super-admin/utilisateurs' },
-  { id: 'produits', label: 'Produits', icon: Package, href: '/super-admin/produits' },
-  { id: 'stock', label: 'Stock global', icon: Database, href: '/super-admin/stock' },
-  { id: 'ventes', label: 'Ventes', icon: ShoppingBag, href: '/super-admin/ventes' },
-  { id: 'fournisseurs', label: 'Fournisseurs', icon: Truck, href: '/super-admin/fournisseurs' },
-  { id: 'rapports', label: 'Rapports', icon: BarChart, href: '/super-admin/rapports' },
-  { id: 'assistant', label: 'Assistant IA', icon: Bot, href: '/super-admin/assistant' },
   { id: 'abonnements', label: 'Abonnements', icon: CreditCard, href: '/super-admin/abonnements' },
   { id: 'plans', label: "Plans d'abonnement", icon: Tag, href: '/super-admin/plans' },
   { id: 'logs', label: "Journal d'audit", icon: FileText, href: '/super-admin/logs' },
   { id: 'alertes', label: 'Alertes système', icon: AlertTriangle, href: '/super-admin/alertes' },
   { id: 'notifications', label: 'Notifications', icon: MessageCircle, href: '/super-admin/notifications' },
   { id: 'parametres', label: 'Paramètres', icon: Settings, href: '/super-admin/parametres' },
-  // Conformité Art. 32/53 (Ordonnance n°0011/PR/2026, Gabon) : volontairement
-  // en dernier dans le menu, distinct du journal d'audit ci-dessus (actions
-  // utilisateurs) — celui-ci trace les métadonnées d'origine des contenus
-  // générés par l'assistant IA, restituables à la HAC sur demande.
-  { id: 'journal-ia', label: 'Journal des contenus IA', icon: Sparkles, href: '/super-admin/journal-ia' },
 ]
 
 // Contexte pour partager le serveur ET l'établissement sélectionnés
@@ -117,6 +116,7 @@ export default function SuperAdminLayout({
   children: React.ReactNode
 }) {
   usePlatformSessionGuard()
+  useRestrictedRouteGuard()
 
   // getPlatformUser() lit localStorage : au premier rendu SSR il n'existe
   // pas encore, donc on ne le resout qu'apres le montage cote client pour

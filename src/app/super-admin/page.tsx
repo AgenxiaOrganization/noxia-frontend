@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import {
@@ -11,8 +11,6 @@ import {
 import { ControleApiError, fetchControleDashboard, type DashboardStats, type ExpiredTrial } from '@/lib/controleApi'
 import { sendManualNotification } from '@/lib/superAdminClient'
 import { getContinent } from '@/lib/countriesData'
-import { ServerContext } from './layout'
-import CompanyDashboard from '@/components/super-admin/CompanyDashboard'
 
 function formatCurrency(amount: number) {
   return amount.toLocaleString() + ' FCFA'
@@ -157,12 +155,11 @@ function TrialAlertRow({ trial }: { trial: ExpiredTrial }) {
 }
 
 export default function SuperAdminDashboard() {
-  const { isGlobalMode, selectedServer, selectedCompany } = useContext(ServerContext)
-
-  if (!isGlobalMode && selectedCompany) {
-    return <CompanyDashboard instanceCode={selectedServer.id} company={selectedCompany} />
-  }
-
+  // Le tableau de bord ne varie plus selon l'entreprise selectionnee —
+  // recommandation de l'Autorite de Protection des Donnees Personnelles
+  // (Gabon) : le back-office plateforme ne doit plus afficher le detail
+  // d'activite d'un etablissement client (CompanyDashboard, retire ici),
+  // seule la vue globale de supervision plateforme reste exposee.
   return <GlobalDashboard />
 }
 

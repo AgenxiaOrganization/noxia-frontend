@@ -129,6 +129,11 @@ html.theme-white-soft.bg-white-soft {
 }
 
 @theme {
+  /* Breakpoint supplementaire sous "sm" (640px) — utile pour affiner le
+     responsive sur les petits telephones (ex: grilles 1 vs 2 colonnes) sans
+     attendre la tablette. Absent de la palette Tailwind par defaut. */
+  --breakpoint-xs: 420px;
+
   --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
   --font-display: var(--font-plus-jakarta), system-ui, -apple-system, sans-serif;
 

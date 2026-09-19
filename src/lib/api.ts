@@ -343,6 +343,28 @@ export async function loginWithEmployeeId(
 }
 
 /**
+ * Etape 1 de la recuperation de l'ID employe de l'administrateur (jamais un
+ * simple employe) — reponse toujours generique (voir backend), donc jamais
+ * d'exception ApiError attendue ici en usage normal.
+ * POST /auth/forgot-employee-id/
+ */
+export async function forgotEmployeeId(email: string, messagingCode: string): Promise<{ detail: string }> {
+  return post<{ detail: string }>('/auth/forgot-employee-id/', {
+    email,
+    messaging_code: messagingCode.toUpperCase(),
+  })
+}
+
+/**
+ * Etape 2 : consomme le token recu par email et regenere l'ID employe a cet
+ * instant precis (jamais avant, voir backend).
+ * POST /auth/recover-employee-id/
+ */
+export async function recoverEmployeeId(token: string): Promise<{ employee_id: string; company_name: string }> {
+  return post<{ employee_id: string; company_name: string }>('/auth/recover-employee-id/', { token })
+}
+
+/**
  * Connexion / inscription via Google.
  * POST /auth/google/
  *

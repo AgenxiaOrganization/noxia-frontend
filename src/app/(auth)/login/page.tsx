@@ -278,6 +278,13 @@ export default function LoginPage() {
                   <p className="text-xs mt-1" style={{ color: '#64748b' }}>
                     Code fourni par votre administrateur lors de votre enregistrement.
                   </p>
+                  <Link
+                    href="/id-employe-oublie"
+                    className="inline-block text-xs mt-1.5 hover:underline"
+                    style={{ color: '#818cf8' }}
+                  >
+                    ID employé oublié ?
+                  </Link>
                 </div>
 
                 <button

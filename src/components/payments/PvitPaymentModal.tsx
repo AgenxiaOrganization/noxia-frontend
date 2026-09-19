@@ -25,8 +25,13 @@ import { PaymentMethodLogo } from './PaymentMethodLogo'
 
 const POLL_INTERVAL_MS = 4000
 const POLL_TIMEOUT_MS = 3 * 60 * 1000 // 3 minutes — au-dela, statut incertain (voir doc MyPVit)
+// Duree minimale d'affichage du message "preparation de votre espace" une
+// fois le paiement confirme — evite un flash trop bref pour etre lu si
+// onSuccess() (rechargement de donnees ou navigation cote appelant) est en
+// realite quasi instantane.
+const FINALIZING_MIN_DISPLAY_MS = 1500
 
-type Step = 'select-method' | 'enter-number' | 'processing' | 'redirecting' | 'success' | 'failed' | 'timeout'
+type Step = 'select-method' | 'enter-number' | 'processing' | 'redirecting' | 'success' | 'finalizing' | 'failed' | 'timeout'
 
 const methodOptions: { value: PvitMethod; label: string; hint: string; disabled?: boolean }[] = [
   { value: 'AIRTEL_MONEY', label: 'Airtel Money', hint: 'Paiement mobile' },
@@ -58,8 +63,12 @@ export default function PvitPaymentModal({
   const [failureReason, setFailureReason] = useState('')
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollDeadline = useRef<number>(0)
+  const finalizingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => () => { if (pollTimer.current) clearInterval(pollTimer.current) }, [])
+  useEffect(() => () => {
+    if (pollTimer.current) clearInterval(pollTimer.current)
+    if (finalizingTimer.current) clearTimeout(finalizingTimer.current)
+  }, [])
 
   const stopPolling = () => {
     if (pollTimer.current) {
@@ -83,7 +92,15 @@ export default function PvitPaymentModal({
           stopPolling()
           setStep('success')
           toast.success(`Paiement confirmé : plan ${current.plan_name} activé.`)
-          onSuccess()
+          // Le paiement est deja acquis a cet instant (confirme par MyPVit/le
+          // backend) — le delai restant n'est que la preparation de l'espace
+          // cote appelant (rechargement de l'abonnement, parfois une
+          // navigation complete). On le dit explicitement pour que l'attente
+          // ne soit jamais confondue avec un paiement resté en suspens.
+          finalizingTimer.current = setTimeout(() => {
+            setStep('finalizing')
+            onSuccess()
+          }, FINALIZING_MIN_DISPLAY_MS)
         } else if (current.status === 'failed') {
           stopPolling()
           setFailureReason(current.failure_reason)
@@ -274,13 +291,17 @@ export default function PvitPaymentModal({
             <CheckCircle2 className="w-12 h-12" style={{ color: '#22c55e' }} />
             <p className="text-sm font-semibold text-white">Paiement confirmé !</p>
             <p className="text-xs" style={{ color: '#94a3b8' }}>Le plan {plan.name} est maintenant actif.</p>
-            <button
-              onClick={onClose}
-              className="mt-2 px-4 py-2 rounded-lg text-sm font-medium text-white"
-              style={{ background: '#4f46e5' }}
-            >
-              Fermer
-            </button>
+          </div>
+        )}
+
+        {step === 'finalizing' && (
+          <div className="flex flex-col items-center text-center py-8 gap-3">
+            <Loader2 className="w-10 h-10 animate-spin" style={{ color: '#818cf8' }} />
+            <p className="text-sm font-semibold text-white">Configuration de votre espace…</p>
+            <p className="text-xs max-w-xs" style={{ color: '#94a3b8' }}>
+              Votre paiement est confirmé, ne vous inquiétez pas. Nous préparons votre tableau de bord,
+              un instant…
+            </p>
           </div>
         )}
 
