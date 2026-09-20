@@ -297,7 +297,12 @@ function SuperAdminEntreprisesContent() {
       || c.name.toLowerCase().includes(term)
       || c.owner_email.toLowerCase().includes(term)
       || c.country.toLowerCase().includes(term)
-    const matchesStatus = selectedSubStatus === 'all' || c.subscription?.status === selectedSubStatus
+    // "suspended" est un statut a part (Company.is_suspended, mis par le
+    // super-admin) — independant de subscription.status (trialing/active/
+    // expired/canceled), une entreprise peut etre suspendue quel que soit
+    // son statut d'abonnement.
+    const matchesStatus = selectedSubStatus === 'all'
+      || (selectedSubStatus === 'suspended' ? c.is_suspended : c.subscription?.status === selectedSubStatus)
     return matchesSearch && matchesStatus
   }), [companies, searchTerm, selectedSubStatus])
 
@@ -411,6 +416,7 @@ function SuperAdminEntreprisesContent() {
           {Object.entries(subscriptionStatusConfig).map(([key, cfg]) => (
             <option key={key} value={key}>{cfg.label}</option>
           ))}
+          <option value="suspended">Suspendu</option>
         </select>
       </div>
 
@@ -450,6 +456,7 @@ function SuperAdminEntreprisesContent() {
                             </span>
                           )}
                         </div>
+                        <p className="text-[11px] font-mono" style={{ color: '#475569' }}>ID: {company.id}</p>
                         <div className="flex items-center gap-1">
                           <MapPin className="w-3 h-3 shrink-0" style={{ color: '#64748b' }} />
                           <span className="text-xs truncate" style={{ color: '#64748b' }}>{company.country}</span>
@@ -581,6 +588,7 @@ function SuperAdminEntreprisesContent() {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-white">{selectedCompany.name}</h2>
+                  <p className="text-[11px] font-mono mb-1" style={{ color: '#64748b' }}>ID: {selectedCompany.id}</p>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs flex items-center gap-1" style={{ color: '#64748b' }}>
                       <Mail className="w-3 h-3" />{selectedCompany.owner_email}

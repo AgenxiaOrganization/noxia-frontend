@@ -3,18 +3,24 @@
 import { useState, useEffect } from 'react'
 import { AlertTriangle, CreditCard, Loader2, LogOut } from 'lucide-react'
 import { toast } from 'sonner'
-import { getMySubscription, subscribeToPlan, type Plan, type Subscription } from '@/lib/api/subscription'
+import { getMySubscription, subscribeToPlan, getPlans, type Plan, type Subscription } from '@/lib/api/subscription'
 import { clearSession } from '@/lib/auth'
+import PvitPaymentModal from '@/components/payments/PvitPaymentModal'
 
 /**
  * Modal plein ecran, non fermable (pas de croix, pas de clic exterieur) —
  * affiche des que l'abonnement de l'entreprise est EXPIRED ou CANCELED (voir
- * useSubscriptionGuard). L'utilisateur ne peut faire que deux choses :
- * payer (stub Phase 1, aucune passerelle reelle) ou se deconnecter. Toute
- * autre action est bloquee cote backend de toute facon (403
- * subscription_expired), ce modal rend juste cette regle visible et
- * incontournable plutot que de laisser l'utilisateur cogner contre des
- * erreurs 403 sur chaque page.
+ * useSubscriptionGuard). L'utilisateur ne peut faire que deux choses : payer
+ * (vrai flux MyPVit, voir PvitPaymentModal) ou se deconnecter. Toute autre
+ * action est bloquee cote backend de toute facon (403 subscription_expired),
+ * ce modal rend juste cette regle visible et incontournable plutot que de
+ * laisser l'utilisateur cogner contre des erreurs 403 sur chaque page.
+ *
+ * Charge les plans reels (getPlans) plutot que des codes en dur : un plan
+ * gratuit s'active directement (subscribeToPlan), un plan payant ouvre
+ * PvitPaymentModal — jamais subscribeToPlan sur un plan payant, que
+ * SubscribeSerializer rejette systematiquement cote backend (403/400) pour
+ * une requete non-proxy (voir subscriptions.serializers.validate_plan_code).
  */
 export default function SubscriptionBlockModal({
   status,
@@ -24,13 +30,18 @@ export default function SubscriptionBlockModal({
   onResolved: () => void
 }) {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [plans, setPlans] = useState<Plan[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [payingCode, setPayingCode] = useState<Plan['code'] | null>(null)
+  const [activatingCode, setActivatingCode] = useState<Plan['code'] | null>(null)
+  const [paymentModalPlan, setPaymentModalPlan] = useState<Plan | null>(null)
 
   useEffect(() => {
-    getMySubscription()
-      .then(setSubscription)
-      .catch((e) => console.error('Erreur chargement abonnement (modal blocage)', e))
+    Promise.all([getMySubscription(), getPlans()])
+      .then(([sub, planList]) => {
+        setSubscription(sub)
+        setPlans([...planList].sort((a, b) => a.display_order - b.display_order))
+      })
+      .catch((e) => console.error('Erreur chargement abonnement/plans (modal blocage)', e))
       .finally(() => setIsLoading(false))
   }, [])
 
@@ -43,18 +54,22 @@ export default function SubscriptionBlockModal({
     : status
   const hasTrialed = Boolean(subscription?.has_trialed)
 
-  const handlePay = async (planCode: Plan['code']) => {
-    try {
-      setPayingCode(planCode)
-      const updated = await subscribeToPlan(planCode)
-      toast.success(`Paiement effectué : plan ${updated.plan.name} activé pour 30 jours.`)
-      onResolved()
-    } catch (err) {
-      console.error(err)
-      toast.error('Erreur lors du paiement.')
-    } finally {
-      setPayingCode(null)
+  const handleSelectPlan = async (plan: Plan) => {
+    if (plan.is_free || Number(plan.price) === 0) {
+      setActivatingCode(plan.code)
+      try {
+        const updated = await subscribeToPlan(plan.code)
+        toast.success(`Plan ${updated.plan.name} activé.`)
+        onResolved()
+      } catch (err) {
+        console.error(err)
+        toast.error(err instanceof Error ? err.message : "Erreur lors de l'activation du plan.")
+      } finally {
+        setActivatingCode(null)
+      }
+      return
     }
+    setPaymentModalPlan(plan)
   }
 
   return (
@@ -93,26 +108,24 @@ export default function SubscriptionBlockModal({
           </div>
         ) : (
           <div className="space-y-2.5">
-            {[
-              { code: 'starter' as const, label: 'Starter', highlight: false },
-              { code: 'premium' as const, label: 'Premium', highlight: true },
-              { code: 'business' as const, label: 'Business', highlight: false },
-            ].map((plan) => (
-              <button
-                key={plan.code}
-                onClick={() => handlePay(plan.code)}
-                disabled={payingCode !== null}
-                className="w-full py-3 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2 disabled:opacity-50"
-                style={{
-                  background: plan.highlight ? '#4f46e5' : 'rgba(99, 102, 241, 0.15)',
-                  color: plan.highlight ? '#fff' : '#818cf8',
-                  border: plan.highlight ? 'none' : '1px solid rgba(99, 102, 241, 0.3)',
-                }}
-              >
-                {payingCode === plan.code ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-                Payer et activer le plan {plan.label}
-              </button>
-            ))}
+            {plans
+              .filter((plan) => !hasTrialed || !plan.is_free)
+              .map((plan) => (
+                <button
+                  key={plan.code}
+                  onClick={() => handleSelectPlan(plan)}
+                  disabled={activatingCode !== null}
+                  className="w-full py-3 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2 disabled:opacity-50"
+                  style={{
+                    background: plan.is_featured ? '#4f46e5' : 'rgba(99, 102, 241, 0.15)',
+                    color: plan.is_featured ? '#fff' : '#818cf8',
+                    border: plan.is_featured ? 'none' : '1px solid rgba(99, 102, 241, 0.3)',
+                  }}
+                >
+                  {activatingCode === plan.code ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                  {plan.is_free || Number(plan.price) === 0 ? 'Activer' : 'Payer et activer'} le plan {plan.name}
+                </button>
+              ))}
           </div>
         )}
 
@@ -125,6 +138,21 @@ export default function SubscriptionBlockModal({
           Se déconnecter
         </button>
       </div>
+
+      {/* z-index superieur au conteneur (z-[999]) : PvitPaymentModal doit
+          rester utilisable par-dessus le blocage plein ecran. */}
+      {paymentModalPlan && (
+        <div className="relative z-[1000]">
+          <PvitPaymentModal
+            plan={paymentModalPlan}
+            onClose={() => setPaymentModalPlan(null)}
+            onSuccess={() => {
+              setPaymentModalPlan(null)
+              onResolved()
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }

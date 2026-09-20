@@ -608,9 +608,9 @@ export default function FinancePage() {
   }
 
   return (
-    <div className="p-4 space-y-4 max-w-7xl mx-auto">
+    <div className="p-3 xs:p-4 sm:p-6 space-y-4 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-900/60 p-4 rounded-xl border border-slate-800 backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-slate-900/60 p-3.5 sm:p-4 rounded-xl border border-slate-800 backdrop-blur-md">
         <div>
           <h1 className="text-xl font-bold text-white flex items-center gap-2">
             <DollarSign className="w-6 h-6 text-indigo-400" />
@@ -620,26 +620,26 @@ export default function FinancePage() {
             Pilotage financier, bilan de rentabilité, paie et fiscalité
           </p>
         </div>
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:items-center">
           <Link
             href="/verify-doc"
-            className="px-3.5 py-2 rounded-lg text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 text-sm font-medium border border-slate-700 flex items-center gap-2 transition"
+            className="col-span-2 sm:col-auto px-3.5 py-2 rounded-lg text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 text-sm font-medium border border-slate-700 flex items-center justify-center gap-2 transition"
           >
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            Vérifier un document
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span className="truncate">Vérifier un document</span>
           </Link>
           <button
             onClick={handleExportExcel}
             disabled={exportingExcel}
-            className="px-4 py-2 rounded-lg text-white text-sm font-semibold transition flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 shadow-lg shadow-indigo-600/30"
+            className="px-4 py-2 rounded-lg text-white text-sm font-semibold transition flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 shadow-lg shadow-indigo-600/30 min-w-0"
           >
-            {exportingExcel ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            Export Excel
+            {exportingExcel ? <Loader2 className="w-4 h-4 animate-spin shrink-0" /> : <Download className="w-4 h-4 shrink-0" />}
+            <span className="truncate">Export Excel</span>
           </button>
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-3 py-2 rounded-lg text-sm bg-slate-800 border border-slate-700 text-slate-300 outline-none focus:border-indigo-500 transition font-medium"
+            className="px-2.5 sm:px-3 py-2 rounded-lg text-xs sm:text-sm bg-slate-800 border border-slate-700 text-slate-300 outline-none focus:border-indigo-500 transition font-medium min-w-0"
           >
             <option value="2026-07">Juillet 2026</option>
             <option value="2026-06">Juin 2026</option>
@@ -650,8 +650,11 @@ export default function FinancePage() {
         </div>
       </div>
 
-      {/* Tabs Nav */}
-      <div className="flex gap-2 overflow-x-auto pb-1 border-b border-slate-800">
+      {/* Tabs Nav — defilement horizontal sur mobile (4 onglets aux labels
+          longs ne tiennent pas sur un ecran de telephone) : padding/texte
+          reduits sous sm pour montrer davantage d'onglets a la fois et
+          suggerer plus clairement qu'il y en a d'autres a faire glisser. */}
+      <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-1 border-b border-slate-800 -mx-3 px-3 xs:mx-0 xs:px-0 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
         {[
           { id: 'compta', label: 'Comptabilité & Charges', icon: Receipt },
           { id: 'tresorerie', label: 'Trésorerie & Caisses', icon: Wallet },
@@ -664,11 +667,11 @@ export default function FinancePage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-2 whitespace-nowrap ${
+              className={`px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 ${
                 isActive ? 'bg-indigo-600/20 border border-indigo-500 text-indigo-400' : 'bg-slate-800/40 border border-transparent text-slate-400 hover:text-white hover:bg-slate-800'
               }`}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
               {tab.label}
             </button>
           )
@@ -724,16 +727,16 @@ export default function FinancePage() {
 
               {/* Dépenses Controls & Table */}
               <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4 backdrop-blur-md space-y-4">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-white">Journal des Charges & Dépenses</h3>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-white text-sm sm:text-base">Journal des Charges & Dépenses</h3>
                     <span className="text-xs px-2.5 py-0.5 rounded bg-slate-800 text-indigo-400 border border-slate-700 font-mono">
                       {filteredExpenses.length} entrée(s) ({selectedMonth})
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                    <div className="relative flex-1 sm:w-64">
+                  <div className="flex flex-col xs:flex-row flex-wrap gap-2 w-full">
+                    <div className="relative w-full xs:flex-1 xs:min-w-[160px]">
                       <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
                       <input
                         type="text"
@@ -746,7 +749,7 @@ export default function FinancePage() {
                     <select
                       value={categoryFilter}
                       onChange={(e) => setCategoryFilter(e.target.value)}
-                      className="px-3 py-1.5 rounded-lg text-sm bg-slate-800 border border-slate-700 text-slate-300 outline-none"
+                      className="w-full xs:w-auto px-3 py-1.5 rounded-lg text-sm bg-slate-800 border border-slate-700 text-slate-300 outline-none"
                     >
                       <option value="all">Toutes les catégories</option>
                       <option value="loyer">Loyer</option>
@@ -759,7 +762,7 @@ export default function FinancePage() {
                     </select>
                     <button
                       onClick={handleOpenAddExpense}
-                      className="px-3 py-1.5 rounded-lg text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center gap-1.5 transition shadow-md shadow-emerald-600/20"
+                      className="w-full xs:w-auto px-3 py-1.5 rounded-lg text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center justify-center gap-1.5 transition shadow-md shadow-emerald-600/20"
                     >
                       <Plus className="w-4 h-4" />
                       Ajouter une charge
@@ -767,65 +770,103 @@ export default function FinancePage() {
                   </div>
                 </div>
 
-                {/* Table Charges */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-800/60 text-slate-400 text-xs uppercase border-b border-slate-800">
-                      <tr>
-                        <th className="py-3 px-3">Date</th>
-                        <th className="py-3 px-3">Libellé</th>
-                        <th className="py-3 px-3">Catégorie</th>
-                        <th className="py-3 px-3">Paiement</th>
-                        <th className="py-3 px-3 text-right">Montant</th>
-                        <th className="py-3 px-3 text-center">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                      {filteredExpenses.length === 0 ? (
-                        <tr>
-                          <td colSpan={6} className="text-center py-8 text-slate-500">
-                            Aucune charge enregistrée pour cette période ({selectedMonth}).
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredExpenses.map(exp => (
-                          <tr key={exp.id} className="hover:bg-slate-800/40 transition">
-                            <td className="py-3 px-3 text-slate-400 font-mono text-xs">{exp.date}</td>
-                            <td className="py-3 px-3 font-medium text-white">
-                              {exp.title}
-                              {exp.description && <p className="text-xs text-slate-500 font-normal">{exp.description}</p>}
-                            </td>
-                            <td className="py-3 px-3">
-                              <span className="px-2 py-0.5 rounded text-xs bg-slate-800 text-indigo-300 border border-slate-700">
-                                {exp.category_display || exp.category}
-                              </span>
-                            </td>
-                            <td className="py-3 px-3 text-xs text-slate-400">{exp.payment_method_display || exp.payment_method}</td>
-                            <td className="py-3 px-3 text-right font-bold text-rose-400">
-                              {parseFloat(String(exp.amount)).toLocaleString()} F
-                            </td>
-                            <td className="py-3 px-3 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <button
-                                  onClick={() => handleOpenEditExpense(exp)}
-                                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-indigo-400 transition"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => setDeletingExpenseId(exp.id)}
-                                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-rose-400 transition"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
+                {/* Charges : cartes empilees sous lg (6 colonnes n'ont pas la
+                    place de respirer sur mobile), tableau classique au-dela. */}
+                {filteredExpenses.length === 0 ? (
+                  <div className="text-center py-8 text-slate-500 text-sm">
+                    Aucune charge enregistrée pour cette période ({selectedMonth}).
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-3 lg:hidden">
+                      {filteredExpenses.map(exp => (
+                        <div key={exp.id} className="rounded-xl p-3.5 space-y-2.5 bg-slate-800/40 border border-slate-800">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-medium text-white truncate">{exp.title}</p>
+                              {exp.description && <p className="text-xs text-slate-500 truncate">{exp.description}</p>}
+                            </div>
+                            <p className="font-bold text-rose-400 shrink-0">{parseFloat(String(exp.amount)).toLocaleString()} F</p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap text-xs">
+                            <span className="text-slate-400 font-mono">{exp.date}</span>
+                            <span className="px-2 py-0.5 rounded bg-slate-800 text-indigo-300 border border-slate-700">
+                              {exp.category_display || exp.category}
+                            </span>
+                            <span className="text-slate-400">{exp.payment_method_display || exp.payment_method}</span>
+                          </div>
+                          <div className="flex items-center gap-2 pt-1 border-t border-slate-800/80">
+                            <button
+                              onClick={() => handleOpenEditExpense(exp)}
+                              className="flex-1 py-1.5 rounded text-xs font-medium bg-slate-800 hover:bg-slate-700 text-indigo-400 transition flex items-center justify-center gap-1.5"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                              Modifier
+                            </button>
+                            <button
+                              onClick={() => setDeletingExpenseId(exp.id)}
+                              className="flex-1 py-1.5 rounded text-xs font-medium bg-slate-800 hover:bg-slate-700 text-rose-400 transition flex items-center justify-center gap-1.5"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              Supprimer
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="hidden lg:block overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-800/60 text-slate-400 text-xs uppercase border-b border-slate-800">
+                          <tr>
+                            <th className="py-3 px-3">Date</th>
+                            <th className="py-3 px-3">Libellé</th>
+                            <th className="py-3 px-3">Catégorie</th>
+                            <th className="py-3 px-3">Paiement</th>
+                            <th className="py-3 px-3 text-right">Montant</th>
+                            <th className="py-3 px-3 text-center">Actions</th>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                          {filteredExpenses.map(exp => (
+                            <tr key={exp.id} className="hover:bg-slate-800/40 transition">
+                              <td className="py-3 px-3 text-slate-400 font-mono text-xs">{exp.date}</td>
+                              <td className="py-3 px-3 font-medium text-white">
+                                {exp.title}
+                                {exp.description && <p className="text-xs text-slate-500 font-normal">{exp.description}</p>}
+                              </td>
+                              <td className="py-3 px-3">
+                                <span className="px-2 py-0.5 rounded text-xs bg-slate-800 text-indigo-300 border border-slate-700">
+                                  {exp.category_display || exp.category}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 text-xs text-slate-400">{exp.payment_method_display || exp.payment_method}</td>
+                              <td className="py-3 px-3 text-right font-bold text-rose-400">
+                                {parseFloat(String(exp.amount)).toLocaleString()} F
+                              </td>
+                              <td className="py-3 px-3 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={() => handleOpenEditExpense(exp)}
+                                    className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-indigo-400 transition"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingExpenseId(exp.id)}
+                                    className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-rose-400 transition"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
               </div>
             </>
           )}
@@ -846,12 +887,12 @@ export default function FinancePage() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="lg:col-span-2 rounded-xl border border-slate-800 bg-slate-900/80 p-4 backdrop-blur-md space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-white text-base">Configuration des Caisses ({cashRegisters.length})</h3>
+                <div className="lg:col-span-2 rounded-xl border border-slate-800 bg-slate-900/80 p-3.5 sm:p-4 backdrop-blur-md space-y-3">
+                  <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2">
+                    <h3 className="font-semibold text-white text-sm sm:text-base">Configuration des Caisses ({cashRegisters.length})</h3>
                     <button
                       onClick={handleOpenAddCaisse}
-                      className="px-3 py-1.5 rounded-lg text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center gap-1.5 transition shadow-md shadow-emerald-600/20"
+                      className="w-full xs:w-auto px-3 py-1.5 rounded-lg text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center justify-center gap-1.5 transition shadow-md shadow-emerald-600/20"
                     >
                       <Plus className="w-4 h-4" />
                       Ajouter une caisse
@@ -909,87 +950,152 @@ export default function FinancePage() {
           {/* TAB 3: SALAIRES */}
           {activeTab === 'salaires' && (
             <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4 backdrop-blur-md space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-white text-base">Gestion de la Paie & Fiches de Paie</h3>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-white text-sm sm:text-base">Gestion de la Paie & Fiches de Paie</h3>
                   <p className="text-xs text-slate-400">Masse salariale totale ({selectedMonth}) : {totalPayroll.toLocaleString()} F</p>
                 </div>
                 <button
                   onClick={handleOpenAddPayroll}
-                  className="px-3 py-1.5 rounded-lg text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-medium flex items-center gap-1.5 transition"
+                  className="w-full sm:w-auto shrink-0 px-3 py-1.5 rounded-lg text-sm bg-indigo-600 hover:bg-indigo-500 text-white font-medium flex items-center justify-center gap-1.5 transition"
                 >
                   <Plus className="w-4 h-4" />
                   Nouvelle Fiche de Paie
                 </button>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-800/60 text-slate-400 text-xs uppercase border-b border-slate-800">
-                    <tr>
-                      <th className="py-3 px-3">Employé</th>
-                      <th className="py-3 px-3">Base</th>
-                      <th className="py-3 px-3">Primes</th>
-                      <th className="py-3 px-3">Commissions</th>
-                      <th className="py-3 px-3">Déductions</th>
-                      <th className="py-3 px-3 text-right">Net à payer</th>
-                      <th className="py-3 px-3 text-center">Statut</th>
-                      <th className="py-3 px-3 text-center">Export PDF</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                    {payrolls.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="text-center py-8 text-slate-500">
-                          Aucune fiche de paie enregistrée pour le mois {selectedMonth}.
-                        </td>
-                      </tr>
-                    ) : (
-                      payrolls.map(pay => (
-                        <tr key={pay.id} className="hover:bg-slate-800/40 transition">
-                          <td className="py-3 px-3 font-medium text-white">
-                            {pay.employee_detail ? `${pay.employee_detail.first_name} ${pay.employee_detail.last_name}` : `Employé #${pay.employee}`}
-                            <p className="text-xs text-slate-500">{pay.employee_detail?.email}</p>
-                          </td>
-                          <td className="py-3 px-3">{parseFloat(String(pay.base_salary)).toLocaleString()} F</td>
-                          <td className="py-3 px-3 text-emerald-400">+{parseFloat(String(pay.prime)).toLocaleString()} F</td>
-                          <td className="py-3 px-3 text-indigo-400">
-                            +{parseFloat(String(pay.commission_amount)).toLocaleString()} F
-                            <span className="text-xs text-slate-500 ml-1">({pay.commission_rate}%)</span>
-                          </td>
-                          <td className="py-3 px-3 text-rose-400">-{parseFloat(String(pay.deductions)).toLocaleString()} F</td>
-                          <td className="py-3 px-3 text-right font-bold text-white text-base">
-                            {parseFloat(String(pay.net_salary)).toLocaleString()} F
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${pay.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                              {pay.status_display || pay.status}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => handleDownloadPayslip(pay)}
-                                disabled={downloadingPdfId === pay.id}
-                                className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-indigo-400 text-xs font-medium flex items-center gap-1 transition"
-                              >
-                                {downloadingPdfId === pay.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-                                PDF
-                              </button>
-                              <button
-                                onClick={() => handleOpenEditPayroll(pay)}
-                                className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-indigo-400 transition"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </td>
+              {/* Salaires : cartes empilees sous lg (8 colonnes), tableau
+                  classique au-dela — meme pattern que Charges ci-dessus. */}
+              {payrolls.length === 0 ? (
+                <div className="text-center py-8 text-slate-500 text-sm">
+                  Aucune fiche de paie enregistrée pour le mois {selectedMonth}.
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3 lg:hidden">
+                    {payrolls.map(pay => (
+                      <div key={pay.id} className="rounded-xl p-3.5 space-y-2.5 bg-slate-800/40 border border-slate-800">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-medium text-white truncate">
+                              {pay.employee_detail ? `${pay.employee_detail.first_name} ${pay.employee_detail.last_name}` : `Employé #${pay.employee}`}
+                            </p>
+                            <p className="text-xs text-slate-500 truncate">{pay.employee_detail?.email}</p>
+                          </div>
+                          <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-semibold ${pay.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                            {pay.status_display || pay.status}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="rounded-lg bg-slate-900/60 px-2.5 py-2">
+                            <p className="text-slate-500">Base</p>
+                            <p className="text-slate-200 font-medium">{parseFloat(String(pay.base_salary)).toLocaleString()} F</p>
+                          </div>
+                          <div className="rounded-lg bg-slate-900/60 px-2.5 py-2">
+                            <p className="text-slate-500">Primes</p>
+                            <p className="text-emerald-400 font-medium">+{parseFloat(String(pay.prime)).toLocaleString()} F</p>
+                          </div>
+                          <div className="rounded-lg bg-slate-900/60 px-2.5 py-2">
+                            <p className="text-slate-500">Commissions</p>
+                            <p className="text-indigo-400 font-medium">
+                              +{parseFloat(String(pay.commission_amount)).toLocaleString()} F
+                              <span className="text-slate-500 ml-1">({pay.commission_rate}%)</span>
+                            </p>
+                          </div>
+                          <div className="rounded-lg bg-slate-900/60 px-2.5 py-2">
+                            <p className="text-slate-500">Déductions</p>
+                            <p className="text-rose-400 font-medium">-{parseFloat(String(pay.deductions)).toLocaleString()} F</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1 border-t border-slate-800/80">
+                          <span className="text-xs text-slate-400">Net à payer</span>
+                          <span className="font-bold text-white text-base">{parseFloat(String(pay.net_salary)).toLocaleString()} F</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleDownloadPayslip(pay)}
+                            disabled={downloadingPdfId === pay.id}
+                            className="flex-1 py-1.5 rounded bg-slate-900/60 hover:bg-slate-700 text-indigo-400 text-xs font-medium flex items-center justify-center gap-1.5 transition"
+                          >
+                            {downloadingPdfId === pay.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                            PDF
+                          </button>
+                          <button
+                            onClick={() => handleOpenEditPayroll(pay)}
+                            className="flex-1 py-1.5 rounded bg-slate-900/60 hover:bg-slate-700 text-slate-300 text-xs font-medium flex items-center justify-center gap-1.5 transition"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                            Modifier
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-800/60 text-slate-400 text-xs uppercase border-b border-slate-800">
+                        <tr>
+                          <th className="py-3 px-3">Employé</th>
+                          <th className="py-3 px-3">Base</th>
+                          <th className="py-3 px-3">Primes</th>
+                          <th className="py-3 px-3">Commissions</th>
+                          <th className="py-3 px-3">Déductions</th>
+                          <th className="py-3 px-3 text-right">Net à payer</th>
+                          <th className="py-3 px-3 text-center">Statut</th>
+                          <th className="py-3 px-3 text-center">Export PDF</th>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                        {payrolls.map(pay => (
+                          <tr key={pay.id} className="hover:bg-slate-800/40 transition">
+                            <td className="py-3 px-3 font-medium text-white">
+                              {pay.employee_detail ? `${pay.employee_detail.first_name} ${pay.employee_detail.last_name}` : `Employé #${pay.employee}`}
+                              <p className="text-xs text-slate-500">{pay.employee_detail?.email}</p>
+                            </td>
+                            <td className="py-3 px-3">{parseFloat(String(pay.base_salary)).toLocaleString()} F</td>
+                            <td className="py-3 px-3 text-emerald-400">+{parseFloat(String(pay.prime)).toLocaleString()} F</td>
+                            <td className="py-3 px-3 text-indigo-400">
+                              +{parseFloat(String(pay.commission_amount)).toLocaleString()} F
+                              <span className="text-xs text-slate-500 ml-1">({pay.commission_rate}%)</span>
+                            </td>
+                            <td className="py-3 px-3 text-rose-400">-{parseFloat(String(pay.deductions)).toLocaleString()} F</td>
+                            <td className="py-3 px-3 text-right font-bold text-white text-base">
+                              {parseFloat(String(pay.net_salary)).toLocaleString()} F
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <span className={`px-2 py-0.5 rounded text-xs font-semibold ${pay.status === 'paid' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                                {pay.status_display || pay.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => handleDownloadPayslip(pay)}
+                                  disabled={downloadingPdfId === pay.id}
+                                  className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-indigo-400 text-xs font-medium flex items-center gap-1 transition"
+                                >
+                                  {downloadingPdfId === pay.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
+                                  PDF
+                                </button>
+                                <button
+                                  onClick={() => handleOpenEditPayroll(pay)}
+                                  className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-indigo-400 transition"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

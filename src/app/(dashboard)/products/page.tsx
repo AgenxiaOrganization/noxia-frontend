@@ -247,48 +247,48 @@ export default function ProductsPage() {
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-3 xs:p-4 sm:p-6 space-y-4 max-w-[1600px] mx-auto">
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex flex-col gap-3">
         <div>
-          <h1 className="text-xl font-bold text-white">Produits</h1>
-          <p className="text-sm" style={{ color: '#94a3b8' }}>
+          <h1 className="text-lg sm:text-xl font-bold text-white">Produits</h1>
+          <p className="text-xs sm:text-sm" style={{ color: '#94a3b8' }}>
             {products.length} produits • {products.filter(p => p.stock <= (p.minStock ?? 10) && p.stock >= 0).length} alertes stock
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-1 xs:grid-cols-3 gap-2">
           <button
             onClick={() => setIsCharacteristicsModalOpen(true)}
-            className="px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 border border-slate-700"
+            className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-1.5 sm:gap-2 border border-slate-700 min-w-0"
             style={{
               background: 'rgba(51, 65, 85, 0.5)',
               color: '#94a3b8'
             }}
           >
-            <Sparkles className="w-4 h-4" />
-            Modèles de caractéristiques
+            <Sparkles className="w-4 h-4 shrink-0" />
+            <span className="truncate">Modèles de caractéristiques</span>
           </button>
           <button
             onClick={() => setIsQrMenuModalOpen(true)}
-            className="px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 border border-slate-700"
+            className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-1.5 sm:gap-2 border border-slate-700 min-w-0"
             style={{
               background: 'rgba(51, 65, 85, 0.5)',
               color: '#94a3b8'
             }}
           >
-            <QrCode className="w-4 h-4" />
-            Menu par QR code
+            <QrCode className="w-4 h-4 shrink-0" />
+            <span className="truncate">Menu par QR code</span>
           </button>
           <button
             onClick={() => openModal()}
-            className="px-4 py-2 rounded-lg text-white text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center gap-2"
+            className="px-3 sm:px-4 py-2 rounded-lg text-white text-xs sm:text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-1.5 sm:gap-2 min-w-0"
             style={{
               background: '#4f46e5',
               boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
             }}
           >
-            <Plus className="w-4 h-4" />
-            Ajouter un produit
+            <Plus className="w-4 h-4 shrink-0" />
+            <span className="truncate">Ajouter un produit</span>
           </button>
         </div>
       </div>
@@ -309,12 +309,12 @@ export default function ProductsPage() {
             }}
           />
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
+        <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 -mx-3 px-3 xs:mx-0 xs:px-0">
           {categories.map(cat => (
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${selectedCategory === cat ? 'border' : 'border-transparent'
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap shrink-0 ${selectedCategory === cat ? 'border' : 'border-transparent'
                 }`}
               style={{
                 background: selectedCategory === cat ? 'rgba(99, 102, 241, 0.15)' : 'rgba(51, 65, 85, 0.3)',
@@ -414,20 +414,20 @@ export default function ProductsPage() {
                             </div>
                             
                             {/* Ajouter un attribut à cet article */}
-                            <div className="flex gap-2">
-                              <input 
+                            <div className="flex flex-col xs:flex-row gap-2">
+                              <input
                                 type="text"
                                 placeholder="Clé (ex: Volume)"
                                 id={`attrKey-${char.id}`}
-                                className="w-1/3 rounded px-2 py-1 text-xs bg-slate-900 border border-slate-700 text-white"
+                                className="w-full xs:flex-1 min-w-0 rounded px-2 py-1.5 xs:py-1 text-xs bg-slate-900 border border-slate-700 text-white"
                               />
-                              <input 
+                              <input
                                 type="text"
                                 placeholder="Valeur (ex: 75cl)"
                                 id={`attrVal-${char.id}`}
-                                className="w-1/3 rounded px-2 py-1 text-xs bg-slate-900 border border-slate-700 text-white"
+                                className="w-full xs:flex-1 min-w-0 rounded px-2 py-1.5 xs:py-1 text-xs bg-slate-900 border border-slate-700 text-white"
                               />
-                              <button 
+                              <button
                                 onClick={async () => {
                                   const keyInput = document.getElementById(`attrKey-${char.id}`) as HTMLInputElement;
                                   const valInput = document.getElementById(`attrVal-${char.id}`) as HTMLInputElement;
@@ -442,7 +442,7 @@ export default function ProductsPage() {
                                     } catch (e) { console.error(e); }
                                   }
                                 }}
-                                className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-medium"
+                                className="w-full xs:w-auto shrink-0 px-2 py-1.5 xs:py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-xs font-medium"
                               >
                                 Ajouter attr.
                               </button>
@@ -454,14 +454,14 @@ export default function ProductsPage() {
                       <p className="text-xs text-slate-500 mb-4 italic">Aucun modèle (article) configuré pour cette catégorie.</p>
                     )}
 
-                    <div className="flex gap-2 border-t border-slate-700 pt-3">
-                      <input 
+                    <div className="flex flex-col xs:flex-row gap-2 border-t border-slate-700 pt-3">
+                      <input
                         type="text"
                         placeholder="Nouvel article (ex: Bière, Whisky)..."
                         id={`newCharName-${cat.id}`}
-                        className="flex-1 rounded px-3 py-1.5 text-sm bg-slate-900 border border-slate-700 text-white"
+                        className="flex-1 min-w-0 rounded px-3 py-1.5 text-sm bg-slate-900 border border-slate-700 text-white"
                       />
-                      <button 
+                      <button
                         onClick={async () => {
                           const input = document.getElementById(`newCharName-${cat.id}`) as HTMLInputElement;
                           if (input && input.value.trim()) {
@@ -476,7 +476,7 @@ export default function ProductsPage() {
                             }
                           }
                         }}
-                        className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm font-medium transition"
+                        className="shrink-0 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm font-medium transition"
                       >
                         Créer le modèle
                       </button>

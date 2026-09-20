@@ -247,47 +247,47 @@ export default function MessagingPage() {
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-3 xs:p-4 sm:p-6 space-y-4 max-w-[1400px] mx-auto">
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex flex-col gap-3">
         <div>
-          <h1 className="text-xl font-bold text-white">Messagerie</h1>
-          <p className="text-sm" style={{ color: '#94a3b8' }}>
+          <h1 className="text-lg sm:text-xl font-bold text-white">Messagerie</h1>
+          <p className="text-xs sm:text-sm" style={{ color: '#94a3b8' }}>
             Gérez vos communications via WhatsApp et Telegram
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:w-auto">
           <button
             onClick={() => toggleWhatsAppBot(!isWhatsAppActive)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 ${
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 sm:gap-2 min-w-0 ${
               isWhatsAppActive ? 'text-white' : 'text-dark-300'
             }`}
-            style={{ 
+            style={{
               background: isWhatsAppActive ? 'rgba(34, 197, 94, 0.15)' : 'rgba(51, 65, 85, 0.3)',
               border: isWhatsAppActive ? '1px solid #22c55e' : '1px solid #334155'
             }}
           >
-            <Smartphone className="w-4 h-4" style={{ color: isWhatsAppActive ? '#22c55e' : '#64748b' }} />
-            WhatsApp {isWhatsAppActive ? '✓ Actif' : 'Inactif'}
+            <Smartphone className="w-4 h-4 shrink-0" style={{ color: isWhatsAppActive ? '#22c55e' : '#64748b' }} />
+            <span className="truncate">WhatsApp {isWhatsAppActive ? '✓ Actif' : 'Inactif'}</span>
           </button>
           <button
             onClick={() => toggleTelegramBot(!isTelegramActive)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 ${
+            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 sm:gap-2 min-w-0 ${
               isTelegramActive ? 'text-white' : 'text-dark-300'
             }`}
-            style={{ 
+            style={{
               background: isTelegramActive ? 'rgba(59, 130, 246, 0.15)' : 'rgba(51, 65, 85, 0.3)',
               border: isTelegramActive ? '1px solid #3b82f6' : '1px solid #334155'
             }}
           >
-            <Send className="w-4 h-4" style={{ color: isTelegramActive ? '#3b82f6' : '#64748b' }} />
-            Telegram {isTelegramActive ? '✓ Actif' : 'Inactif'}
+            <Send className="w-4 h-4 shrink-0" style={{ color: isTelegramActive ? '#3b82f6' : '#64748b' }} />
+            <span className="truncate">Telegram {isTelegramActive ? '✓ Actif' : 'Inactif'}</span>
           </button>
         </div>
       </div>
 
       {/* TABS */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
+      <div className="flex gap-2 overflow-x-auto pb-2 -mx-3 px-3 xs:mx-0 xs:px-0 scrollbar-thin scrollbar-thumb-dark-700 scrollbar-track-transparent">
         {[
           { id: 'chat', label: 'Simulation d\'activation', icon: MessageSquare },
           { id: 'activation', label: 'Activation', icon: Power },
@@ -298,7 +298,7 @@ export default function MessagingPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 whitespace-nowrap ${
+              className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition flex items-center gap-1.5 sm:gap-2 whitespace-nowrap shrink-0 ${
                 activeTab === tab.id ? 'border' : 'border-transparent'
               }`}
               style={{
@@ -307,7 +307,7 @@ export default function MessagingPage() {
                 color: activeTab === tab.id ? '#818cf8' : '#94a3b8'
               }}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-4 h-4 shrink-0" />
               {tab.label}
             </button>
           )
@@ -317,9 +317,9 @@ export default function MessagingPage() {
       {/* SIMULATION D'ACTIVATION (GIFS) */}
       {activeTab === 'chat' && (
         <div className="w-full flex justify-center">
-          <div 
-            className="rounded-xl border p-6 flex flex-col items-center gap-4 w-full max-w-[600px]"
-            style={{ 
+          <div
+            className="rounded-xl border p-3.5 sm:p-6 flex flex-col items-center gap-4 w-full max-w-[600px]"
+            style={{
               background: '#1e293b',
               borderColor: '#334155'
             }}
@@ -376,7 +376,7 @@ export default function MessagingPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* WhatsApp */}
           <div 
-            className="rounded-xl border p-4"
+            className="rounded-xl border p-3.5 sm:p-4"
             style={{ 
               background: '#1e293b',
               borderColor: '#334155'
@@ -402,11 +402,11 @@ export default function MessagingPage() {
                 <p className="text-xs" style={{ color: '#94a3b8' }}>Numéro du bot</p>
                 {botNumber ? (
                   <>
-                    <div className="flex items-center gap-2 mt-1">
-                      <p className="font-semibold text-white">{botNumber}</p>
+                    <div className="flex items-center gap-2 mt-1 min-w-0">
+                      <p className="font-semibold text-white truncate min-w-0">{botNumber}</p>
                       <button
                         onClick={() => copyToClipboard(botNumber, "Numéro du bot")}
-                        className="p-1 rounded hover:bg-white/10 transition"
+                        className="p-1 rounded hover:bg-white/10 transition shrink-0"
                         style={{ color: '#94a3b8' }}
                       >
                         <Copy className="w-4 h-4" />
@@ -499,7 +499,7 @@ export default function MessagingPage() {
 
           {/* Telegram */}
           <div 
-            className="rounded-xl border p-4"
+            className="rounded-xl border p-3.5 sm:p-4"
             style={{ 
               background: '#1e293b',
               borderColor: '#334155'
@@ -531,13 +531,13 @@ export default function MessagingPage() {
                 style={{ background: 'rgba(51, 65, 85, 0.3)' }}
               >
                 <p className="text-xs" style={{ color: '#94a3b8' }}>Lien d'invitation</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <code className="text-sm font-mono truncate" style={{ color: '#3b82f6' }}>
+                <div className="flex items-center gap-2 mt-1 min-w-0">
+                  <code className="text-sm font-mono truncate min-w-0" style={{ color: '#3b82f6' }}>
                     {telegramLink}
                   </code>
                   <button
                     onClick={() => copyToClipboard(telegramLink, "Lien d'invitation")}
-                    className="p-1 rounded hover:bg-white/10 transition"
+                    className="p-1 rounded hover:bg-white/10 transition shrink-0"
                     style={{ color: '#94a3b8' }}
                   >
                     <Copy className="w-4 h-4" />
@@ -573,139 +573,225 @@ export default function MessagingPage() {
 
       {/* LIAISON EMPLOYÉS */}
       {activeTab === 'employees' && (
-        <div 
-          className="rounded-xl border p-4"
-          style={{ 
+        <div
+          className="rounded-xl border p-3.5 sm:p-4"
+          style={{
             background: '#1e293b',
             borderColor: '#334155'
           }}
         >
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="font-semibold text-white">Liaison des employés</h3>
-              <p className="text-xs mt-0.5" style={{ color: '#64748b' }}>
-                Liste des employés ayant connecté leur bot WhatsApp ou Telegram.
-              </p>
-            </div>
+          <div className="mb-4">
+            <h3 className="font-semibold text-white text-sm sm:text-base">Liaison des employés</h3>
+            <p className="text-xs mt-0.5" style={{ color: '#64748b' }}>
+              Liste des employés ayant connecté leur bot WhatsApp ou Telegram.
+            </p>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b" style={{ borderColor: '#334155' }}>
-                  <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Employé</th>
-                  <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Rôle</th>
-                  <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Sessions connectées</th>
-                  <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Statut</th>
-                  <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={5} className="px-3 py-8 text-center text-sm" style={{ color: '#64748b' }}>
-                      <RefreshCw className="w-5 h-5 animate-spin inline mr-2 text-primary-400" />
-                      Chargement des liaisons...
-                    </td>
-                  </tr>
-                ) : employees.filter(emp => emp.isBotLinked).length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-3 py-8 text-center text-sm" style={{ color: '#64748b' }}>
-                      Aucun employé n'a encore lié son bot.
-                    </td>
-                  </tr>
-                ) : (
-                  employees.filter(emp => emp.isBotLinked).map((emp) => (
-                    <tr key={emp.id} className="border-b" style={{ borderColor: '#334155' }}>
-                      <td className="px-3 py-2 text-white">
-                        <div>
-                          <p className="font-medium text-white">{emp.name}</p>
-                          <p className="text-xs" style={{ color: '#64748b' }}>{emp.email}</p>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <span 
-                          className="text-xs px-2 py-0.5 rounded-full"
-                          style={{ 
-                            background: 'rgba(99, 102, 241, 0.15)',
-                            color: '#818cf8'
-                          }}
-                        >
-                          {emp.role}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex flex-col gap-2">
-                          {emp.botSessions.map((session: any) => (
-                            <div key={session.id} className="flex items-center gap-2 text-xs">
-                              <span 
-                                className="px-2 py-0.5 rounded font-medium"
-                                style={{ 
-                                  background: session.platform === 'whatsapp' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                                  color: session.platform === 'whatsapp' ? '#22c55e' : '#3b82f6'
-                                }}
-                              >
-                                {session.platform_display}
-                              </span>
-                              <code className="font-mono text-white bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700">
-                                {session.external_id}
-                              </code>
-                              <button
-                                onClick={() => handleUnlinkSession(session.id, emp.name, session.platform_display)}
-                                className="text-red-400 hover:text-red-300 transition-colors p-0.5 hover:bg-red-500/10 rounded"
-                                title="Délier ce compte"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <span 
-                          className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400"
-                        >
-                          ✓ Lié & Actif
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleRegenerateId(emp)}
-                            className="text-xs px-2.5 py-1 rounded transition hover:opacity-90 font-medium"
-                            style={{ 
-                              background: 'rgba(99, 102, 241, 0.15)',
-                              color: '#818cf8',
-                              border: '1px solid rgba(99, 102, 241, 0.3)'
+          {isLoading ? (
+            <div className="px-3 py-8 text-center text-sm" style={{ color: '#64748b' }}>
+              <RefreshCw className="w-5 h-5 animate-spin inline mr-2 text-primary-400" />
+              Chargement des liaisons...
+            </div>
+          ) : employees.filter(emp => emp.isBotLinked).length === 0 ? (
+            <div className="px-3 py-8 text-center text-sm" style={{ color: '#64748b' }}>
+              Aucun employé n'a encore lié son bot.
+            </div>
+          ) : (
+            <>
+              {/* Cartes empilees sous lg : 5 colonnes dans un tableau classique
+                  n'ont pas la place de respirer sur mobile (sessions liees en
+                  particulier, qui peuvent contenir plusieurs plateformes par
+                  employe) — une carte verticale par employe reste lisible a
+                  n'importe quelle largeur d'ecran. */}
+              <div className="space-y-3 lg:hidden">
+                {employees.filter(emp => emp.isBotLinked).map((emp) => (
+                  <div
+                    key={emp.id}
+                    className="rounded-xl p-3.5 space-y-3"
+                    style={{ background: 'rgba(51, 65, 85, 0.25)', border: '1px solid #334155' }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-medium text-white truncate">{emp.name}</p>
+                        <p className="text-xs truncate" style={{ color: '#64748b' }}>{emp.email}</p>
+                      </div>
+                      <span
+                        className="text-[11px] px-2 py-0.5 rounded-full shrink-0 bg-green-500/20 text-green-400"
+                      >
+                        ✓ Lié & Actif
+                      </span>
+                    </div>
+
+                    <span
+                      className="inline-block text-xs px-2 py-0.5 rounded-full"
+                      style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}
+                    >
+                      {emp.role}
+                    </span>
+
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] font-medium" style={{ color: '#94a3b8' }}>Sessions connectées</p>
+                      {emp.botSessions.map((session: any) => (
+                        <div key={session.id} className="flex items-center gap-2 text-xs flex-wrap">
+                          <span
+                            className="px-2 py-0.5 rounded font-medium shrink-0"
+                            style={{
+                              background: session.platform === 'whatsapp' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                              color: session.platform === 'whatsapp' ? '#22c55e' : '#3b82f6'
                             }}
                           >
-                            Régénérer ID
-                          </button>
+                            {session.platform_display}
+                          </span>
+                          <code className="font-mono text-white bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700 truncate min-w-0">
+                            {session.external_id}
+                          </code>
                           <button
-                            onClick={() => handleSendId(emp)}
-                            className="text-xs px-2.5 py-1 rounded transition flex items-center gap-1 hover:bg-white/10"
-                            style={{ 
-                              background: 'rgba(255, 255, 255, 0.05)',
-                              color: '#94a3b8',
-                              border: '1px solid #334155'
-                            }}
-                            title="Renvoyer les accès de connexion par e-mail"
+                            onClick={() => handleUnlinkSession(session.id, emp.name, session.platform_display)}
+                            className="text-red-400 hover:text-red-300 transition-colors p-0.5 hover:bg-red-500/10 rounded shrink-0 ml-auto"
+                            title="Délier ce compte"
                           >
-                            <Mail className="w-3 h-3" />
-                            Renvoyer
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                      </td>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-col xs:flex-row gap-2 pt-1">
+                      <button
+                        onClick={() => handleRegenerateId(emp)}
+                        className="text-xs px-2.5 py-2 xs:py-1.5 rounded transition hover:opacity-90 font-medium flex-1"
+                        style={{
+                          background: 'rgba(99, 102, 241, 0.15)',
+                          color: '#818cf8',
+                          border: '1px solid rgba(99, 102, 241, 0.3)'
+                        }}
+                      >
+                        Régénérer ID
+                      </button>
+                      <button
+                        onClick={() => handleSendId(emp)}
+                        className="text-xs px-2.5 py-2 xs:py-1.5 rounded transition flex items-center justify-center gap-1 hover:bg-white/10 flex-1"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          color: '#94a3b8',
+                          border: '1px solid #334155'
+                        }}
+                        title="Renvoyer les accès de connexion par e-mail"
+                      >
+                        <Mail className="w-3 h-3" />
+                        Renvoyer
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Tableau classique a partir de lg (assez de largeur pour 5
+                  colonnes sans compression). */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b" style={{ borderColor: '#334155' }}>
+                      <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Employé</th>
+                      <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Rôle</th>
+                      <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Sessions connectées</th>
+                      <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Statut</th>
+                      <th className="px-3 py-2 text-left text-xs" style={{ color: '#94a3b8' }}>Action</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {employees.filter(emp => emp.isBotLinked).map((emp) => (
+                      <tr key={emp.id} className="border-b" style={{ borderColor: '#334155' }}>
+                        <td className="px-3 py-2 text-white">
+                          <div>
+                            <p className="font-medium text-white">{emp.name}</p>
+                            <p className="text-xs" style={{ color: '#64748b' }}>{emp.email}</p>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full"
+                            style={{
+                              background: 'rgba(99, 102, 241, 0.15)',
+                              color: '#818cf8'
+                            }}
+                          >
+                            {emp.role}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex flex-col gap-2">
+                            {emp.botSessions.map((session: any) => (
+                              <div key={session.id} className="flex items-center gap-2 text-xs">
+                                <span
+                                  className="px-2 py-0.5 rounded font-medium"
+                                  style={{
+                                    background: session.platform === 'whatsapp' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                                    color: session.platform === 'whatsapp' ? '#22c55e' : '#3b82f6'
+                                  }}
+                                >
+                                  {session.platform_display}
+                                </span>
+                                <code className="font-mono text-white bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-700">
+                                  {session.external_id}
+                                </code>
+                                <button
+                                  onClick={() => handleUnlinkSession(session.id, emp.name, session.platform_display)}
+                                  className="text-red-400 hover:text-red-300 transition-colors p-0.5 hover:bg-red-500/10 rounded"
+                                  title="Délier ce compte"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400"
+                          >
+                            ✓ Lié & Actif
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleRegenerateId(emp)}
+                              className="text-xs px-2.5 py-1 rounded transition hover:opacity-90 font-medium"
+                              style={{
+                                background: 'rgba(99, 102, 241, 0.15)',
+                                color: '#818cf8',
+                                border: '1px solid rgba(99, 102, 241, 0.3)'
+                              }}
+                            >
+                              Régénérer ID
+                            </button>
+                            <button
+                              onClick={() => handleSendId(emp)}
+                              className="text-xs px-2.5 py-1 rounded transition flex items-center gap-1 hover:bg-white/10"
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                color: '#94a3b8',
+                                border: '1px solid #334155'
+                              }}
+                              title="Renvoyer les accès de connexion par e-mail"
+                            >
+                              <Mail className="w-3 h-3" />
+                              Renvoyer
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           <div className="mt-4 p-3 rounded-lg" style={{ background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.1)' }}>
-            <p className="text-sm" style={{ color: '#94a3b8' }}>
-              <Key className="w-4 h-4 inline mr-2" style={{ color: '#818cf8' }} />
+            <p className="text-xs sm:text-sm flex items-start gap-2" style={{ color: '#94a3b8' }}>
+              <Key className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#818cf8' }} />
               Les IDs sont valables 1 mois. L'employé doit envoyer son ID au bot pour activer sa session.
             </p>
           </div>

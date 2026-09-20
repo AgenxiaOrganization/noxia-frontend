@@ -240,20 +240,20 @@ export default function EmployeeTable({ employees, onEdit, onDelete, onToggleAct
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t" style={{ borderColor: '#334155' }}>
-                <button onClick={() => onSend(employee)} className="px-2.5 py-1.5 rounded text-xs transition bg-blue-500/10 hover:bg-blue-500/20 flex items-center gap-1" style={{ color: '#3b82f6' }}>
+              <div className="flex items-center justify-end gap-2 flex-wrap pt-2 border-t" style={{ borderColor: '#334155' }}>
+                <button onClick={() => onSend(employee)} className="px-2.5 py-1.5 rounded text-xs transition bg-blue-500/10 hover:bg-blue-500/20 flex items-center gap-1 shrink-0" style={{ color: '#3b82f6' }}>
                   <Send className="w-3.5 h-3.5" />
                   <span>Envoyer</span>
                 </button>
-                <button onClick={() => onEdit(employee)} className="px-2.5 py-1.5 rounded text-xs transition bg-white/5 hover:bg-white/10 flex items-center gap-1" style={{ color: '#94a3b8' }}>
+                <button onClick={() => onEdit(employee)} className="px-2.5 py-1.5 rounded text-xs transition bg-white/5 hover:bg-white/10 flex items-center gap-1 shrink-0" style={{ color: '#94a3b8' }}>
                   <Edit className="w-3.5 h-3.5" />
                   <span>Modifier</span>
                 </button>
-                <button onClick={() => onRegenerateId(employee)} className="px-2.5 py-1.5 rounded text-xs transition bg-yellow-500/10 hover:bg-yellow-500/20 flex items-center gap-1" style={{ color: '#f59e0b' }}>
+                <button onClick={() => onRegenerateId(employee)} className="px-2.5 py-1.5 rounded text-xs transition bg-yellow-500/10 hover:bg-yellow-500/20 flex items-center gap-1 shrink-0" style={{ color: '#f59e0b' }}>
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>Régénérer</span>
                 </button>
-                <button onClick={() => onDelete(employee)} className="p-1.5 rounded transition bg-red-500/10 hover:bg-red-500/20" style={{ color: '#ef4444' }} title="Supprimer">
+                <button onClick={() => onDelete(employee)} className="p-1.5 rounded transition bg-red-500/10 hover:bg-red-500/20 shrink-0" style={{ color: '#ef4444' }} title="Supprimer">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
