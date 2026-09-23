@@ -9,7 +9,7 @@ import {
   Globe, AlertTriangle,
   Server, UserCog, Flag, Plus,
   Layers, Zap, Target, Award, Crown, Star, Gift,
-  MessageCircle, Tag, ShieldCheck, Search
+  MessageCircle, Tag, ShieldCheck, Search, Mail
 } from 'lucide-react'
 import React from 'react'
 import { usePlatformSessionGuard } from '@/lib/hooks/usePlatformSessionGuard'
@@ -17,12 +17,15 @@ import { useRestrictedRouteGuard } from '@/lib/hooks/useRestrictedRouteGuard'
 import { clearPlatformSession, getPlatformUser } from '@/lib/platformAuth'
 import { listInstanceCompanies, listInstancePendingVerifications, type ProxyCompany } from '@/lib/superAdminClient'
 import { listInstances, type PlatformInstance } from '@/lib/api/instances'
+import { getUnreadCount as getMessagingUnreadCount } from '@/lib/api/messaging'
 
-// Frequence de sondage du compteur de documents KYB en attente (cloche) —
-// simple polling, pas de canal WebSocket dedie pour le super-admin (voir
-// notes de conception : la cloche super-admin doit rester cross-instance-
-// friendly sans dependre d'une connexion persistante par instance).
+// Frequence de sondage du compteur de documents KYB en attente (cloche) et
+// du compteur de messages non lus (menu Messagerie) — simple polling, pas
+// de canal WebSocket dedie pour le super-admin (voir notes de conception :
+// la cloche super-admin doit rester cross-instance-friendly sans dependre
+// d'une connexion persistante par instance).
 const PENDING_VERIFICATIONS_POLL_MS = 60_000
+const UNREAD_MESSAGES_POLL_MS = 60_000
 
 // Type pour un serveur
 interface ServerInstance {
@@ -88,6 +91,7 @@ const menuItems = [
   { id: 'logs', label: "Journal d'audit", icon: FileText, href: '/super-admin/logs' },
   { id: 'alertes', label: 'Alertes système', icon: AlertTriangle, href: '/super-admin/alertes' },
   { id: 'notifications', label: 'Notifications', icon: MessageCircle, href: '/super-admin/notifications' },
+  { id: 'messagerie', label: 'Messagerie', icon: Mail, href: '/super-admin/messagerie' },
   { id: 'parametres', label: 'Paramètres', icon: Settings, href: '/super-admin/parametres' },
 ]
 
@@ -135,6 +139,7 @@ export default function SuperAdminLayout({
   const [companySearchTerm, setCompanySearchTerm] = useState('')
   const [serversReloadKey, setServersReloadKey] = useState(0)
   const [pendingVerificationsCount, setPendingVerificationsCount] = useState(0)
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0)
   const pathname = usePathname()
 
   const isGlobalMode = selectedServer.id === 'global'
@@ -218,6 +223,20 @@ export default function SuperAdminLayout({
     }
     poll()
     const interval = setInterval(poll, PENDING_VERIFICATIONS_POLL_MS)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [selectedServer.id, isGlobalMode])
+
+  // Compteur du menu Messagerie : messages non lus, agrégés sur toutes les
+  // instances en mode Global, ou filtrés sur l'instance active sinon.
+  useEffect(() => {
+    let cancelled = false
+    const poll = () => {
+      getMessagingUnreadCount(isGlobalMode ? 'global' : undefined, isGlobalMode ? undefined : selectedServer.id)
+        .then((count) => { if (!cancelled) setUnreadMessagesCount(count) })
+        .catch((e) => console.error('Erreur chargement du compteur de messages', e))
+    }
+    poll()
+    const interval = setInterval(poll, UNREAD_MESSAGES_POLL_MS)
     return () => { cancelled = true; clearInterval(interval) }
   }, [selectedServer.id, isGlobalMode])
 
@@ -386,7 +405,14 @@ export default function SuperAdminLayout({
                   >
                     <Icon className={`w-4 h-4 ${isActive ? 'text-primary-400' : 'text-dark-400'}`} />
                     <span className="truncate">{item.label}</span>
-                    {isActive && (
+                    {item.id === 'messagerie' && unreadMessagesCount > 0 ? (
+                      <span
+                        className="text-[10px] min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center font-bold text-white ml-auto"
+                        style={{ background: '#ef4444' }}
+                      >
+                        {unreadMessagesCount > 99 ? '99+' : unreadMessagesCount}
+                      </span>
+                    ) : isActive && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary-500/20 text-primary-400 ml-auto font-bold">
                         {selectedServer.codeLabel}
                       </span>

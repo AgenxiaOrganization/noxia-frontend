@@ -457,6 +457,11 @@ function SuperAdminEntreprisesContent() {
                           )}
                         </div>
                         <p className="text-[11px] font-mono" style={{ color: '#475569' }}>ID: {company.id}</p>
+                        {company.messaging_code && (
+                          <p className="text-[11px] font-mono" style={{ color: '#818cf8' }} title="ID Établissement (10 caractères)">
+                            {company.messaging_code}
+                          </p>
+                        )}
                         <div className="flex items-center gap-1">
                           <MapPin className="w-3 h-3 shrink-0" style={{ color: '#64748b' }} />
                           <span className="text-xs truncate" style={{ color: '#64748b' }}>{company.country}</span>
@@ -589,6 +594,11 @@ function SuperAdminEntreprisesContent() {
                 <div>
                   <h2 className="text-xl font-bold text-white">{selectedCompany.name}</h2>
                   <p className="text-[11px] font-mono mb-1" style={{ color: '#64748b' }}>ID: {selectedCompany.id}</p>
+                  {selectedCompany.messaging_code && (
+                    <p className="text-[11px] font-mono mb-1" style={{ color: '#818cf8' }}>
+                      ID Établissement : {selectedCompany.messaging_code}
+                    </p>
+                  )}
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs flex items-center gap-1" style={{ color: '#64748b' }}>
                       <Mail className="w-3 h-3" />{selectedCompany.owner_email}

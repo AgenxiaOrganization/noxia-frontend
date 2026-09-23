@@ -33,7 +33,12 @@ const connectSrcOrigins = [
   // littérale — d'où son ajout à part, après la conversion, jamais dans ce tableau.
   .map((url) => new URL(url!, "http://placeholder").origin)
   .filter((origin, i, arr) => arr.indexOf(origin) === i);
-const connectSrc = ["'self'", ...connectSrcOrigins].join(" ");
+// "data:" nécessaire pour qr-code-styling (voir QrMenuModal.tsx) : la
+// librairie charge l'image centrale du QR via fetch() même pour une image
+// en data: URL (badge "SCANNEZ MOI" généré localement, ou logo choisi par
+// l'utilisateur), ce que connect-src régit — contrairement à <img src="data:">
+// classique, qui relèverait de img-src.
+const connectSrc = ["'self'", "data:", ...connectSrcOrigins].join(" ");
 
 // CSP restrictive : autorise uniquement les sources effectivement utilisées
 // par l'app (Google Sign-In pour l'OAuth, l'API/WS Noxia). `unsafe-inline`

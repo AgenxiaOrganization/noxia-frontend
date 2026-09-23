@@ -94,7 +94,10 @@ export interface PlanPayload {
   price: number
   original_price?: number | null
   discount_ends_at?: string | null
-  yearly_price?: number | null
+  /** Seule valeur saisie pour l'engagement annuel — yearly_price (prix
+   * réellement facturé) est calculé côté backend à partir de price et ce
+   * taux (voir subscriptions.models.Plan.yearly_price cote noxia-backend),
+   * jamais envoyé en écriture. */
   yearly_discount_percent?: number
   trial_days?: number
   period_label?: string

@@ -15,6 +15,11 @@ export function useWebSockets<T>(path: string | null | undefined, onMessage: (da
   const [isConnected, setIsConnected] = useState(false)
   const ws = useRef<WebSocket | null>(null)
   const onMessageRef = useRef(onMessage)
+  const send = useRef((data: unknown) => {
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify(data))
+    }
+  }).current
 
   // Keep the latest callback without triggering reconnections
   useEffect(() => {
@@ -66,5 +71,5 @@ export function useWebSockets<T>(path: string | null | undefined, onMessage: (da
     }
   }, [path])
 
-  return { isConnected }
+  return { isConnected, send }
 }

@@ -139,6 +139,10 @@ export interface ProxyCompanyDetail {
   monthly_revenue: string
   monthly_orders: number
   documents_count: number
+  /** Identifiant à 10 caractères de l'établissement (lie le bot WhatsApp/
+   * Telegram), affiché masqué dans le Topbar client — voir
+   * companies.models.Company.messaging_code côté noxia-backend. */
+  messaging_code: string
   is_suspended: boolean
   suspended_at: string | null
   suspended_reason: string
