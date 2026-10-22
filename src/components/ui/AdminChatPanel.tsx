@@ -16,7 +16,9 @@ interface AdminChatMessage {
   senderName: string
   text: string
   createdAt: string
-  status?: 'pending' | 'sent'
+  /** pending : en route ; sent : reçu par Noxia Contrôle ; failed : non transmis (voir `error`). */
+  status?: 'pending' | 'sent' | 'failed'
+  error?: string
 }
 
 interface HistoryMessage {
@@ -30,6 +32,7 @@ interface HistoryMessage {
 
 type IncomingEvent =
   | { type: 'message_sent'; client_message_id: string; status: 'pending' }
+  | { type: 'message_status'; client_message_id: string; status: 'sent' | 'failed'; detail?: string }
   | { type: 'admin_chat_message'; message: { id: number; sender_name: string; text: string; sent_at: string } }
 
 function generateId(): string {
@@ -81,10 +84,11 @@ export default function AdminChatPanel({ onBackToAssistant }: { onBackToAssistan
           createdAt: event.message.sent_at,
         },
       ])
-    } else if (event.type === 'message_sent') {
+    } else if (event.type === 'message_status') {
+      // Statut réel, une fois Noxia Contrôle contacté (« message_sent » n'est qu'un accusé de réception).
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === event.client_message_id ? { ...m, status: 'sent' } : m,
+          m.id === event.client_message_id ? { ...m, status: event.status, error: event.detail || undefined } : m,
         ),
       )
     }
@@ -94,9 +98,7 @@ export default function AdminChatPanel({ onBackToAssistant }: { onBackToAssistan
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight })
   }, [messages])
 
-  const handleSend = () => {
-    const text = input.trim()
-    if (!text) return
+  const sendText = (text: string) => {
     const clientMessageId = generateId()
     setMessages((prev) => [
       ...prev,
@@ -111,7 +113,18 @@ export default function AdminChatPanel({ onBackToAssistant }: { onBackToAssistan
       },
     ])
     send({ type: 'send_message', text, client_message_id: clientMessageId })
+  }
+
+  const handleSend = () => {
+    const text = input.trim()
+    if (!text) return
+    sendText(text)
     setInput('')
+  }
+
+  const handleRetry = (message: AdminChatMessage) => {
+    setMessages((prev) => prev.filter((m) => m.id !== message.id))
+    sendText(message.text)
   }
 
   const handleDelete = async (message: AdminChatMessage) => {
@@ -156,7 +169,18 @@ export default function AdminChatPanel({ onBackToAssistant }: { onBackToAssistan
             </div>
             <div className="noxia-admin-chat-msg-meta">
               {m.status === 'pending' && <span className="noxia-admin-chat-msg-pending">Envoi…</span>}
-              {m.clientMessageId && (
+              {m.status === 'sent' && <span className="noxia-admin-chat-msg-pending">Envoyé ✓</span>}
+              {m.status === 'failed' && (
+                <>
+                  <span className="noxia-admin-chat-msg-pending" style={{ color: '#f87171' }} title={m.error}>
+                    Non envoyé{m.error ? ` : ${m.error}` : ''}
+                  </span>
+                  <button type="button" className="noxia-admin-chat-msg-delete" onClick={() => handleRetry(m)}>
+                    Réessayer
+                  </button>
+                </>
+              )}
+              {m.clientMessageId && m.status !== 'failed' && (
                 <button type="button" className="noxia-admin-chat-msg-delete" onClick={() => handleDelete(m)}>
                   Supprimer
                 </button>
