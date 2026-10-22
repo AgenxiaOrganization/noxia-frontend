@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   Settings, Building2, MapPin, Phone, Mail,
-  CreditCard, Shield, Bell, Globe, Users,
-  Key, Save, Eye, EyeOff, CheckCircle, DollarSign,
+  Globe,
+  Key, Save, CheckCircle,
   FileText, Upload, Check, X, Clock, AlertCircle,
   FileCheck, FileX, FileClock, Download, User, Camera,
   BadgeCheck, Fingerprint
@@ -84,7 +84,8 @@ export default function SettingsPage() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const tab = params.get('tab')
-      if (tab) {
+      // Seuls ces onglets existent (Finances, Sécurité et Notifications ont été retirés).
+      if (tab && ['profile', 'general', 'documents'].includes(tab)) {
         setActiveTab(tab)
       }
     }
@@ -420,9 +421,6 @@ export default function SettingsPage() {
           { id: 'profile', label: 'Mon Profil', icon: User },
           { id: 'general', label: 'Général', icon: Building2 },
           { id: 'documents', label: 'Documents', icon: FileText },
-          { id: 'finance', label: 'Finances', icon: CreditCard },
-          { id: 'security', label: 'Sécurité', icon: Shield },
-          { id: 'notifications', label: 'Notifications', icon: Bell },
         ].map(tab => {
           const Icon = tab.icon
           const isDocuments = tab.id === 'documents'
@@ -1096,212 +1094,6 @@ export default function SettingsPage() {
                 )
               })}
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===== FINANCES ===== */}
-      {activeTab === 'finance' && (
-        <div 
-          className="rounded-xl border p-4"
-          style={{ 
-            background: '#1e293b',
-            borderColor: '#334155'
-          }}
-        >
-          <h3 className="font-semibold text-sm text-white mb-4">Configuration financière</h3>
-          
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Devise</label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
-                  <select
-                    value={company.currency}
-                    onChange={(e) => setCompany({ ...company, currency: e.target.value })}
-                    className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
-                    style={{ 
-                      background: 'rgba(51, 65, 85, 0.5)',
-                      border: '1px solid #334155'
-                    }}
-                  >
-                    <option value="FCFA">FCFA</option>
-                    <option value="EUR">EUR</option>
-                    <option value="USD">USD</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>TVA (%)</label>
-                <div className="relative">
-                  <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#64748b' }} />
-                  <input
-                    type="number"
-                    value={company.tva}
-                    onChange={(e) => setCompany({ ...company, tva: parseInt(e.target.value) || 0 })}
-                    className="w-full rounded-lg px-4 py-2.5 pl-10 text-white text-sm outline-none transition"
-                    style={{ 
-                      background: 'rgba(51, 65, 85, 0.5)',
-                      border: '1px solid #334155'
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-lg" style={{ background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.1)' }}>
-              <p className="text-xs" style={{ color: '#94a3b8' }}>
-                💡 La TVA sera automatiquement calculée sur toutes les ventes et apparaîtra dans les rapports financiers.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===== SÉCURITÉ ===== */}
-      {activeTab === 'security' && (
-        <div className="space-y-4">
-          <div 
-            className="rounded-xl border p-4"
-            style={{ 
-              background: '#1e293b',
-              borderColor: '#334155'
-            }}
-          >
-            <h3 className="font-semibold text-sm text-white mb-4">Sécurité du compte</h3>
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-lg border" style={{ borderColor: '#334155' }}>
-                <div className="flex items-center gap-3">
-                  <Key className="w-4 h-4" style={{ color: '#818cf8' }} />
-                  <div>
-                    <p className="text-sm text-white">Authentification à deux facteurs (2FA)</p>
-                    <p className="text-xs" style={{ color: '#94a3b8' }}>Ajoutez une couche de sécurité supplémentaire</p>
-                  </div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" />
-                  <div className="w-9 h-5 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all" style={{ background: '#334155' }} />
-                </label>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-lg border" style={{ borderColor: '#334155' }}>
-                <div className="flex items-center gap-3">
-                  <Users className="w-4 h-4" style={{ color: '#818cf8' }} />
-                  <div>
-                    <p className="text-sm text-white">Journal d'audit</p>
-                    <p className="text-xs" style={{ color: '#94a3b8' }}>Conservez un historique de toutes les actions</p>
-                  </div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" defaultChecked className="sr-only peer" />
-                  <div className="w-9 h-5 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all" style={{ background: '#4f46e5' }} />
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div 
-            className="rounded-xl border p-4"
-            style={{ 
-              background: '#1e293b',
-              borderColor: '#334155'
-            }}
-          >
-            <h3 className="font-semibold text-sm text-white mb-4">Changer le mot de passe</h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Mot de passe actuel</label>
-                <div className="relative">
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                    style={{ 
-                      background: 'rgba(51, 65, 85, 0.5)',
-                      border: '1px solid #334155'
-                    }}
-                  />
-                  <button className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#64748b' }}>
-                    <EyeOff className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nouveau mot de passe</label>
-                <div className="relative">
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-                    style={{ 
-                      background: 'rgba(51, 65, 85, 0.5)',
-                      border: '1px solid #334155'
-                    }}
-                  />
-                  <button className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: '#64748b' }}>
-                    <EyeOff className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              <button
-                className="px-4 py-2 rounded-lg text-white text-sm font-semibold transition"
-                style={{ 
-                  background: '#4f46e5',
-                  boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.3)'
-                }}
-              >
-                Changer le mot de passe
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ===== NOTIFICATIONS ===== */}
-      {activeTab === 'notifications' && (
-        <div 
-          className="rounded-xl border p-4"
-          style={{ 
-            background: '#1e293b',
-            borderColor: '#334155'
-          }}
-        >
-          <h3 className="font-semibold text-sm text-white mb-4">Préférences de notification</h3>
-          
-          <div className="space-y-3">
-            {[
-              { label: 'Alertes stock faible', description: 'Quand un produit atteint le seuil critique', default: true },
-              { label: 'Rapports quotidiens', description: 'Résumé des ventes et performances', default: true },
-              { label: 'Alertes de caisse', description: 'Écarts et fermetures de caisse', default: false },
-              { label: 'Mises à jour du système', description: 'Nouvelles fonctionnalités et améliorations', default: true },
-              { label: 'Commandes fournisseurs', description: 'Confirmation et suivi des commandes', default: true },
-            ].map((notif, i) => (
-              <div 
-                key={i}
-                className="flex items-center justify-between p-3 rounded-lg border"
-                style={{ borderColor: '#334155' }}
-              >
-                <div className="flex items-center gap-3">
-                  <Bell className="w-4 h-4" style={{ color: '#818cf8' }} />
-                  <div>
-                    <p className="text-sm text-white">{notif.label}</p>
-                    <p className="text-xs" style={{ color: '#94a3b8' }}>{notif.description}</p>
-                  </div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" defaultChecked={notif.default} className="sr-only peer" />
-                  <div className="w-9 h-5 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all" style={{ background: notif.default ? '#4f46e5' : '#334155' }} />
-                </label>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-4 p-3 rounded-lg" style={{ background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.1)' }}>
-            <p className="text-xs" style={{ color: '#94a3b8' }}>
-              📱 Les notifications sont envoyées via les canaux configurés dans la section Messagerie.
-            </p>
           </div>
         </div>
       )}
