@@ -16,6 +16,9 @@ export interface Category {
   id: number
   name: string
   type: 'boisson' | 'nourriture' | 'service'
+  /** Catégorie principale d'une sous-catégorie (facultative). */
+  parent?: number | null
+  parent_name?: string | null
   characteristics?: CategoryCharacteristic[]
   created_at?: string
   updated_at?: string
@@ -25,6 +28,7 @@ export interface Product {
   id: number
   category: number | null
   category_name?: string
+  category_parent_name?: string | null
   name: string
   sku: string
   unit: 'unite' | 'bouteille' | 'casier' | 'plat' | 'portion' | 'service'

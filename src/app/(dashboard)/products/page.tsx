@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react'
 import {
   Plus, Search, Trash2, Package, Coffee, Utensils, Sparkles,
-  X, Save, AlertCircle, Check, PlusCircle, MinusCircle, QrCode
+  X, Save, AlertCircle, Check, PlusCircle, MinusCircle, QrCode, FolderTree
 } from 'lucide-react'
+import CategoryManagerModal from '@/components/products/CategoryManagerModal'
 import { getProducts, createProduct, updateProduct, deleteProduct as deleteProductApi, getCategories, createCategory, createCategoryCharacteristic, uploadProductPhoto } from '../../../lib/api/catalog'
 import { getSuppliers, createSupplier, Supplier } from '../../../lib/api/inventory'
 import { ensureArray, invalidateApiCache } from '@/lib/api'
@@ -46,6 +47,7 @@ export default function ProductsPage() {
   // Modale Produit
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCharacteristicsModalOpen, setIsCharacteristicsModalOpen] = useState(false)
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
   const [isQrMenuModalOpen, setIsQrMenuModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
 
@@ -179,11 +181,14 @@ export default function ProductsPage() {
     loadData(true)
   })
 
-  const categories = ['all', ...categoriesData.map(c => c.name)]
+  // Filtres : catégories principales seulement ; une catégorie inclut ses sous-catégories.
+  const categories = ['all', ...categoriesData.filter(c => !c.parent).map(c => c.name)]
+  const parentNameOf = Object.fromEntries(categoriesData.filter(c => c.parent).map(c => [c.name, c.parent_name]))
 
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory
+      || parentNameOf[p.category] === selectedCategory
     return matchesSearch && matchesCategory
   })
 
@@ -256,7 +261,18 @@ export default function ProductsPage() {
             {products.length} produits • {products.filter(p => p.stock <= (p.minStock ?? 10) && p.stock >= 0).length} alertes stock
           </p>
         </div>
-        <div className="grid grid-cols-1 xs:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 gap-2">
+          <button
+            onClick={() => setIsCategoryModalOpen(true)}
+            className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-1.5 sm:gap-2 border border-slate-700 min-w-0"
+            style={{
+              background: 'rgba(51, 65, 85, 0.5)',
+              color: '#94a3b8'
+            }}
+          >
+            <FolderTree className="w-4 h-4 shrink-0" />
+            <span className="truncate">Catégories</span>
+          </button>
           <button
             onClick={() => setIsCharacteristicsModalOpen(true)}
             className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-1.5 sm:gap-2 border border-slate-700 min-w-0"
@@ -330,6 +346,18 @@ export default function ProductsPage() {
 
       {/* LISTE DES PRODUITS */}
       <ProductGrid products={filteredProducts} onEdit={openModal} onDelete={deleteProduct} />
+
+      {/* MODAL DES CATEGORIES ET SOUS-CATEGORIES */}
+      {isCategoryModalOpen && (
+        <CategoryManagerModal
+          categories={categoriesData}
+          onChanged={async () => {
+            invalidateApiCache('/catalog')
+            await loadData(true)
+          }}
+          onClose={() => setIsCategoryModalOpen(false)}
+        />
+      )}
 
       {/* MODAL D'AJOUT / MODIFICATION */}
       {isModalOpen && (

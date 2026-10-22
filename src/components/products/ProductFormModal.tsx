@@ -8,6 +8,8 @@ export interface ProductFormCategory {
   id: number
   name: string
   type: 'boisson' | 'nourriture' | 'service'
+  /** Catégorie principale, si c'est une sous-catégorie. */
+  parent?: number | null
   characteristics?: { id: number; name: string; attributes: Record<string, string> }[]
 }
 
@@ -42,8 +44,12 @@ export function buildProductApiPayload(formData: FormState, categories: ProductF
     unitVal = formData.unit as any
   }
 
+  // Avec une sous-catégorie, le nom est facultatif : la sous-catégorie (« baron ») sert alors de nom.
+  const chosen = categories.find(c => c.id === formData.categoryId)
+  const name = formData.name.trim() || (chosen?.parent ? chosen.name : '')
+
   return {
-    name: formData.name,
+    name,
     category: formData.categoryId,
     price: formData.pricePerUnit?.toString() || '0',
     crate_price: formData.cratePrice !== '' && formData.cratePrice !== null && formData.cratePrice !== undefined ? formData.cratePrice.toString() : null,
@@ -94,8 +100,8 @@ function initialFormState(product: ProductFormValue | null, categories: ProductF
   }
   return {
     name: '',
-    category: categories.length > 0 ? categories[0].name : 'boisson',
-    categoryId: categories.length > 0 ? categories[0].id : undefined,
+    category: (categories.find(c => !c.parent) ?? categories[0])?.name ?? 'boisson',
+    categoryId: (categories.find(c => !c.parent) ?? categories[0])?.id,
     subCategory: 'casier',
     pricePerUnit: 0,
     cratePrice: '',
@@ -154,7 +160,18 @@ export default function ProductFormModal({ product, categories, suppliers, isSav
   }
 
   const currentCategory = categories.find(c => Number(c.id) === Number(formData.categoryId))
-  const currentCategoryCharacteristics = currentCategory?.characteristics || []
+  // Le produit est rangé dans la sous-catégorie si elle est choisie, sinon dans la catégorie principale.
+  const mainCategoryId = currentCategory?.parent ?? currentCategory?.id
+  const mainCategories = categories.filter(c => !c.parent)
+  const subCategories = categories.filter(c => c.parent != null && c.parent === mainCategoryId)
+  const mainCategory = categories.find(c => c.id === mainCategoryId)
+  const currentCategoryCharacteristics = [
+    ...(currentCategory?.characteristics || []),
+    ...(currentCategory?.parent ? mainCategory?.characteristics || [] : []),
+  ]
+  const selectCategory = (id: number) => {
+    setFormData({ ...formData, categoryId: id, category: categories.find(c => c.id === id)?.name || 'boisson' })
+  }
   const categoryType = categories.find(c => c.id === formData.categoryId)?.type
   const isBoisson = categoryType === 'boisson' || formData.category?.toLowerCase().includes('boisson')
   const isService = categoryType === 'service' || formData.category?.toLowerCase().includes('service')
@@ -208,14 +225,17 @@ export default function ProductFormModal({ product, categories, suppliers, isSav
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Nom du produit *</label>
+            <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
+              Nom du produit {currentCategory?.parent ? <span className="text-indigo-400">(facultatif)</span> : '*'}
+            </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder={currentCategory?.parent ? `Par défaut : ${currentCategory.name}` : undefined}
               className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
               style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
-              required
+              required={!currentCategory?.parent}
             />
           </div>
 
@@ -249,21 +269,34 @@ export default function ProductFormModal({ product, categories, suppliers, isSav
           <div>
             <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Catégorie *</label>
             <select
-              value={formData.categoryId || ''}
-              onChange={(e) => {
-                const catId = parseInt(e.target.value)
-                const catName = categories.find(c => c.id === catId)?.name || 'boisson'
-                setFormData({ ...formData, categoryId: catId, category: catName })
-              }}
+              value={mainCategoryId || ''}
+              onChange={(e) => selectCategory(parseInt(e.target.value))}
               className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
               style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
             >
               <option value="" disabled>Sélectionner une catégorie</option>
-              {categories.map(c => (
+              {mainCategories.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </div>
+
+          {subCategories.length > 0 && mainCategoryId && (
+            <div>
+              <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Sous-catégorie (facultatif)</label>
+              <select
+                value={currentCategory?.parent ? currentCategory.id : ''}
+                onChange={(e) => selectCategory(e.target.value ? parseInt(e.target.value) : mainCategoryId)}
+                className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
+                style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
+              >
+                <option value="">Aucune</option>
+                {subCategories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Type de vente *</label>
