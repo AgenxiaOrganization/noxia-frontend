@@ -49,7 +49,8 @@ export default function POSPage() {
         getProducts(),
         getCashRegisters(),
         getCategories(),
-        getSales()
+        // Seulement les ventes du jour (heure locale) : la caisse n'affiche que celles-là.
+        getSales({ from: new Date(new Date().setHours(0, 0, 0, 0)) })
       ])
       
       setDailySales(apiSales || [])

@@ -8,7 +8,7 @@ import {
   updateSupplier,
   deleteSupplier,
   contactSupplier,
-  getSupplierOrders,
+  getSupplierOrdersPage,
   createSupplierOrder,
   updateSupplierOrderStatus,
   deleteSupplierOrder,
@@ -30,6 +30,10 @@ export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [products, setProducts] = useState<any[]>([])
   const [orders, setOrders] = useState<SupplierOrder[]>([])
+  // Commandes chargées par pages de 25, des plus récentes aux plus anciennes.
+  const [ordersPage, setOrdersPage] = useState(1)
+  const [ordersTotal, setOrdersTotal] = useState(0)
+  const [isLoadingMoreOrders, setIsLoadingMoreOrders] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
@@ -41,22 +45,38 @@ export default function SuppliersPage() {
   const [isContactModalOpen, setIsContactModalOpen] = useState(false)
   const [contactSupplierData, setContactSupplierData] = useState<Supplier | null>(null)
 
+  const loadMoreOrders = async () => {
+    setIsLoadingMoreOrders(true)
+    try {
+      const next = await getSupplierOrdersPage(ordersPage + 1)
+      setOrders(prev => [...prev, ...(next?.results ?? []).filter(o => !prev.some(p => p.id === o.id))])
+      setOrdersPage(ordersPage + 1)
+      setOrdersTotal(next?.count ?? ordersTotal)
+    } catch {
+      toast.error('Impossible de charger les commandes suivantes.')
+    } finally {
+      setIsLoadingMoreOrders(false)
+    }
+  }
+
   const loadData = async () => {
     try {
       setIsLoading(true)
       const [apiSuppliers, apiProducts, apiOrders] = await Promise.all([
         getSuppliers(),
         getProducts(),
-        getSupplierOrders(),
+        getSupplierOrdersPage(1),
       ])
 
       const suppliersList = apiSuppliers && (apiSuppliers as any).results ? (apiSuppliers as any).results : (apiSuppliers || [])
       const productsList = apiProducts && (apiProducts as any).results ? (apiProducts as any).results : (apiProducts || [])
-      const ordersList = apiOrders && (apiOrders as any).results ? (apiOrders as any).results : (apiOrders || [])
+      const ordersList = apiOrders?.results ?? []
 
       setSuppliers(suppliersList)
       setProducts(productsList)
       setOrders(ordersList)
+      setOrdersPage(1)
+      setOrdersTotal(apiOrders?.count ?? ordersList.length)
       setIsFeatureLocked(false)
     } catch (e) {
       if (isFeatureNotIncludedError(e)) {
@@ -264,6 +284,17 @@ export default function SuppliersPage() {
         onDelete={handleDeleteOrder}
         onBulkDelete={handleBulkDeleteOrders}
       />
+      {orders.length < ordersTotal && (
+        <div className="flex justify-center">
+          <button
+            onClick={loadMoreOrders}
+            disabled={isLoadingMoreOrders}
+            className="px-4 py-2 rounded-lg text-sm font-semibold border border-slate-700 text-slate-300 hover:bg-slate-800 transition disabled:opacity-50"
+          >
+            {isLoadingMoreOrders ? 'Chargement…' : `Charger plus (${orders.length} sur ${ordersTotal})`}
+          </button>
+        </div>
+      )}
 
       {isModalOpen && (
         <SupplierFormModal

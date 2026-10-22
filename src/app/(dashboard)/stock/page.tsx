@@ -55,7 +55,7 @@ export default function StockPage() {
       const [rawProducts, rawStockItems, rawMovements, rawCategories] = await Promise.all([
         getProducts(),
         getStockItems(),
-        getStockMovements(),
+        getStockMovements(10), // le tableau n'affiche que les 10 derniers mouvements
         getCategories()
       ])
 

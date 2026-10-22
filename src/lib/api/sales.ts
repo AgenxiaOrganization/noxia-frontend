@@ -71,8 +71,13 @@ export function createSalesApi(client: ApiClient) {
     deleteCashRegister: (id: number) => client.del<void>(`/sales/cash-registers/${id}/`),
 
     // Sales
-    getSales: async (): Promise<Sale[]> => {
-      const res = await client.get<{ results: Sale[] } | Sale[]>('/sales/')
+    /** Ventes, filtrées en base sur une période : sans période, tout l'historique (lent). */
+    getSales: async (range?: { from?: Date; to?: Date }): Promise<Sale[]> => {
+      const params = new URLSearchParams()
+      if (range?.from) params.set('date_from', range.from.toISOString())
+      if (range?.to) params.set('date_to', range.to.toISOString())
+      const query = params.toString() ? `?${params}` : ''
+      const res = await client.get<{ results: Sale[] } | Sale[]>(`/sales/${query}`)
       return Array.isArray(res) ? res : res.results ?? []
     },
     createSale: (data: Partial<Sale>) => client.post<Sale>('/sales/', data as any),

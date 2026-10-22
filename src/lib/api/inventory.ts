@@ -60,6 +60,14 @@ export interface SupplierOrder {
  * Voir `catalog.ts` : meme principe d'injection de client, pour que
  * `super-admin` reutilise cette logique sans la dupliquer.
  */
+/** Réponse paginée du backend (`?page=` / `?page_size=`). */
+export interface Page<T> {
+  count: number
+  next: string | null
+  previous: string | null
+  results: T[]
+}
+
 export function createInventoryApi(client: ApiClient) {
   return {
     // Stock Items
@@ -68,7 +76,12 @@ export function createInventoryApi(client: ApiClient) {
     patchStockItem: (id: number, data: Partial<StockItem>) => client.patch<StockItem>(`/inventory/stock-items/${id}/`, data),
 
     // Movements
-    getStockMovements: () => client.get<StockMovement[]>('/inventory/movements/'),
+    /** Sans argument : tout l'historique. `latest` : seulement les N derniers mouvements (une page). */
+    getStockMovements: async (latest?: number): Promise<StockMovement[]> => {
+      if (!latest) return client.get<StockMovement[]>('/inventory/movements/')
+      const page = await client.get<Page<StockMovement>>(`/inventory/movements/?page_size=${latest}`)
+      return page.results ?? []
+    },
     createStockMovement: (data: Partial<StockMovement>) => client.post<StockMovement>('/inventory/movements/', data),
 
     // Suppliers
@@ -81,6 +94,9 @@ export function createInventoryApi(client: ApiClient) {
 
     // Supplier Orders
     getSupplierOrders: () => client.get<SupplierOrder[]>('/inventory/supplier-orders/'),
+    /** Une page de commandes, des plus récentes aux plus anciennes. */
+    getSupplierOrdersPage: (page = 1, pageSize = 25) =>
+      client.get<Page<SupplierOrder>>(`/inventory/supplier-orders/?page=${page}&page_size=${pageSize}`),
     createSupplierOrder: (data: Partial<SupplierOrder>) => client.post<SupplierOrder>('/inventory/supplier-orders/', data as any),
     updateSupplierOrderStatus: (id: number, status: 'pending' | 'shipped' | 'delivered') =>
       client.patch<SupplierOrder>(`/inventory/supplier-orders/${id}/`, { status } as any),
@@ -95,5 +111,5 @@ export const {
   getStockItems, getStockItem, patchStockItem,
   getStockMovements, createStockMovement,
   getSuppliers, createSupplier, updateSupplier, deleteSupplier, contactSupplier,
-  getSupplierOrders, createSupplierOrder, updateSupplierOrderStatus, deleteSupplierOrder, bulkDeleteSupplierOrders,
+  getSupplierOrders, getSupplierOrdersPage, createSupplierOrder, updateSupplierOrderStatus, deleteSupplierOrder, bulkDeleteSupplierOrders,
 } = defaultInventoryApi

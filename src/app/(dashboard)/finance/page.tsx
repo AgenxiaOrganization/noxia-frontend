@@ -222,6 +222,13 @@ function dataURLtoBlob(dataurl: string): Blob {
   return new Blob([u8arr], { type: mime })
 }
 
+
+/** « 2026-10 » -> du 1er octobre à 00:00 au 1er novembre à 00:00, heure locale. */
+function monthRange(month: string): { from: Date; to: Date } {
+  const [year, monthIndex] = month.split('-').map(Number)
+  return { from: new Date(year, monthIndex - 1, 1), to: new Date(year, monthIndex, 1) }
+}
+
 export default function FinancePage() {
   const [activeTab, setActiveTab] = useState<'compta' | 'tresorerie' | 'salaires' | 'tva'>('compta')
   
@@ -317,7 +324,8 @@ export default function FinancePage() {
         canAccessFinance ? getPayrollRecords(selectedMonth).catch(catchFinance([])) : Promise.resolve([]),
         getEmployees().catch(() => []),
         getCashRegisters().catch(() => []),
-        getSales().catch(() => []),
+        // Ventes du mois choisi seulement (répartition par mode de paiement de ce mois).
+        getSales(monthRange(selectedMonth)).catch(() => []),
         getCompanyMe().catch(() => ({})),
       ])
 

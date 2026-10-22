@@ -50,6 +50,17 @@ const getLogoPngDataUrl = (): string => {
   return canvas.toDataURL('image/png')
 }
 
+
+/** Début de la période affichée, heure locale (même découpage que getFilteredSales). */
+function periodStart(period: 'jour' | 'semaine' | 'mois' | 'an'): Date {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  if (period === 'jour') return today
+  if (period === 'semaine') return new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+  if (period === 'mois') return new Date(now.getFullYear(), now.getMonth(), 1)
+  return new Date(now.getFullYear(), 0, 1)
+}
+
 export default function ReportsPage() {
   const [sales, setSales] = useState<Sale[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -61,7 +72,7 @@ export default function ReportsPage() {
   const loadSales = async () => {
     setIsLoading(true)
     try {
-      const data = await getSales()
+      const data = await getSales({ from: periodStart(period) })
       if (data && typeof data === 'object' && 'results' in data) {
         setSales((data as any).results || [])
       } else if (Array.isArray(data)) {
@@ -77,9 +88,11 @@ export default function ReportsPage() {
     }
   }
 
+  // Recharge à chaque changement de période : le serveur ne renvoie que la période affichée.
   useEffect(() => {
     loadSales()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period])
 
   // Filtrer les ventes selon la période
   const getFilteredSales = () => {
