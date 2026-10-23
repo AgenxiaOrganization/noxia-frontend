@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { ArrowRight, Play } from 'lucide-react'
 
@@ -122,90 +123,25 @@ export function Hero() {
             </motion.div>
           </motion.div>
 
-          {/* Colonne Droite - Dashboard Preview */}
-          <motion.div 
+          {/* Colonne Droite - Visuel NOXIA */}
+          <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:col-span-5 relative hidden lg:block"
-            aria-hidden="true"
+            className="lg:col-span-5 relative"
           >
-            {/* Lueur arrière de la maquette style GitHub */}
-            <div className="absolute inset-0 bg-primary-500/15 blur-[100px] rounded-3xl" />
-
-            <motion.div 
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-              className="relative p-2 rounded-2xl github-border-gradient shadow-2xl overflow-hidden glass-panel"
-            >
-              <div className="rounded-xl overflow-hidden border border-dark-800/80 bg-dark-950/90">
-                {/* En-tête de fenêtre façon macOS/GitHub */}
-                <div className="flex items-center justify-between px-4 py-3 border-b border-dark-800/60 bg-dark-900/60 backdrop-blur-sm">
-                  <div className="flex gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500/60"></span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/60"></span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-green-500/60"></span>
-                  </div>
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-dark-400 select-none">NOXIA PORTAL</span>
-                  <div className="w-8"></div>
-                </div>
-
-                {/* Contenu Dashboard Preview */}
-                <div className="p-5 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="rounded-xl p-4 border border-dark-800/40 bg-dark-900/20 backdrop-blur-sm">
-                      <p className="text-[10px] uppercase font-bold tracking-wider text-dark-400">CA du jour</p>
-                      <p className="text-xl font-display font-extrabold text-accent-400 mt-1">450 000 FCFA</p>
-                    </div>
-                    <div className="rounded-xl p-4 border border-dark-800/40 bg-dark-900/20 backdrop-blur-sm">
-                      <p className="text-[10px] uppercase font-bold tracking-wider text-dark-400">Ventes</p>
-                      <p className="text-xl font-display font-extrabold text-primary-400 mt-1">127</p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl p-4 border border-dark-800/40 bg-dark-900/20 backdrop-blur-sm space-y-3">
-                    <p className="text-[10px] uppercase font-bold tracking-wider text-dark-400">Dernières transactions</p>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex justify-between items-center">
-                        <span className="text-white font-medium">Whisky Jack Daniel's</span>
-                        <span className="text-accent-400 font-semibold font-mono">25 000 F</span>
-                      </div>
-                      <div className="flex justify-between items-center border-t border-dark-800/10 pt-2">
-                        <span className="text-white font-medium">Bière Castel x3</span>
-                        <span className="text-accent-400 font-semibold font-mono">4 500 F</span>
-                      </div>
-                      <div className="flex justify-between items-center border-t border-dark-800/10 pt-2">
-                        <span className="text-white font-medium">Cocktail Mojito x2</span>
-                        <span className="text-accent-400 font-semibold font-mono">10 000 F</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div 
-                    className="flex items-center gap-2 rounded-xl p-3 text-xs border border-red-500/15 bg-red-500/5 text-red-300"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse shrink-0" aria-hidden="true" />
-                    <span className="font-medium truncate">Stock critique : Bière Castel (8 restants)</span>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Badge flottant Sync avec bordure dégradée fine */}
-            <motion.div 
-              initial={{ x: 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 1, duration: 0.5 }}
-              className="absolute -bottom-4 -right-4 rounded-xl px-4 py-2.5 text-xs font-semibold shadow-2xl github-border-gradient glass-panel"
-            >
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-accent-500"></span>
-                </span>
-                Sync en temps réel
-              </div>
-            </motion.div>
+            <div className="absolute inset-0 bg-primary-500/15 blur-[100px] rounded-3xl" aria-hidden="true" />
+            <div className="relative overflow-hidden rounded-2xl border border-dark-800/80 shadow-2xl">
+              <Image
+                src="/images/noxia/hero-noxia.jpg"
+                alt="Une gérante d'établissement utilise la plateforme NOXIA sur tablette"
+                width={886}
+                height={420}
+                priority
+                sizes="(max-width: 1024px) 100vw, 42vw"
+                className="w-full h-auto object-cover"
+              />
+            </div>
           </motion.div>
         </div>
       </div>

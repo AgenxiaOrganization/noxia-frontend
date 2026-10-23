@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { motion } from 'framer-motion'
 import { Package, CreditCard, Bot, MessageSquare, FileBarChart, Users, QrCode, ShieldCheck, Eye } from 'lucide-react'
 
@@ -110,6 +111,43 @@ export function Features() {
             Une plateforme complète pour piloter votre établissement sans ouvrir de logiciel complexe.
           </p>
         </motion.div>
+
+        {/* Visuels des fonctionnalités NOXIA */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
+          <figure className="overflow-hidden rounded-2xl border border-dark-800/60 bg-dark-900/40">
+            <Image
+              src="/images/noxia/gestion-stocks.jpg"
+              alt="Un responsable consulte les stocks sur une tablette"
+              width={630}
+              height={275}
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="w-full h-auto object-cover"
+            />
+            <figcaption className="p-4">
+              <h3 className="font-display font-bold text-white">Stocks et caisse en temps réel</h3>
+              <p className="text-sm text-dark-300 mt-1">
+                Suivez vos produits, vos ventes et vos niveaux de stock.
+              </p>
+            </figcaption>
+          </figure>
+
+          <figure className="overflow-hidden rounded-2xl border border-dark-800/60 bg-dark-900/40">
+            <Image
+              src="/images/noxia/menu-qr.jpg"
+              alt="Un client consulte le menu numérique NOXIA par QR code"
+              width={521}
+              height={210}
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="w-full h-auto object-cover"
+            />
+            <figcaption className="p-4">
+              <h3 className="font-display font-bold text-white">Le menu par QR code</h3>
+              <p className="text-sm text-dark-300 mt-1">
+                Permettez à vos clients de consulter vos produits sur leur téléphone.
+              </p>
+            </figcaption>
+          </figure>
+        </div>
 
         {/* Grille de cartes animée au scroll */}
         <motion.div 

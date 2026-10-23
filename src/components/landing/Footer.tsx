@@ -73,9 +73,23 @@ export function Footer() {
               Politique de confidentialité
             </a>
           </p>
-          <p className="text-sm" style={{ color: '#94a3b8' }}>
-            Made by <span className="text-primary-400">Agenxia</span>
-          </p>
+          <div className="flex items-center gap-2 text-sm" style={{ color: '#94a3b8' }}>
+            <span>Made by</span>
+            <a
+              href="https://agenxia.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              aria-label="Agenxia - Site officiel"
+            >
+              <img
+                src="/logos/agenxia-logo.png"
+                alt="Logo Agenxia"
+                className="h-6 w-auto object-contain"
+              />
+              <span className="font-semibold" style={{ color: '#a5b4fc' }}>Agenxia</span>
+            </a>
+          </div>
         </div>
       </div>
     </footer>

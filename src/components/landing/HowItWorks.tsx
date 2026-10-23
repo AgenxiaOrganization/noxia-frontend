@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 export function HowItWorks() {
   const steps = [
     { number: '1', title: 'Inscrivez-vous', description: 'Créez votre compte en 30 secondes et choisissez votre plan.' },
@@ -44,6 +46,43 @@ export function HowItWorks() {
               <p className="text-sm" style={{ color: '#94a3b8' }}>{step.description}</p>
             </div>
           ))}
+        </div>
+
+        {/* Aperçu de l'application et de l'équipe */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
+          <figure className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+            <Image
+              src="/images/noxia/dashboard-noxia.jpg"
+              alt="Un responsable consulte le tableau de bord NOXIA"
+              width={570}
+              height={170}
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="w-full h-auto object-cover"
+            />
+            <figcaption className="p-4">
+              <h3 className="font-bold text-white">Gardez le contrôle</h3>
+              <p className="text-sm mt-1" style={{ color: '#94a3b8' }}>
+                Consultez vos indicateurs et suivez l'activité de votre établissement.
+              </p>
+            </figcaption>
+          </figure>
+
+          <figure className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+            <Image
+              src="/images/noxia/equipe-noxia.jpg"
+              alt="Une équipe de restaurant collabore avec NOXIA"
+              width={536}
+              height={170}
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="w-full h-auto object-cover"
+            />
+            <figcaption className="p-4">
+              <h3 className="font-bold text-white">Une équipe mieux organisée</h3>
+              <p className="text-sm mt-1" style={{ color: '#94a3b8' }}>
+                Facilitez la coordination entre les employés et les responsables.
+              </p>
+            </figcaption>
+          </figure>
         </div>
       </div>
     </section>
