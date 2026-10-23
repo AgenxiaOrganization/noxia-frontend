@@ -38,7 +38,9 @@ const connectSrcOrigins = [
 // en data: URL (badge "SCANNEZ MOI" généré localement, ou logo choisi par
 // l'utilisateur), ce que connect-src régit — contrairement à <img src="data:">
 // classique, qui relèverait de img-src.
-const connectSrc = ["'self'", "data:", ...connectSrcOrigins].join(" ");
+// Google Identity Services (bouton « Se connecter avec Google ») : voir la liste officielle
+// des sources à autoriser, https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid#content_security_policy
+const connectSrc = ["'self'", "data:", "https://accounts.google.com/gsi/", ...connectSrcOrigins].join(" ");
 
 // CSP restrictive : autorise uniquement les sources effectivement utilisées
 // par l'app (Google Sign-In pour l'OAuth, l'API/WS Noxia). `unsafe-inline`
@@ -61,7 +63,7 @@ const imgSrc = process.env.NODE_ENV === "development"
 const csp = [
   "default-src 'self'",
   scriptSrc,
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
   imgSrc,
   "font-src 'self' data:",
   `connect-src ${connectSrc}`,
