@@ -192,7 +192,7 @@ export interface PublicPreOrderPayload {
   customer_phone?: string
   requested_for: string
   note?: string
-  items: { product: number; quantity: string | number }[]
+  items: { product: number; quantity: string | number; formula?: number | null }[]
 }
 
 export interface PublicPreOrderResult {

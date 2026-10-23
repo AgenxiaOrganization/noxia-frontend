@@ -49,6 +49,16 @@ export interface PreOrderItem {
   quantity: string
   unit_price: string
   subtotal?: string
+  formula?: number | null
+  formula_name?: string
+  formula_count?: number
+}
+
+/** « 2 × Pack 3 (Régab 65cl) » pour une formule, sinon « 3 × Régab 65cl ». */
+export function preOrderItemLabel(item: PreOrderItem): string {
+  const name = item.product_name || 'Produit'
+  if (item.formula_name) return `${item.formula_count ?? 1} × ${item.formula_name} (${name})`
+  return `${parseFloat(item.quantity)} × ${name}`
 }
 
 export interface PreOrder {

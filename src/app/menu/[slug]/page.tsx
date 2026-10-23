@@ -26,7 +26,11 @@ type MenuProduct = {
   availability: Availability
   max_order_quantity: number | null
   category_type: 'boisson' | 'nourriture' | 'service' | null
+  formulas?: MenuFormula[]
 }
+
+/** Offre à prix fixe (ex: « Pack 3 » = 3 unités pour 2700 F). */
+type MenuFormula = { id: number; name: string; units_sold: number; price: string }
 
 type MenuCategory = {
   id: number
@@ -41,7 +45,12 @@ type MenuResponse = {
   categories: MenuCategory[]
 }
 
-type CartLine = { product: MenuProduct; quantity: number }
+// `formula` null = à l'unité ; sinon `quantity` est le nombre de formules.
+type CartLine = { product: MenuProduct; formula: MenuFormula | null; quantity: number }
+
+const lineKey = (productId: number, formula: MenuFormula | null) => `${productId}-${formula?.id ?? 'u'}`
+const linePrice = (line: CartLine) => parseFloat(line.formula ? line.formula.price : line.product.price)
+const lineUnits = (line: CartLine) => line.quantity * (line.formula ? line.formula.units_sold : 1)
 
 const CATEGORY_ICONS: Record<string, typeof Beer> = {
   boisson: Beer,
@@ -154,7 +163,7 @@ export default function PublicMenuPage() {
   }, [slug])
 
   const cartTotal = useMemo(
-    () => cart.reduce((sum, line) => sum + parseFloat(line.product.price) * line.quantity, 0),
+    () => cart.reduce((sum, line) => sum + linePrice(line) * line.quantity, 0),
     [cart],
   )
   const cartCount = useMemo(() => cart.reduce((sum, line) => sum + line.quantity, 0), [cart])
@@ -188,48 +197,48 @@ export default function PublicMenuPage() {
   // temps), ce controle n'est qu'un retour immediat pour l'UX. Retourne
   // `true` si l'ajout a reussi, pour que l'appelant (ex: fiche detail) sache
   // s'il doit fermer sa modal ou laisser le message d'erreur visible.
-  function addToCart(product: MenuProduct): boolean {
-    if (!isOrderable(product)) return false
-    const currentQty = cart.find((l) => l.product.id === product.id)?.quantity ?? 0
-    if (product.max_order_quantity !== null && currentQty >= product.max_order_quantity) {
-      setStockNotice({
-        productId: product.id,
-        message: product.max_order_quantity > 0
-          ? `Il ne reste que ${product.max_order_quantity} ${product.name} en stock.`
-          : `${product.name} est en rupture de stock.`,
-      })
+  // Unités réelles déjà au panier pour ce produit, toutes lignes confondues (unité + formules).
+  function unitsInCart(productId: number) {
+    return cart.filter((l) => l.product.id === productId).reduce((sum, l) => sum + lineUnits(l), 0)
+  }
+
+  // Vrai si ajouter `extraUnits` dépasse la limite connue ; affiche alors le message.
+  function exceedsStock(product: MenuProduct, extraUnits: number): boolean {
+    if (product.max_order_quantity === null || unitsInCart(product.id) + extraUnits <= product.max_order_quantity) {
       return false
     }
+    setStockNotice({
+      productId: product.id,
+      message: product.max_order_quantity > 0
+        ? `Il ne reste que ${product.max_order_quantity} ${product.name} en stock.`
+        : `${product.name} est en rupture de stock.`,
+    })
+    return true
+  }
+
+  function addToCart(product: MenuProduct, formula: MenuFormula | null = null): boolean {
+    if (!isOrderable(product)) return false
+    if (exceedsStock(product, formula ? formula.units_sold : 1)) return false
+    const key = lineKey(product.id, formula)
     setCart((prev) => {
-      const existing = prev.find((l) => l.product.id === product.id)
+      const existing = prev.find((l) => lineKey(l.product.id, l.formula) === key)
       if (existing) {
-        return prev.map((l) => (l.product.id === product.id ? { ...l, quantity: l.quantity + 1 } : l))
+        return prev.map((l) => (lineKey(l.product.id, l.formula) === key ? { ...l, quantity: l.quantity + 1 } : l))
       }
-      return [...prev, { product, quantity: 1 }]
+      return [...prev, { product, formula, quantity: 1 }]
     })
     return true
   }
 
   function quantityInCart(productId: number) {
-    return cart.find((l) => l.product.id === productId)?.quantity ?? 0
+    return cart.filter((l) => l.product.id === productId).reduce((sum, l) => sum + l.quantity, 0)
   }
 
-  function updateQuantity(productId: number, delta: number) {
-    if (delta > 0) {
-      const line = cart.find((l) => l.product.id === productId)
-      if (line?.product.max_order_quantity !== null && line?.product.max_order_quantity !== undefined
-        && line.quantity >= line.product.max_order_quantity) {
-        setStockNotice({
-          productId,
-          message: line.product.max_order_quantity > 0
-            ? `Il ne reste que ${line.product.max_order_quantity} ${line.product.name} en stock.`
-            : `${line.product.name} est en rupture de stock.`,
-        })
-        return
-      }
-    }
+  function updateQuantity(line: CartLine, delta: number) {
+    if (delta > 0 && exceedsStock(line.product, line.formula ? line.formula.units_sold : 1)) return
+    const key = lineKey(line.product.id, line.formula)
     setCart((prev) => prev
-      .map((l) => (l.product.id === productId ? { ...l, quantity: l.quantity + delta } : l))
+      .map((l) => (lineKey(l.product.id, l.formula) === key ? { ...l, quantity: l.quantity + delta } : l))
       .filter((l) => l.quantity > 0))
   }
 
@@ -263,7 +272,7 @@ export default function PublicMenuPage() {
         customer_phone: customerPhone.trim() || undefined,
         requested_for: requestedForIso,
         note: note.trim() || undefined,
-        items: cart.map((l) => ({ product: l.product.id, quantity: l.quantity })),
+        items: cart.map((l) => ({ product: l.product.id, quantity: l.quantity, formula: l.formula?.id ?? null })),
       })
       setOrderSuccess({ expiresAt: result.expires_at })
       setCart([])
@@ -455,6 +464,13 @@ export default function PublicMenuPage() {
                             ].filter(Boolean).join(' • ')}
                           </p>
                         )}
+                        {product.formulas && product.formulas.length > 0 && (
+                          <p className="text-[11px] font-semibold text-accent-400">
+                            {product.formulas.length === 1
+                              ? `${product.formulas[0].name} : ${formatPrice(product.formulas[0].price)}`
+                              : `${product.formulas.length} formules disponibles`}
+                          </p>
+                        )}
                         <div className="flex items-center justify-between mt-auto pt-1.5">
                           <p className="font-display font-bold text-sm text-primary-300">
                             {formatPrice(product.price)}
@@ -575,6 +591,42 @@ export default function PublicMenuPage() {
                     </div>
                   )}
 
+                  {product.formulas && product.formulas.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-dark-400 uppercase tracking-wide flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Formules
+                      </p>
+                      {product.formulas.map((formula) => {
+                        const saving = formula.units_sold * parseFloat(product.price) - parseFloat(formula.price)
+                        return (
+                          <div key={formula.id} className="flex items-center justify-between gap-3 rounded-xl bg-dark-800/50 px-3 py-2.5">
+                            <div className="min-w-0">
+                              <p className="text-sm text-white font-semibold truncate">{formula.name}</p>
+                              <p className="text-[11px] text-dark-400">
+                                {formula.units_sold} × {product.name}
+                                {saving > 0 && <span className="text-accent-400"> • économisez {formatPrice(saving)}</span>}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="font-display font-bold text-sm text-primary-300">{formatPrice(formula.price)}</span>
+                              {isOrderable(product) && (
+                                <button
+                                  onClick={() => { if (addToCart(product, formula)) setSelectedProduct(null) }}
+                                  disabled={isOut}
+                                  className="w-8 h-8 rounded-full flex items-center justify-center bg-primary-500 hover:bg-primary-400 active:scale-90 transition-all disabled:opacity-30 disabled:pointer-events-none"
+                                  aria-label={`Ajouter la formule ${formula.name} à la commande`}
+                                >
+                                  <Plus className="w-4 h-4 text-white" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
                   {isOrderable(product) ? (
                     <button
                       onClick={() => { if (addToCart(product)) setSelectedProduct(null) }}
@@ -582,7 +634,8 @@ export default function PublicMenuPage() {
                       className="w-full py-3.5 rounded-xl font-bold text-white text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:pointer-events-none bg-gradient-to-r from-primary-500 to-indigo-600 hover:from-primary-400 hover:to-indigo-500 shadow-lg shadow-primary-500/25 transition-all active:scale-[0.99]"
                     >
                       <Plus className="w-4 h-4" />
-                      {isOut ? 'Indisponible pour le moment' : 'Ajouter à la commande'}
+                      {isOut ? 'Indisponible pour le moment'
+                        : product.formulas && product.formulas.length > 0 ? 'Ajouter à l’unité' : 'Ajouter à la commande'}
                     </button>
                   ) : (
                     <p className="text-xs text-center text-dark-500 py-2">
@@ -652,21 +705,25 @@ export default function PublicMenuPage() {
               ) : (
                 <div className="space-y-3 mb-5">
                   {cart.map((line) => (
-                    <div key={line.product.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-dark-800/40">
+                    <div key={lineKey(line.product.id, line.formula)} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-dark-800/40">
                       <div className="min-w-0">
                         <p className="text-sm text-white font-medium truncate">{line.product.name}</p>
-                        <p className="text-xs text-dark-500 mt-0.5">{formatPrice(line.product.price)}</p>
+                        <p className="text-xs text-dark-500 mt-0.5">
+                          {line.formula
+                            ? `${line.formula.name} (${line.formula.units_sold} unités) • ${formatPrice(line.formula.price)}`
+                            : formatPrice(line.product.price)}
+                        </p>
                       </div>
                       <div className="flex items-center gap-2.5 shrink-0">
                         <button
-                          onClick={() => updateQuantity(line.product.id, -1)}
+                          onClick={() => updateQuantity(line, -1)}
                           className="w-7 h-7 rounded-full flex items-center justify-center bg-dark-700/60 hover:bg-dark-700 transition-colors"
                         >
                           <Minus className="w-3.5 h-3.5 text-white" />
                         </button>
                         <span className="text-sm text-white font-semibold w-4 text-center">{line.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(line.product.id, 1)}
+                          onClick={() => updateQuantity(line, 1)}
                           className="w-7 h-7 rounded-full flex items-center justify-center bg-primary-500 hover:bg-primary-400 transition-colors"
                         >
                           <Plus className="w-3.5 h-3.5 text-white" />

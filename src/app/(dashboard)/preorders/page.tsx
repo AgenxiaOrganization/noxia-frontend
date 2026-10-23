@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ClipboardList, Phone, Clock, User, Check, X, AlertTriangle, PackageCheck, StickyNote, Search, Loader2, Boxes } from 'lucide-react'
-import { getPreOrders, processPreOrder, cancelPreOrder, PreOrder } from '../../../lib/api/sales'
+import { getPreOrders, processPreOrder, cancelPreOrder, PreOrder, preOrderItemLabel } from '../../../lib/api/sales'
 import { invalidateApiCache } from '@/lib/api'
 import { useWebSockets } from '../../../lib/hooks/useWebSockets'
 import Loader from '@/components/ui/Loader'
@@ -254,7 +254,7 @@ export default function PreOrdersPage() {
                   <div className="rounded-xl bg-dark-800/50 p-2.5 sm:p-3 space-y-1 max-h-32 overflow-y-auto">
                     {preorder.items.map((item) => (
                       <div key={item.id} className="flex justify-between gap-2 text-xs text-dark-200">
-                        <span className="truncate">{item.quantity} × {item.product_name}</span>
+                        <span className="truncate">{preOrderItemLabel(item)}</span>
                         <span className="text-dark-400 shrink-0">{formatAmount(item.subtotal ?? '0')}</span>
                       </div>
                     ))}
@@ -362,7 +362,7 @@ export default function PreOrdersPage() {
               <div className="rounded-xl bg-dark-800/50 p-3 mb-4 space-y-1">
                 {confirmingPreorder.items.map((item) => (
                   <div key={item.id} className="flex justify-between text-xs text-dark-200">
-                    <span>{item.quantity} × {item.product_name}</span>
+                    <span>{preOrderItemLabel(item)}</span>
                     <span className="text-dark-400">{formatAmount(item.subtotal ?? '0')}</span>
                   </div>
                 ))}
