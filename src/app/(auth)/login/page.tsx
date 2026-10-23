@@ -75,7 +75,7 @@ export default function LoginPage() {
       window.google.accounts.id.renderButton(element, {
         type: "standard",
         theme: "filled_dark",
-        size: "large",
+        size: "medium",
         text: "signin_with",
         shape: "rectangular",
         logo_alignment: "left",
@@ -98,7 +98,7 @@ export default function LoginPage() {
         window.google.accounts.id.renderButton(btnDiv, {
           type: "standard",
           theme: "filled_dark",
-          size: "large",
+          size: "medium",
           text: "signin_with",
           shape: "rectangular",
           logo_alignment: "left",

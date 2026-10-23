@@ -117,7 +117,7 @@ function RegisterForm() {
       window.google.accounts.id.renderButton(element, {
         type: "standard",
         theme: "filled_dark",
-        size: "large",
+        size: "medium",
         text: "signup_with",
         shape: "rectangular",
         logo_alignment: "left",
@@ -141,7 +141,7 @@ function RegisterForm() {
           window.google.accounts.id.renderButton(btnDiv, {
             type: "standard",
             theme: "filled_dark",
-            size: "large",
+            size: "medium",
             text: "signup_with",
             shape: "rectangular",
             logo_alignment: "left",
