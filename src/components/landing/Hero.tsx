@@ -24,7 +24,7 @@ export function Hero() {
     // reducedMotion="user" : sans déplacement ni zoom si le système demande moins d'animations.
     <MotionConfig reducedMotion="user">
       <section
-        className="relative isolate flex min-h-[100svh] items-end overflow-hidden bg-slate-950 pb-14 pt-28 sm:pb-20 lg:items-center lg:pb-16"
+        className="relative isolate flex min-h-screen supports-[height:100svh]:min-h-[100svh] items-end overflow-hidden bg-slate-950 pb-14 pt-28 sm:pb-20 lg:items-center lg:pb-16"
         aria-label="Section principale de présentation"
       >
         {/* Photographie : zoom d'entrée très lent, joué une seule fois */}

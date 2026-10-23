@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import { LandingImageCard } from './LandingImageCard'
 
 export function HowItWorks() {
   const steps = [
@@ -50,39 +50,30 @@ export function HowItWorks() {
 
         {/* Aperçu de l'application et de l'équipe */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
-          <figure className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-            <Image
-              src="/images/noxia/dashboard-noxia.jpg"
-              alt="Un responsable consulte le tableau de bord NOXIA"
-              width={570}
-              height={170}
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="w-full h-auto object-cover"
-            />
-            <figcaption className="p-4">
-              <h3 className="font-bold text-white">Gardez le contrôle</h3>
-              <p className="text-sm mt-1" style={{ color: '#94a3b8' }}>
-                Consultez vos indicateurs et suivez l'activité de votre établissement.
-              </p>
-            </figcaption>
-          </figure>
-
-          <figure className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-            <Image
-              src="/images/noxia/equipe-noxia.jpg"
-              alt="Une équipe de restaurant collabore avec NOXIA"
-              width={536}
-              height={170}
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="w-full h-auto object-cover"
-            />
-            <figcaption className="p-4">
-              <h3 className="font-bold text-white">Une équipe mieux organisée</h3>
-              <p className="text-sm mt-1" style={{ color: '#94a3b8' }}>
-                Facilitez la coordination entre les employés et les responsables.
-              </p>
-            </figcaption>
-          </figure>
+          <LandingImageCard
+            index={0}
+            src="/images/noxia/dashboard-noxia.jpg"
+            alt="Un responsable consulte le tableau de bord NOXIA"
+            title="Gardez le contrôle"
+            description="Consultez vos indicateurs et suivez l'activité de votre établissement."
+            icon="dashboard"
+            color="#818cf8"
+            aspectClassName="aspect-[2/1] md:aspect-[5/2]"
+            objectClassName="object-[25%_center]"
+          />
+          {/* Le fichier source porte une bande violette en haut et un liseré à gauche : rognés au cadrage. */}
+          <LandingImageCard
+            index={1}
+            src="/images/noxia/equipe-noxia.jpg"
+            alt="Une équipe de restaurant collabore avec NOXIA"
+            title="Une équipe mieux organisée"
+            description="Facilitez la coordination entre les employés et les responsables."
+            icon="users"
+            color="#ec4899"
+            aspectClassName="aspect-[2/1] md:aspect-[5/2]"
+            objectClassName="object-[55%_bottom]"
+            cropTopPercent={7}
+          />
         </div>
       </div>
     </section>
