@@ -1,6 +1,6 @@
 'use client'
 
-import { Package, Plus, Minus, TrendingUp, TrendingDown } from 'lucide-react'
+import { Package, Plus, Minus, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react'
 
 export interface StockRow {
   id: number
@@ -20,10 +20,11 @@ export interface StockRow {
 export interface StockMovementRow {
   id: number
   product: string
-  type: 'entree' | 'sortie'
+  type: 'entree' | 'sortie' | 'perte'
   qty: number
   date: string
   user: string
+  note?: string
 }
 
 interface StockTableProps {
@@ -158,34 +159,40 @@ export default function StockTable({ products, movements = [], onAdjust }: Stock
         <div className="rounded-xl border p-4" style={{ background: '#1e293b', borderColor: '#334155' }}>
           <h3 className="font-semibold text-sm text-white mb-3">Mouvements récents</h3>
           <div className="space-y-2 max-h-[200px] overflow-y-auto">
-            {movements.slice(0, 10).map((movement) => (
-              <div
-                key={movement.id}
-                className="flex items-center justify-between p-2 rounded-lg text-sm"
-                style={{
-                  background: movement.type === 'entree' ? 'rgba(34, 197, 94, 0.05)' : 'rgba(239, 68, 68, 0.05)',
-                  border: `1px solid ${movement.type === 'entree' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'}`,
-                }}
-              >
-                <div className="flex items-center gap-3">
-                  {movement.type === 'entree' ? (
-                    <TrendingUp className="w-4 h-4" style={{ color: '#22c55e' }} />
-                  ) : (
-                    <TrendingDown className="w-4 h-4" style={{ color: '#ef4444' }} />
-                  )}
-                  <div>
-                    <span className="text-white">{movement.product}</span>
-                    <span className="text-xs ml-2" style={{ color: '#64748b' }}>{movement.date}</span>
+            {movements.slice(0, 10).map((movement) => {
+              const color = movement.type === 'entree' ? '#22c55e' : movement.type === 'perte' ? '#f59e0b' : '#ef4444'
+              return (
+                <div
+                  key={movement.id}
+                  className="flex items-center justify-between p-2 rounded-lg text-sm"
+                  style={{ background: `${color}0d`, border: `1px solid ${color}1a` }}
+                >
+                  <div className="flex items-center gap-3">
+                    {movement.type === 'entree' ? (
+                      <TrendingUp className="w-4 h-4" style={{ color }} />
+                    ) : movement.type === 'perte' ? (
+                      <AlertTriangle className="w-4 h-4" style={{ color }} />
+                    ) : (
+                      <TrendingDown className="w-4 h-4" style={{ color }} />
+                    )}
+                    <div>
+                      <span className="text-white">{movement.product}</span>
+                      {movement.type === 'perte' && <span className="text-xs ml-2 font-medium" style={{ color }}>Perte</span>}
+                      <span className="text-xs ml-2" style={{ color: '#64748b' }}>{movement.date}</span>
+                      {movement.type === 'perte' && movement.note && (
+                        <div className="text-xs" style={{ color: '#64748b' }}>{movement.note}</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-semibold" style={{ color }}>
+                      {movement.type === 'entree' ? '+' : '-'}{movement.qty}
+                    </span>
+                    <span className="text-xs" style={{ color: '#64748b' }}>{movement.user}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className={`font-semibold ${movement.type === 'entree' ? 'text-green-400' : 'text-red-400'}`}>
-                    {movement.type === 'entree' ? '+' : '-'}{movement.qty}
-                  </span>
-                  <span className="text-xs" style={{ color: '#64748b' }}>{movement.user}</span>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}

@@ -14,7 +14,7 @@ export interface StockAdjustmentTarget {
 
 export interface StockAdjustmentPayload {
   stock_item: number
-  movement_type: 'entry' | 'exit'
+  movement_type: 'entry' | 'exit' | 'loss'
   quantity?: number
   packaging?: number
   packaging_quantity?: number
@@ -39,9 +39,14 @@ export default function StockAdjustmentModal({ product, type, isSaving, onSubmit
   const [adjustmentTypeQty, setAdjustmentTypeQty] = useState<'unit' | 'package'>('unit')
   const [unitsPerPackageInput, setUnitsPerPackageInput] = useState(product.unitsPerPackage || 12)
   const [adjustmentNote, setAdjustmentNote] = useState(type === 'add' ? 'Approvisionnement' : 'Sortie manuelle')
+  // Une sortie peut être une perte (casse, péremption) plutôt qu'une consommation
+  // normale : même mouvement de stock (diminue la quantité), mais movement_type
+  // distinct côté backend pour pouvoir filtrer/rapporter les pertes séparément.
+  const [isLoss, setIsLoss] = useState(false)
 
   const handleSubmit = () => {
     if (!product.stockItemId) return
+    if (type === 'remove' && isLoss && !adjustmentNote.trim()) return
 
     let qtyToAdjust = adjustmentQty
     let unitLabel = ''
@@ -58,7 +63,7 @@ export default function StockAdjustmentModal({ product, type, isSaving, onSubmit
 
     onSubmit({
       stock_item: product.stockItemId,
-      movement_type: type === 'add' ? 'entry' : 'exit',
+      movement_type: type === 'add' ? 'entry' : isLoss ? 'loss' : 'exit',
       quantity: packagingId ? undefined : qtyToAdjust,
       packaging: packagingId ?? undefined,
       packaging_quantity: packagingId ? adjustmentQty : undefined,
@@ -187,15 +192,32 @@ export default function StockAdjustmentModal({ product, type, isSaving, onSubmit
             )}
           </div>
 
+          {type === 'remove' && (
+            <label className="flex items-center gap-2 text-sm cursor-pointer select-none" style={{ color: '#94a3b8' }}>
+              <input
+                type="checkbox"
+                checked={isLoss}
+                onChange={(e) => {
+                  setIsLoss(e.target.checked)
+                  setAdjustmentNote(e.target.checked ? '' : 'Sortie manuelle')
+                }}
+                className="w-4 h-4 rounded accent-red-500"
+              />
+              C'est une perte (bouteille cassée, périmé, jeté...)
+            </label>
+          )}
+
           <div>
-            <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>Note</label>
+            <label className="block text-xs mb-1" style={{ color: '#94a3b8' }}>
+              {isLoss ? 'Raison de la perte *' : 'Note'}
+            </label>
             <input
               type="text"
               value={adjustmentNote}
               onChange={(e) => setAdjustmentNote(e.target.value)}
-              placeholder={type === 'add' ? 'Approvisionnement' : 'Sortie manuelle'}
+              placeholder={isLoss ? 'Ex. : bouteille cassée en salle' : type === 'add' ? 'Approvisionnement' : 'Sortie manuelle'}
               className="w-full rounded-lg px-4 py-2.5 text-white text-sm outline-none transition"
-              style={{ background: 'rgba(51, 65, 85, 0.5)', border: '1px solid #334155' }}
+              style={{ background: 'rgba(51, 65, 85, 0.5)', border: isLoss && !adjustmentNote.trim() ? '1px solid #ef4444' : '1px solid #334155' }}
             />
           </div>
 
@@ -211,7 +233,7 @@ export default function StockAdjustmentModal({ product, type, isSaving, onSubmit
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSaving}
+              disabled={isSaving || (isLoss && !adjustmentNote.trim())}
               className="flex-1 py-2.5 rounded-lg text-white text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:brightness-110 active:scale-[0.98] flex items-center justify-center gap-2"
               style={{
                 background: type === 'add' ? '#22c55e' : '#ef4444',

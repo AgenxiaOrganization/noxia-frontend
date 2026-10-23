@@ -22,7 +22,7 @@ export interface StockMovement {
   id: number
   stock_item: number
   product_name?: string
-  movement_type: 'entry' | 'exit' | 'adjustment'
+  movement_type: 'entry' | 'exit' | 'adjustment' | 'loss'
   quantity: number | string
   packaging?: number | null
   packaging_name?: string | null

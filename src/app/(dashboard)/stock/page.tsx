@@ -121,7 +121,7 @@ export default function StockPage() {
       setMovements(apiMovements.map((m: any) => ({
         id: m.id,
         product: m.product_name || 'Produit inconnu',
-        type: m.movement_type === 'entry' ? 'entree' : 'sortie',
+        type: m.movement_type === 'entry' ? 'entree' : m.movement_type === 'loss' ? 'perte' : 'sortie',
         qty: parseFloat(m.quantity as string),
         date: m.created_at ? new Date(m.created_at).toLocaleString('fr-FR', { 
           day: '2-digit', 
