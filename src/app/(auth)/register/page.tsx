@@ -12,6 +12,7 @@ import { saveSession } from '@/lib/auth'
 import { countriesData } from '@/lib/countriesData'
 import { getPlans, type Plan } from '@/lib/api/subscription'
 import { toast } from 'sonner'
+import { renderGoogleButton, watchGoogleButtonWidth } from '@/lib/googleButton'
 import { CGUModal } from '@/components/ui/CGUModal'
 
 // GOOGLE_CLIENT_ID must be set in .env.local as NEXT_PUBLIC_GOOGLE_CLIENT_ID.
@@ -113,18 +114,10 @@ function RegisterForm() {
   )
 
   const googleButtonRef = useCallback((element: HTMLDivElement | null) => {
-    if (element && window.google) {
-      window.google.accounts.id.renderButton(element, {
-        type: "standard",
-        theme: "filled_dark",
-        size: "medium",
-        text: "signup_with",
-        shape: "rectangular",
-        logo_alignment: "left",
-        width: "100%"
-      })
-    }
+    renderGoogleButton(element, 'signup_with')
   }, [])
+
+  useEffect(() => watchGoogleButtonWidth('google-button-div', 'signup_with'), [])
 
   useEffect(() => {
     const initGoogle = () => {
@@ -136,18 +129,7 @@ function RegisterForm() {
           use_fedcm_for_prompt: false,
         } as any)
 
-        const btnDiv = document.getElementById("google-button-div")
-        if (btnDiv) {
-          window.google.accounts.id.renderButton(btnDiv, {
-            type: "standard",
-            theme: "filled_dark",
-            size: "medium",
-            text: "signup_with",
-            shape: "rectangular",
-            logo_alignment: "left",
-            width: "100%"
-          })
-        }
+        renderGoogleButton(document.getElementById('google-button-div'), 'signup_with')
       }
     }
 
@@ -278,14 +260,16 @@ function RegisterForm() {
 
         {/* Logo NOXIA */}
         <div className="text-center mb-6 animate-slide-up">
-          <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 bg-dark-900/50 p-2 border border-dark-800/60 overflow-hidden shadow-md">
-            <div className="absolute inset-0 bg-primary-500/10 blur-md rounded-full" />
-            <img 
-              src="/logos/NOXIA_Orbit_Logo.svg" 
-              alt="NOXIA" 
-              className="relative w-full h-full object-contain"
-            />
-          </div>
+          <Link href="/" aria-label="Retour à l'accueil NOXIA" className="inline-block">
+            <div className="relative w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 bg-dark-900/50 p-2 border border-dark-800/60 overflow-hidden shadow-md transition hover:border-primary-500/60">
+              <div className="absolute inset-0 bg-primary-500/10 blur-md rounded-full" />
+              <img
+                src="/logos/NOXIA_Orbit_Logo.svg"
+                alt="NOXIA"
+                className="relative w-full h-full object-contain"
+              />
+            </div>
+          </Link>
           <h1 className="text-2xl font-bold text-white">Créer votre compte NOXIA</h1>
           <p className="text-sm" style={{ color: '#94a3b8' }}>
             {headerSubtitle}
@@ -444,7 +428,7 @@ function RegisterForm() {
                     <div 
                       ref={googleButtonRef}
                       id="google-button-div" 
-                      className="w-full max-w-[382px] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                      className="w-full flex justify-center"
                     />
                   </div>
 

@@ -6,6 +6,7 @@ import { Mail, User, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react
 import { loginWithEmployeeId, googleAuth, ApiError } from '@/lib/api'
 import { saveSession } from '@/lib/auth'
 import { toast } from 'sonner'
+import { renderGoogleButton, watchGoogleButtonWidth } from '@/lib/googleButton'
 
 // GOOGLE_CLIENT_ID must be set in .env.local as NEXT_PUBLIC_GOOGLE_CLIENT_ID.
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? ''
@@ -71,18 +72,10 @@ export default function LoginPage() {
   )
 
   const googleButtonRef = useCallback((element: HTMLDivElement | null) => {
-    if (element && window.google) {
-      window.google.accounts.id.renderButton(element, {
-        type: "standard",
-        theme: "filled_dark",
-        size: "medium",
-        text: "signin_with",
-        shape: "rectangular",
-        logo_alignment: "left",
-        width: "100%"
-      })
-    }
+    renderGoogleButton(element, 'signin_with')
   }, [])
+
+  useEffect(() => watchGoogleButtonWidth('google-button-div', 'signin_with'), [])
 
   useEffect(() => {
     const initGoogle = () => {
@@ -93,18 +86,7 @@ export default function LoginPage() {
         use_fedcm_for_prompt: false,
       } as any)
 
-      const btnDiv = document.getElementById("google-button-div")
-      if (btnDiv) {
-        window.google.accounts.id.renderButton(btnDiv, {
-          type: "standard",
-          theme: "filled_dark",
-          size: "medium",
-          text: "signin_with",
-          shape: "rectangular",
-          logo_alignment: "left",
-          width: "100%"
-        })
-      }
+      renderGoogleButton(document.getElementById('google-button-div'), 'signin_with')
     }
 
     const existingScript = document.getElementById('google-gsi-script')
@@ -166,15 +148,17 @@ export default function LoginPage() {
 
         {/* Logo NOXIA */}
         <div className="text-center mb-8 animate-slide-up">
-          <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-dark-900/50 p-2 border border-dark-800/60 overflow-hidden shadow-md">
-            <div className="absolute inset-0 bg-primary-500/10 blur-md rounded-full" />
-            <img 
-              src="/logos/NOXIA_Orbit_Logo.svg" 
-              alt="NOXIA" 
-              className="relative w-full h-full object-contain"
-            />
-          </div>
-          <h1 className="text-3xl font-display font-extrabold text-white tracking-tight">NOXIA</h1>
+          <Link href="/" aria-label="Retour à l'accueil NOXIA" className="inline-block group">
+            <div className="relative w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-dark-900/50 p-2 border border-dark-800/60 overflow-hidden shadow-md transition group-hover:border-primary-500/60">
+              <div className="absolute inset-0 bg-primary-500/10 blur-md rounded-full" />
+              <img
+                src="/logos/NOXIA_Orbit_Logo.svg"
+                alt="NOXIA"
+                className="relative w-full h-full object-contain"
+              />
+            </div>
+            <h1 className="text-3xl font-display font-extrabold text-white tracking-tight transition group-hover:text-primary-300">NOXIA</h1>
+          </Link>
           <p className="text-sm text-dark-400 mt-1.5 font-medium">OS Intelligent pour Bars & Restaurants</p>
         </div>
 
@@ -317,7 +301,7 @@ export default function LoginPage() {
                 <div 
                   ref={googleButtonRef}
                   id="google-button-div" 
-                  className="w-full max-w-[382px] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                  className="w-full flex justify-center"
                 />
               </div>
 
