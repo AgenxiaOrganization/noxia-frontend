@@ -10,8 +10,9 @@ import { getUser, getMembership } from '../../../lib/auth'
 import { toast } from 'sonner'
 import { FeatureLockedScreen, isFeatureNotIncludedError } from '@/components/ui/FeatureLockedScreen'
 
-import { Product, CartItem } from '../../../components/pos/types'
+import { Product, CartItem, cartKey } from '../../../components/pos/types'
 import ProductGrid from '../../../components/pos/ProductGrid'
+import FormulaChooser from '../../../components/pos/FormulaChooser'
 import CartSidebar from '../../../components/pos/CartSidebar'
 import PaymentModal from '../../../components/pos/PaymentModal'
 import DailySalesList from '../../../components/pos/DailySalesList'
@@ -40,6 +41,7 @@ export default function POSPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<string>(currentEmployee?.name || '')
   const [categoriesList, setCategoriesList] = useState<string[]>(['boisson'])
   const [isFeatureLocked, setIsFeatureLocked] = useState(false)
+  const [formulaChoiceProduct, setFormulaChoiceProduct] = useState<Product | null>(null)
 
 
   const loadData = async () => {
@@ -71,6 +73,9 @@ export default function POSPage() {
             stock: stock,
             unit: p.unit,
             photo: p.photo ?? null,
+            formulas: (p.formulas || [])
+              .filter((f: any) => f.is_active)
+              .map((f: any) => ({ id: f.id, name: f.name, unitsSold: f.units_sold, price: parseFloat(f.price) })),
           }
         }))
       }
@@ -132,60 +137,69 @@ export default function POSPage() {
 
   const getProduct = (id: number) => products.find(p => p.id === id)
 
+  const getFormula = (product: Product | undefined, formulaId: number | null) =>
+    formulaId == null ? undefined : product?.formulas?.find(f => f.id === formulaId)
+
+  // Unités réelles retirées du stock par une ligne : une formule « Pack 3 » x2 = 6 unités.
+  const unitsOf = (item: CartItem) => {
+    const formula = getFormula(getProduct(item.productId), item.formulaId)
+    return item.qty * (formula ? formula.unitsSold : 1)
+  }
+
+  const linePrice = (item: CartItem) => {
+    const product = getProduct(item.productId)
+    const formula = getFormula(product, item.formulaId)
+    return formula ? formula.price : (product?.price ?? 0)
+  }
+
+  // Le stock est vérifié sur toutes les lignes du même produit (unité + formules).
+  const fitsStock = (nextCart: CartItem[], productId: number) => {
+    const product = getProduct(productId)
+    if (!product || product.unit === 'service' || product.stock < 0) return true
+    const used = nextCart.filter(i => i.productId === productId).reduce((acc, i) => acc + unitsOf(i), 0)
+    if (used > product.stock) {
+      alert(`Stock insuffisant ! Il reste ${product.stock} ${product.unit}(s).`)
+      return false
+    }
+    return true
+  }
+
   // --- Panier ---
+  const addLine = (productId: number, formulaId: number | null) => {
+    const key = cartKey({ productId, formulaId })
+    const existing = cart.find(item => cartKey(item) === key)
+    const nextCart = existing
+      ? cart.map(item => cartKey(item) === key ? { ...item, qty: item.qty + 1 } : item)
+      : [...cart, { productId, formulaId, qty: 1 }]
+    if (fitsStock(nextCart, productId)) setCart(nextCart)
+  }
+
   const addToCart = (productId: number) => {
     const product = getProduct(productId)
     if (!product) return
-
-    const isService = product.unit === 'service' || product.stock === -1
-    if (!isService && product.stock >= 0) {
-      const existing = cart.find(item => item.productId === productId)
-      const currentQty = existing ? existing.qty : 0
-      if (currentQty >= product.stock) {
-        alert(`Stock insuffisant ! Il reste ${product.stock} ${product.unit}(s).`)
-        return
-      }
+    if (product.formulas && product.formulas.length > 0) {
+      setFormulaChoiceProduct(product)
+      return
     }
-
-    const existing = cart.find(item => item.productId === productId)
-    if (existing) {
-      setCart(cart.map(item => 
-        item.productId === productId 
-          ? { ...item, qty: item.qty + 1 }
-          : item
-      ))
-    } else {
-      setCart([...cart, { productId, qty: 1 }])
-    }
+    addLine(productId, null)
   }
 
-  const removeFromCart = (productId: number) => {
-    setCart(cart.filter(item => item.productId !== productId))
+  const removeFromCart = (key: string) => {
+    setCart(cart.filter(item => cartKey(item) !== key))
   }
 
-  const updateQty = (productId: number, delta: number) => {
-    setCart(cart.map(item => {
-      if (item.productId === productId) {
-        const newQty = Math.max(1, item.qty + delta)
-        const product = getProduct(productId)
-        if (product && product.stock >= 0 && product.stock !== 999 && newQty > product.stock) {
-          alert(`Stock insuffisant ! Il reste ${product.stock} ${product.unit}(s).`)
-          return item
-        }
-        return { ...item, qty: newQty }
-      }
-      return item
-    }))
+  const updateQty = (key: string, delta: number) => {
+    const target = cart.find(item => cartKey(item) === key)
+    if (!target) return
+    const nextCart = cart.map(item => cartKey(item) === key ? { ...item, qty: Math.max(1, item.qty + delta) } : item)
+    if (delta < 0 || fitsStock(nextCart, target.productId)) setCart(nextCart)
   }
 
   const clearCart = () => setCart([])
 
   // --- Calculs ---
   const totalItems = cart.reduce((acc, item) => acc + item.qty, 0)
-  const total = cart.reduce((acc, item) => {
-    const product = getProduct(item.productId)
-    return acc + (product ? product.price * item.qty : 0)
-  }, 0)
+  const total = cart.reduce((acc, item) => acc + linePrice(item) * item.qty, 0)
 
   // --- Encaissement ---
   const handleCheckout = async (paymentMethod: string) => {
@@ -209,16 +223,19 @@ export default function POSPage() {
 
     // Mettre à jour le stock localement de manière optimiste
     const updatedProducts = products.map(p => {
-      const cartItem = backupCart.find(item => item.productId === p.id)
-      if (cartItem && p.stock >= 0 && p.stock !== 999) {
-        return { ...p, stock: Math.max(0, p.stock - cartItem.qty) }
+      const sold = backupCart.filter(item => item.productId === p.id).reduce((acc, item) => acc + unitsOf(item), 0)
+      if (sold > 0 && p.stock >= 0 && p.stock !== 999) {
+        return { ...p, stock: Math.max(0, p.stock - sold) }
       }
       return p
     })
     setProducts(updatedProducts)
 
-    // Préparer les articles pour le backend
+    // Préparer les articles pour le backend (formule : quantity = nombre de formules, prix fixé côté serveur)
     const items = backupCart.map(item => {
+      if (item.formulaId != null) {
+        return { product: item.productId, formula: item.formulaId, quantity: item.qty.toString() }
+      }
       const p = getProduct(item.productId)
       return {
         product: item.productId,
@@ -326,6 +343,7 @@ export default function POSPage() {
         <CartSidebar
           cart={cart}
           getProduct={getProduct}
+          linePrice={linePrice}
           totalItems={totalItems}
           total={total}
           updateQty={updateQty}
@@ -344,6 +362,15 @@ export default function POSPage() {
           onViewReceipt={(sale) => setSelectedReceiptSale(sale)}
         />
       )}
+
+      <FormulaChooser
+        product={formulaChoiceProduct}
+        onChoose={(formulaId) => {
+          if (formulaChoiceProduct) addLine(formulaChoiceProduct.id, formulaId)
+          setFormulaChoiceProduct(null)
+        }}
+        onClose={() => setFormulaChoiceProduct(null)}
+      />
 
       {/* Modal de Paiement */}
       <PaymentModal

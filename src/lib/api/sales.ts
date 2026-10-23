@@ -16,6 +16,16 @@ export interface SaleItem {
   quantity: string
   unit_price: string
   subtotal?: string
+  formula?: number | null
+  /** Nom de la formule au moment de la vente (conservé même si elle est supprimée depuis). */
+  formula_name?: string
+  formula_count?: number
+}
+
+/** Libellé d'une ligne de ticket : « Régab 65cl (2 x Pack 3) » pour une vente par formule. */
+export function saleItemLabel(item: SaleItem): string {
+  const name = item.product_name || 'Produit'
+  return item.formula_name ? `${name} (${item.formula_count ?? 1} x ${item.formula_name})` : name
 }
 
 export interface Sale {

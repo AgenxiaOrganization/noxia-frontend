@@ -46,6 +46,7 @@ export interface Product {
   initial_min_stock?: number
   units_per_package?: number
   packagings?: ProductPackaging[]
+  formulas?: ProductFormula[]
   created_at?: string
   updated_at?: string
 }
@@ -70,6 +71,16 @@ export interface ProductPackaging {
   name: string
   units_per_package: number
   is_default: boolean
+}
+
+/** Offre de vente à prix fixe pour un produit (ex: "Pack 3" = 3 unités à 1000 F),
+ * distincte d'un ProductPackaging (conversion de quantité sans prix propre). */
+export interface ProductFormula {
+  id: number
+  name: string
+  units_sold: number
+  price: string
+  is_active: boolean
 }
 
 /**
@@ -110,6 +121,12 @@ export function createCatalogApi(client: ApiClient) {
     updateProductPackaging: (productId: number, packagingId: number, data: Partial<ProductPackaging>) => client.put<ProductPackaging>(`/catalog/products/${productId}/packagings/${packagingId}/`, data),
     deleteProductPackaging: (productId: number, packagingId: number) => client.del<void>(`/catalog/products/${productId}/packagings/${packagingId}/`),
 
+    // Formules de vente
+    getProductFormulas: (productId: number) => client.get<ProductFormula[]>(`/catalog/products/${productId}/formulas/`),
+    createProductFormula: (productId: number, data: Partial<ProductFormula>) => client.post<ProductFormula>(`/catalog/products/${productId}/formulas/`, data),
+    updateProductFormula: (productId: number, formulaId: number, data: Partial<ProductFormula>) => client.put<ProductFormula>(`/catalog/products/${productId}/formulas/${formulaId}/`, data),
+    deleteProductFormula: (productId: number, formulaId: number) => client.del<void>(`/catalog/products/${productId}/formulas/${formulaId}/`),
+
     // Menu par QR code
     getQrMenuSettings: () => client.get<QrMenuSettings>('/catalog/qr-menu/'),
     enableQrMenu: () => client.post<QrMenuSettings>('/catalog/qr-menu/', {}),
@@ -125,6 +142,7 @@ export const {
   getProducts, createProduct, updateProduct, deleteProduct,
   getProductVariants, createProductVariant, updateProductVariant, deleteProductVariant,
   getProductPackagings, createProductPackaging, updateProductPackaging, deleteProductPackaging,
+  getProductFormulas, createProductFormula, updateProductFormula, deleteProductFormula,
   getQrMenuSettings, enableQrMenu, disableQrMenu,
 } = defaultCatalogApi
 

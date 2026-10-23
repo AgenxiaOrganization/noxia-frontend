@@ -8,7 +8,7 @@ import { createCatalogApi, type Product as CatalogProduct } from '@/lib/api/cata
 import { createSalesApi, type CashRegister, type Sale } from '@/lib/api/sales'
 import { toast } from 'sonner'
 
-import { Product, CartItem } from '@/components/pos/types'
+import { Product, CartItem, cartKey } from '@/components/pos/types'
 import ProductGrid from '@/components/pos/ProductGrid'
 import CartSidebar from '@/components/pos/CartSidebar'
 import PaymentModal from '@/components/pos/PaymentModal'
@@ -130,17 +130,17 @@ export default function SuperAdminVentes() {
     if (existing) {
       setCart(cart.map(item => item.productId === productId ? { ...item, qty: item.qty + 1 } : item))
     } else {
-      setCart([...cart, { productId, qty: 1 }])
+      setCart([...cart, { productId, formulaId: null, qty: 1 }])
     }
   }
 
-  const removeFromCart = (productId: number) => setCart(cart.filter(item => item.productId !== productId))
+  const removeFromCart = (key: string) => setCart(cart.filter(item => cartKey(item) !== key))
 
-  const updateQty = (productId: number, delta: number) => {
+  const updateQty = (key: string, delta: number) => {
     setCart(cart.map(item => {
-      if (item.productId === productId) {
+      if (cartKey(item) === key) {
         const newQty = Math.max(1, item.qty + delta)
-        const product = getProduct(productId)
+        const product = getProduct(item.productId)
         if (product && product.stock >= 0 && product.stock !== 999 && newQty > product.stock) {
           toast.error(`Stock insuffisant ! Il reste ${product.stock} ${product.unit}(s).`)
           return item
@@ -270,6 +270,7 @@ export default function SuperAdminVentes() {
         <CartSidebar
           cart={cart}
           getProduct={getProduct}
+          linePrice={(item) => getProduct(item.productId)?.price ?? 0}
           totalItems={totalItems}
           total={total}
           updateQty={updateQty}

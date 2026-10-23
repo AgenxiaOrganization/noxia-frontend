@@ -91,6 +91,11 @@ export default function ProductGrid({
               </div>
               <p className="text-sm font-bold text-accent-500">
                 {product.price.toLocaleString()} FCFA
+                {product.formulas && product.formulas.length > 0 && (
+                  <span className="ml-1.5 align-middle text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary-500/15 text-primary-400">
+                    +{product.formulas.length} formule{product.formulas.length > 1 ? 's' : ''}
+                  </span>
+                )}
               </p>
               {!isService ? (
                 <p className={`text-xs ${isOutOfStock ? 'text-red-400' : isLowStock ? 'text-orange-400' : 'text-dark-400'}`}>

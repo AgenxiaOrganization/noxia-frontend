@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Sale } from '../../lib/api/sales'
+import { Sale, saleItemLabel } from '../../lib/api/sales'
 import { 
   Receipt, 
   Search, 
@@ -246,7 +246,9 @@ export default function DailySalesList({
                   : '--:--'
                 
                 const itemsSummary = (sale.items || [])
-                  .map(item => `${item.product_name || 'Produit'} x${parseFloat(item.quantity || '1')}`)
+                  .map(item => item.formula_name
+                    ? saleItemLabel(item)
+                    : `${item.product_name || 'Produit'} x${parseFloat(item.quantity || '1')}`)
                   .join(', ') || 'Articles enregistrés'
 
                 const totalVal = parseFloat(sale.total_amount || '0')

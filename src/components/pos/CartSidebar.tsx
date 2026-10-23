@@ -1,13 +1,15 @@
-import { ShoppingCart, Trash2, Minus, Plus, X } from 'lucide-react'
-import { CartItem, Product } from './types'
+import { ShoppingCart, Trash2, Minus, Plus, X, Layers } from 'lucide-react'
+import { CartItem, Product, cartKey } from './types'
 
 interface CartSidebarProps {
   cart: CartItem[]
   getProduct: (id: number) => Product | undefined
+  /** Prix d'une ligne pour qty = 1 : prix unitaire, ou prix fixe de la formule. */
+  linePrice: (item: CartItem) => number
   totalItems: number
   total: number
-  updateQty: (productId: number, delta: number) => void
-  removeFromCart: (productId: number) => void
+  updateQty: (key: string, delta: number) => void
+  removeFromCart: (key: string) => void
   clearCart: () => void
   onCheckout: () => void
 }
@@ -15,6 +17,7 @@ interface CartSidebarProps {
 export default function CartSidebar({
   cart,
   getProduct,
+  linePrice,
   totalItems,
   total,
   updateQty,
@@ -23,7 +26,7 @@ export default function CartSidebar({
   onCheckout
 }: CartSidebarProps) {
   return (
-    <div 
+    <div
       className="rounded-2xl border border-dark-800/40 p-5 flex flex-col h-full min-h-[400px] glass-card"
     >
       <div className="flex items-center justify-between mb-3">
@@ -54,17 +57,25 @@ export default function CartSidebar({
           cart.map((item) => {
             const product = getProduct(item.productId)
             if (!product) return null
-            const subtotal = product.price * item.qty
+            const formula = item.formulaId != null ? product.formulas?.find(f => f.id === item.formulaId) : undefined
+            const price = linePrice(item)
+            const subtotal = price * item.qty
+            const key = cartKey(item)
 
             return (
-              <div 
-                key={item.productId} 
+              <div
+                key={key}
                 className="flex items-center justify-between p-2.5 rounded-xl text-sm bg-dark-950/40 border border-dark-800/30"
               >
                 <div className="flex-1 min-w-0 pr-2">
                   <span className="font-medium text-white truncate block">{product.name}</span>
+                  {formula && (
+                    <span className="text-[11px] text-primary-400 flex items-center gap-1">
+                      <Layers className="w-3 h-3" /> {formula.name} ({formula.unitsSold * item.qty} unités)
+                    </span>
+                  )}
                   <span className="text-xs text-dark-400">
-                    {product.price.toLocaleString()} F x {item.qty}
+                    {price.toLocaleString()} F x {item.qty}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -73,21 +84,21 @@ export default function CartSidebar({
                   </span>
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => updateQty(item.productId, -1)}
+                      onClick={() => updateQty(key, -1)}
                       className="w-6 h-6 rounded-lg flex items-center justify-center transition bg-dark-950 border border-dark-800/50 hover:bg-white/5"
                     >
                       <Minus className="w-3 h-3 text-dark-400" />
                     </button>
                     <span className="w-6 text-center text-white">{item.qty}</span>
                     <button
-                      onClick={() => updateQty(item.productId, 1)}
+                      onClick={() => updateQty(key, 1)}
                       className="w-6 h-6 rounded-lg flex items-center justify-center transition bg-dark-950 border border-dark-800/50 hover:bg-white/5"
                     >
                       <Plus className="w-3 h-3 text-dark-400" />
                     </button>
                   </div>
                   <button
-                    onClick={() => removeFromCart(item.productId)}
+                    onClick={() => removeFromCart(key)}
                     className="p-1 rounded-lg hover:bg-red-500/20 text-red-400 transition"
                   >
                     <X className="w-3 h-3" />
@@ -109,8 +120,8 @@ export default function CartSidebar({
           onClick={onCheckout}
           disabled={cart.length === 0}
           className={`w-full py-3 rounded-xl text-white font-semibold text-sm transition disabled:opacity-50 ${
-            cart.length > 0 
-              ? 'bg-accent-500 hover:bg-accent-600 shadow-lg shadow-accent-500/20 active:scale-95' 
+            cart.length > 0
+              ? 'bg-accent-500 hover:bg-accent-600 shadow-lg shadow-accent-500/20 active:scale-95'
               : 'bg-dark-800 text-dark-400 border border-dark-800/60 cursor-not-allowed'
           }`}
         >

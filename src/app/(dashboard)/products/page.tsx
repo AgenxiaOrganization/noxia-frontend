@@ -15,6 +15,7 @@ import { FeatureLockedScreen, isFeatureNotIncludedError } from '@/components/ui/
 import ProductGrid from '@/components/products/ProductGrid'
 import ProductFormModal from '@/components/products/ProductFormModal'
 import QrMenuModal from '@/components/products/QrMenuModal'
+import ProductFormulaModal from '@/components/products/ProductFormulaModal'
 import { toast } from 'sonner'
 
 // --- Types ---
@@ -50,6 +51,7 @@ export default function ProductsPage() {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
   const [isQrMenuModalOpen, setIsQrMenuModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [formulaProduct, setFormulaProduct] = useState<Product | null>(null)
 
   const [isSaving, setIsSaving] = useState(false)
 
@@ -345,7 +347,11 @@ export default function ProductsPage() {
       </div>
 
       {/* LISTE DES PRODUITS */}
-      <ProductGrid products={filteredProducts} onEdit={openModal} onDelete={deleteProduct} />
+      <ProductGrid products={filteredProducts} onEdit={openModal} onDelete={deleteProduct} onManageFormulas={setFormulaProduct} />
+
+      {formulaProduct && (
+        <ProductFormulaModal product={formulaProduct} onClose={() => setFormulaProduct(null)} />
+      )}
 
       {/* MODAL DES CATEGORIES ET SOUS-CATEGORIES */}
       {isCategoryModalOpen && (

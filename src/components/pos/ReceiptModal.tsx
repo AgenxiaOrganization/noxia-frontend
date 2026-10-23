@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
-import { Sale } from '../../lib/api/sales'
+import { Sale, saleItemLabel } from '../../lib/api/sales'
 import { X, Printer, Receipt, CheckCircle, Store, User, Clock, Wallet } from 'lucide-react'
 
 interface ReceiptModalProps {
@@ -68,7 +68,7 @@ export default function ReceiptModal({
                 const lineTotal = item.subtotal ? parseFloat(item.subtotal) : parseFloat(item.unit_price) * parseFloat(item.quantity)
                 return `
                 <tr>
-                  <td>${item.product_name || 'Produit'}</td>
+                  <td>${saleItemLabel(item)}</td>
                   <td class="text-right">${item.quantity}</td>
                   <td class="text-right">${lineTotal.toLocaleString('fr-FR')} F</td>
                 </tr>
@@ -183,8 +183,10 @@ export default function ReceiptModal({
                 return (
                   <div key={idx} className="p-3 flex items-center justify-between text-xs">
                     <div>
-                      <p className="font-medium text-white">{item.product_name || 'Produit'}</p>
-                      <p className="text-dark-400">{q} x {p.toLocaleString('fr-FR')} FCFA</p>
+                      <p className="font-medium text-white">{saleItemLabel(item)}</p>
+                      <p className="text-dark-400">
+                        {item.formula_name ? `${q} unités • prix formule` : `${q} x ${p.toLocaleString('fr-FR')} FCFA`}
+                      </p>
                     </div>
                     <span className="font-bold text-emerald-400">{sub.toLocaleString('fr-FR')} FCFA</span>
                   </div>

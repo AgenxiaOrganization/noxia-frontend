@@ -1,6 +1,6 @@
 'use client'
 
-import { Edit, Trash2 } from 'lucide-react'
+import { Edit, Layers, Trash2 } from 'lucide-react'
 import type { ProductCardData } from './types'
 
 interface ProductGridProps<T extends ProductCardData> {
@@ -9,6 +9,8 @@ interface ProductGridProps<T extends ProductCardData> {
   onDelete: (id: number) => void
   canEdit?: boolean
   canDelete?: boolean
+  /** Gestion des formules de vente du produit (ex: "Pack 3") — masqué si absent. */
+  onManageFormulas?: (product: T) => void
   /** Rendu additionnel dans l'entête de la carte (ex: badge entreprise côté super-admin). */
   renderExtra?: (product: T) => React.ReactNode
 }
@@ -24,6 +26,7 @@ export default function ProductGrid<T extends ProductCardData>({
   onDelete,
   canEdit = true,
   canDelete = true,
+  onManageFormulas,
   renderExtra,
 }: ProductGridProps<T>) {
   return (
@@ -123,6 +126,16 @@ export default function ProductGrid<T extends ProductCardData>({
                   >
                     <Edit className="w-3 h-3" />
                     Modifier
+                  </button>
+                )}
+                {canEdit && onManageFormulas && !isServiceUnit && (
+                  <button
+                    onClick={() => onManageFormulas(product)}
+                    className="flex-1 py-1.5 rounded text-xs font-medium transition flex items-center justify-center gap-1"
+                    style={{ background: 'rgba(99, 102, 241, 0.12)', color: '#818cf8' }}
+                  >
+                    <Layers className="w-3 h-3" />
+                    Formules
                   </button>
                 )}
                 {canDelete && (
