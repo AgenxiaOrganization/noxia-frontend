@@ -13,6 +13,7 @@ import Loader from '@/components/ui/Loader'
 import { FeatureLockedScreen, isFeatureNotIncludedError } from '@/components/ui/FeatureLockedScreen'
 import StockTable from '@/components/products/StockTable'
 import StockAdjustmentModal, { type StockAdjustmentPayload } from '@/components/products/StockAdjustmentModal'
+import LossesReportModal from '@/components/products/LossesReportModal'
 import { toast } from 'sonner'
 
 // --- Types ---
@@ -46,6 +47,7 @@ export default function StockPage() {
   const [adjustmentType, setAdjustmentType] = useState<'add' | 'remove'>('add')
   const [isSaving, setIsSaving] = useState(false)
   const [categoriesList, setCategoriesList] = useState<string[]>([])
+  const [isLossesReportOpen, setIsLossesReportOpen] = useState(false)
 
 
   const loadData = async (silent = false) => {
@@ -237,7 +239,16 @@ export default function StockPage() {
             Valeur totale du stock : <span className="font-semibold text-white">{totalStockValue.toLocaleString()} FCFA</span>
           </p>
         </div>
+        <button
+          onClick={() => setIsLossesReportOpen(true)}
+          className="px-4 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 border border-orange-500/40 text-orange-300 hover:bg-orange-500/10 transition"
+        >
+          <AlertTriangle className="w-4 h-4" />
+          Rapport des pertes
+        </button>
       </div>
+
+      {isLossesReportOpen && <LossesReportModal onClose={() => setIsLossesReportOpen(false)} />}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

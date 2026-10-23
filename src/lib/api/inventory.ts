@@ -60,6 +60,17 @@ export interface SupplierOrder {
  * Voir `catalog.ts` : meme principe d'injection de client, pour que
  * `super-admin` reutilise cette logique sans la dupliquer.
  */
+export interface LossesReport {
+  produits: {
+    product: number
+    product_name: string
+    total_quantity: string | number
+    movements: { id: number; quantity: string | number; reason: string; created_at: string; created_by_name: string }[]
+  }[]
+  quantite_totale: string | number
+  nombre_de_pertes: number
+}
+
 /** Réponse paginée du backend (`?page=` / `?page_size=`). */
 export interface Page<T> {
   count: number
@@ -83,6 +94,14 @@ export function createInventoryApi(client: ApiClient) {
       return page.results ?? []
     },
     createStockMovement: (data: Partial<StockMovement>) => client.post<StockMovement>('/inventory/movements/', data),
+    /** Dates au format AAAA-MM-JJ, bornes incluses. */
+    getLossesReport: (dateFrom?: string, dateTo?: string) => {
+      const params = new URLSearchParams()
+      if (dateFrom) params.set('date_from', dateFrom)
+      if (dateTo) params.set('date_to', dateTo)
+      const query = params.toString()
+      return client.get<LossesReport>(`/inventory/movements/reports/losses/${query ? `?${query}` : ''}`)
+    },
 
     // Suppliers
     getSuppliers: () => client.get<Supplier[]>('/inventory/suppliers/'),
@@ -109,7 +128,7 @@ const defaultInventoryApi = createInventoryApi({ get, post, put, patch, del })
 
 export const {
   getStockItems, getStockItem, patchStockItem,
-  getStockMovements, createStockMovement,
+  getStockMovements, createStockMovement, getLossesReport,
   getSuppliers, createSupplier, updateSupplier, deleteSupplier, contactSupplier,
   getSupplierOrders, getSupplierOrdersPage, createSupplierOrder, updateSupplierOrderStatus, deleteSupplierOrder, bulkDeleteSupplierOrders,
 } = defaultInventoryApi
