@@ -9,7 +9,7 @@ import {
   Globe, AlertTriangle,
   Server, UserCog, Flag, Plus,
   Layers, Zap, Target, Award, Crown, Star, Gift,
-  MessageCircle, Tag, ShieldCheck, Search, Mail
+  MessageCircle, Tag, ShieldCheck, Search, Mail, Wallet
 } from 'lucide-react'
 import React from 'react'
 import { usePlatformSessionGuard } from '@/lib/hooks/usePlatformSessionGuard'
@@ -88,6 +88,7 @@ const menuItems = [
   { id: 'verifications', label: 'Vérifications', icon: ShieldCheck, href: '/super-admin/verifications' },
   { id: 'abonnements', label: 'Abonnements', icon: CreditCard, href: '/super-admin/abonnements' },
   { id: 'plans', label: "Plans d'abonnement", icon: Tag, href: '/super-admin/plans' },
+  { id: 'paiements', label: 'Paiements à examiner', icon: Wallet, href: '/super-admin/paiements' },
   { id: 'logs', label: "Journal d'audit", icon: FileText, href: '/super-admin/logs' },
   { id: 'alertes', label: 'Alertes système', icon: AlertTriangle, href: '/super-admin/alertes' },
   { id: 'notifications', label: 'Notifications', icon: MessageCircle, href: '/super-admin/notifications' },

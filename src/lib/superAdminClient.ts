@@ -294,3 +294,47 @@ export async function deleteCompanyPermanently(
   link.remove()
   window.URL.revokeObjectURL(objectUrl)
 }
+
+export interface ProxyPaymentReview {
+  id: number
+  merchant_reference: string
+  /** Identifiant MyPVit (PAY…) : à rechercher sur le tableau de bord MyPVit. */
+  pvit_transaction_id: string
+  company_id: number
+  company_name: string
+  plan_name: string
+  method: string
+  method_display: string
+  amount: string
+  status: 'initiating' | 'pending' | 'success' | 'failed' | 'ambiguous' | 'expired'
+  status_display: string
+  review_reason: string
+  failure_reason: string
+  callback_received: boolean
+  created_at: string
+  last_checked_at: string | null
+}
+
+/** Paiements d'abonnement de l'instance à examiner (rappel perdu, Check
+ * Status qui ne retrouve pas la transaction...) — page super-admin/paiements.
+ * Jamais le numéro du client (voir PvitReviewSerializer côté noxia-backend). */
+export async function listInstancePaymentReviews(instanceCode: string): Promise<ProxyPaymentReview[]> {
+  const res = await fetch(`${CONTROLE_BASE_URL}/proxy/${instanceCode}/subscriptions/mypvit/review/`, {
+    headers: getPlatformAuthHeaders(),
+  })
+  return parseResponse<ProxyPaymentReview[]>(res)
+}
+
+/** Confirme un paiement vérifié sur le tableau de bord MyPVit (super-admin
+ * seulement, voir ADMIN_FORBIDDEN_ROUTES). `confirmedAmount` = montant lu sur
+ * MyPVit : inférieur au dû, le paiement reste à examiner sans prolonger. */
+export async function confirmInstancePayment(
+  instanceCode: string, reference: string, confirmedAmount: string, note: string,
+): Promise<{ outcome: string; transaction: ProxyPaymentReview }> {
+  const res = await fetch(`${CONTROLE_BASE_URL}/proxy/${instanceCode}/subscriptions/mypvit/review/${reference}/confirm/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getPlatformAuthHeaders() },
+    body: JSON.stringify({ confirmed_amount: confirmedAmount, note }),
+  })
+  return parseResponse<{ outcome: string; transaction: ProxyPaymentReview }>(res)
+}
