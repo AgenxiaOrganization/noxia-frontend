@@ -31,6 +31,8 @@ export function useWebSockets<T>(path: string | null | undefined, onMessage: (da
     if (!token || !path) return
 
     let isMounted = true
+    let attempts = 0
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
 
     const connect = () => {
       if (!isMounted) return
@@ -39,6 +41,7 @@ export function useWebSockets<T>(path: string | null | undefined, onMessage: (da
       ws.current = new WebSocket(`${baseUrl}${path}?token=${token}`)
 
       ws.current.onopen = () => {
+        attempts = 0
         if (isMounted) setIsConnected(true)
       }
 
@@ -54,8 +57,15 @@ export function useWebSockets<T>(path: string | null | undefined, onMessage: (da
       ws.current.onclose = () => {
         if (isMounted) {
           setIsConnected(false)
-          // Reconnexion automatique après 3 secondes
-          setTimeout(connect, 3000)
+          // Reconnexion avec attente croissante ET aléa (1 s, 2 s, 4 s… 30 s
+          // max) : après un redémarrage du serveur (mise en production),
+          // tous les écrans de tous les établissements perdent la connexion
+          // en même temps. Avec un délai fixe, ils revenaient tous à la même
+          // seconde — rafale mesurée au test de charge comme saturant le
+          // serveur, puis réessayaient encore ensemble.
+          const delay = Math.min(30000, 1000 * 2 ** attempts) * (0.5 + Math.random())
+          attempts += 1
+          retryTimer = setTimeout(connect, delay)
         }
       }
     }
@@ -64,6 +74,7 @@ export function useWebSockets<T>(path: string | null | undefined, onMessage: (da
 
     return () => {
       isMounted = false
+      if (retryTimer) clearTimeout(retryTimer)
       if (ws.current) {
         ws.current.onclose = null // Empêche la reconnexion au démontage
         ws.current.close()
