@@ -9,6 +9,7 @@ import {
 } from '@/lib/api/subscription'
 import { PaymentMethodLogo } from './PaymentMethodLogo'
 import { useWebSockets } from '@/lib/hooks/useWebSockets'
+import { invalidateApiCache } from '@/lib/api'
 
 /**
  * Modal de paiement MyPVit — composant autonome et reutilisable : ne
@@ -138,6 +139,8 @@ export default function PvitPaymentModal({
       setTransaction(current)
       if (current.status === 'success') {
         stopPolling()
+        // Abonnement, plan et historique ont change : pas de donnees en cache.
+        invalidateApiCache('/subscriptions')
         setStep('success')
         toast.success(`Paiement confirmé : plan ${current.plan_name} activé.`)
         // Le paiement est deja acquis a cet instant (confirme par MyPVit/le

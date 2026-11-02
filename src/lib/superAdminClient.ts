@@ -70,7 +70,8 @@ export function createSuperAdminClient(instanceCode: string, companyId: number) 
   const base = `${CONTROLE_BASE_URL}/proxy/${instanceCode}`
 
   return {
-    get: <T>(path: string) =>
+    // `_options` : meme signature que lib/api.ts (ce client n'a pas de cache).
+    get: <T>(path: string, _options?: { skipCache?: boolean }) =>
       fetch(`${base}${withCompanyId(path, companyId)}`, { headers: getPlatformAuthHeaders() }).then(res => parseResponse<T>(res)),
 
     post: <T>(path: string, body: Record<string, unknown>) =>

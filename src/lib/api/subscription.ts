@@ -130,8 +130,10 @@ export function createSubscriptionApi(client: ApiClient) {
 
     /** GET /subscriptions/mypvit/transactions/{reference}/ — statut courant
      * d'une transaction MyPVit, pour le polling cote frontend. */
+    // Jamais le cache GET de 60 s de lib/api.ts : il renvoyait « en attente »
+    // pendant une minute apres la confirmation du paiement.
     getPvitTransactionStatus: (reference: string) =>
-      client.get<PvitTransaction>(`/subscriptions/mypvit/transactions/${encodeURIComponent(reference)}/`),
+      client.get<PvitTransaction>(`/subscriptions/mypvit/transactions/${encodeURIComponent(reference)}/`, { skipCache: true }),
 
     /** GET /subscriptions/mypvit/transactions/ — historique des transactions
      * de l'entreprise (masquees exclues, voir hideTransaction). */
