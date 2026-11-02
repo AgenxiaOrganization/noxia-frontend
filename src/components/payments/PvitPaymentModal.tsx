@@ -8,6 +8,7 @@ import {
   type Plan, type PvitMethod, type PvitTransaction, type BillingPeriod,
 } from '@/lib/api/subscription'
 import { PaymentMethodLogo } from './PaymentMethodLogo'
+import { useWebSockets } from '@/lib/hooks/useWebSockets'
 
 /**
  * Modal de paiement MyPVit — composant autonome et reutilisable : ne
@@ -64,6 +65,12 @@ export default function PvitPaymentModal({
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollDeadline = useRef<number>(0)
   const finalizingTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Reference suivie (ref pour les callbacks, etat pour ouvrir le WebSocket)
+  // et garde-fou contre deux verifications simultanees.
+  const pollingRef = useRef<string | null>(null)
+  const [pollingReference, setPollingReference] = useState<string | null>(null)
+  const checkInFlight = useRef(false)
+  const recheckPending = useRef(false)
 
   useEffect(() => () => {
     if (pollTimer.current) clearInterval(pollTimer.current)
@@ -75,46 +82,92 @@ export default function PvitPaymentModal({
       clearInterval(pollTimer.current)
       pollTimer.current = null
     }
+    pollingRef.current = null
+    setPollingReference(null)
   }
+
+  // Les minuteries d'un onglet en arriere-plan (fenetre masquee, economie
+  // d'energie) peuvent ne se declencher qu'une fois par minute : le serveur
+  // previent donc l'ecran par WebSocket des que le statut change, et l'on
+  // reverifie aussi des que l'onglet redevient visible.
+  useWebSockets<{ type: string; reference?: string }>(
+    pollingReference ? '/ws/notifications/' : null,
+    (data) => {
+      if (data.type === 'payment_status' && data.reference && data.reference === pollingRef.current) {
+        void checkStatus(data.reference)
+      }
+    },
+  )
+
+  useEffect(() => {
+    if (!pollingReference) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && pollingRef.current) void checkStatus(pollingRef.current)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [pollingReference])
 
   const startPolling = (reference: string) => {
     pollDeadline.current = Date.now() + POLL_TIMEOUT_MS
-    pollTimer.current = setInterval(async () => {
-      if (Date.now() > pollDeadline.current) {
+    pollingRef.current = reference
+    setPollingReference(reference)
+    pollTimer.current = setInterval(() => { void checkStatus(reference) }, POLL_INTERVAL_MS)
+  }
+
+  async function checkStatus(reference: string) {
+    if (pollingRef.current !== reference) return
+    if (checkInFlight.current) {
+      // Notification arrivee pendant une verification : on reverifie juste apres.
+      recheckPending.current = true
+      return
+    }
+    if (Date.now() > pollDeadline.current) {
+      stopPolling()
+      setStep('timeout')
+      return
+    }
+    checkInFlight.current = true
+    try {
+      const current = await getPvitTransactionStatus(reference)
+      if (pollingRef.current !== reference) return
+      setTransaction(current)
+      if (current.status === 'success') {
+        stopPolling()
+        setStep('success')
+        toast.success(`Paiement confirmé : plan ${current.plan_name} activé.`)
+        // Le paiement est deja acquis a cet instant (confirme par MyPVit/le
+        // backend) — le delai restant n'est que la preparation de l'espace
+        // cote appelant (rechargement de l'abonnement, parfois une
+        // navigation complete). On le dit explicitement pour que l'attente
+        // ne soit jamais confondue avec un paiement resté en suspens.
+        finalizingTimer.current = setTimeout(() => {
+          setStep('finalizing')
+          onSuccess()
+        }, FINALIZING_MIN_DISPLAY_MS)
+      } else if (current.status === 'failed') {
+        stopPolling()
+        setFailureReason(current.failure_reason)
+        setStep('failed')
+      } else if (current.status === 'expired') {
+        // Sans réponse définitive : jamais présenté comme un échec certain,
+        // un succès tardif reste pris en compte côté serveur.
         stopPolling()
         setStep('timeout')
-        return
       }
-      try {
-        const current = await getPvitTransactionStatus(reference)
-        setTransaction(current)
-        if (current.status === 'success') {
-          stopPolling()
-          setStep('success')
-          toast.success(`Paiement confirmé : plan ${current.plan_name} activé.`)
-          // Le paiement est deja acquis a cet instant (confirme par MyPVit/le
-          // backend) — le delai restant n'est que la preparation de l'espace
-          // cote appelant (rechargement de l'abonnement, parfois une
-          // navigation complete). On le dit explicitement pour que l'attente
-          // ne soit jamais confondue avec un paiement resté en suspens.
-          finalizingTimer.current = setTimeout(() => {
-            setStep('finalizing')
-            onSuccess()
-          }, FINALIZING_MIN_DISPLAY_MS)
-        } else if (current.status === 'failed') {
-          stopPolling()
-          setFailureReason(current.failure_reason)
-          setStep('failed')
-        } else if (current.status === 'expired') {
-          // Sans réponse définitive : jamais présenté comme un échec certain,
-          // un succès tardif reste pris en compte côté serveur.
-          stopPolling()
-          setStep('timeout')
-        }
-      } catch (err) {
-        console.error('Erreur polling statut paiement', err)
+    } catch (err) {
+      console.error('Erreur polling statut paiement', err)
+    } finally {
+      checkInFlight.current = false
+      if (recheckPending.current) {
+        recheckPending.current = false
+        void checkStatus(reference)
       }
-    }, POLL_INTERVAL_MS)
+    }
   }
 
   const handleSelectMethod = (selected: PvitMethod) => {
