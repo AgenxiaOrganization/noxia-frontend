@@ -105,6 +105,11 @@ export default function PvitPaymentModal({
           stopPolling()
           setFailureReason(current.failure_reason)
           setStep('failed')
+        } else if (current.status === 'expired') {
+          // Sans réponse définitive : jamais présenté comme un échec certain,
+          // un succès tardif reste pris en compte côté serveur.
+          stopPolling()
+          setStep('timeout')
         }
       } catch (err) {
         console.error('Erreur polling statut paiement', err)
@@ -128,6 +133,10 @@ export default function PvitPaymentModal({
     try {
       const created = await initiatePvitPayment(plan.code, selectedMethod, number, billingPeriod)
       setTransaction(created)
+      if (created.detail) {
+        // 202 : transmission incertaine — la demande a peut-être atteint le téléphone.
+        toast.info(created.detail)
+      }
       if (selectedMethod === 'VISA_MASTERCARD') {
         if (!created.redirect_url) {
           throw new Error("Le lien de paiement carte n'a pas pu être généré.")

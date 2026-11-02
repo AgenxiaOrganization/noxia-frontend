@@ -518,6 +518,8 @@ function SubscriptionPageContent() {
                     pending: { label: 'En attente', color: '#f59e0b' },
                     failed: { label: 'Échoué', color: '#ef4444' },
                     ambiguous: { label: 'Incertain', color: '#94a3b8' },
+                    initiating: { label: 'En cours', color: '#f59e0b' },
+                    expired: { label: 'Expiré', color: '#94a3b8' },
                   }
                   const st = statusStyle[tx.status]
                   return (

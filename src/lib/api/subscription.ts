@@ -73,9 +73,11 @@ export interface PvitTransaction {
   amount: string
   fees: string | null
   billing_period: BillingPeriod
-  status: 'pending' | 'success' | 'failed' | 'ambiguous'
+  status: 'initiating' | 'pending' | 'success' | 'failed' | 'ambiguous' | 'expired'
   status_display: string
   failure_reason: string
+  /** Présent uniquement sur une réponse 202 (transmission incertaine) : message à afficher au payeur. */
+  detail?: string
   /** Formulaire bancaire PVit — non-vide uniquement pour VISA_MASTERCARD ;
    * le frontend doit y rediriger le client plutot que de sonder le statut. */
   redirect_url: string
