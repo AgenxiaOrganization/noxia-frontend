@@ -2,14 +2,15 @@
 
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
+import { Footer } from '@/components/landing/Footer'
 
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-dark-900 py-12 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto">
         {/* Bouton retour */}
-        <Link 
-          href="/" 
+        <Link
+          href="/"
           className="inline-flex items-center gap-2 text-sm text-dark-400 hover:text-white transition mb-6"
         >
           <ChevronLeft className="w-4 h-4" />
@@ -18,15 +19,17 @@ export default function PrivacyPolicyPage() {
 
         <div className="bg-dark-800 rounded-2xl border border-dark-700 p-6 sm:p-8">
           <h1 className="text-3xl font-bold text-white mb-2">Politique de Confidentialité</h1>
-          <p className="text-sm text-dark-400 mb-8">Dernière mise à jour : 01/09/2026</p>
+          <p className="text-sm text-dark-400 mb-8">Dernière mise à jour : 06/11/2026</p>
 
           <div className="space-y-6 text-sm text-dark-300 leading-relaxed">
             <section>
               <h2 className="text-xl font-semibold text-white mb-3">1. Introduction</h2>
               <p>
-                La présente Politique de Confidentialité décrit comment <strong className="text-white">Agenxia</strong> 
-                (éditeur de la plateforme NOXIA) collecte, utilise, stocke et protège les données personnelles de ses 
-                utilisateurs, conformément à la réglementation en vigueur en République gabonaise.
+                La présente Politique de Confidentialité décrit comment <strong className="text-white">AGENXIA</strong>{' '}
+                (éditeur de la plateforme NOXIA, voir les{' '}
+                <Link href="/mentions-legales" className="text-primary-400 hover:underline">mentions légales</Link>),
+                collecte, utilise, stocke et protège les données personnelles de ses utilisateurs, conformément à la
+                réglementation en vigueur en République gabonaise.
               </p>
               <p className="mt-2">
                 En utilisant NOXIA, vous acceptez les pratiques décrites dans cette politique.
@@ -91,11 +94,11 @@ export default function PrivacyPolicyPage() {
             <section>
               <h2 className="text-xl font-semibold text-white mb-3">4. Lieu d'hébergement des données</h2>
               <p>
-                Les bases de données de NOXIA sont hébergées sur des serveurs sécurisés situés en 
+                Les bases de données de NOXIA sont hébergées sur des serveurs sécurisés situés en
                 <strong className="text-white"> République gabonaise</strong>.
               </p>
               <p className="mt-2 text-dark-400">
-                Conformément à la réglementation gabonaise, les données ne sont pas transférées hors du territoire 
+                Conformément à la réglementation gabonaise, les données ne sont pas transférées hors du territoire
                 national sans autorisation préalable de l'APDPVP.
               </p>
             </section>
@@ -129,13 +132,12 @@ export default function PrivacyPolicyPage() {
               <h2 className="text-xl font-semibold text-white mb-3">6. Mesures de sécurité</h2>
               <p>NOXIA met en œuvre les mesures de sécurité suivantes :</p>
               <ul className="list-disc list-inside mt-2 space-y-1 text-dark-400">
-                <li>Chiffrement des mots de passe (bcrypt)</li>
+                <li>Mots de passe stockés sous forme hachée, jamais en clair</li>
                 <li>Protocole HTTPS pour toutes les communications</li>
                 <li>Chiffrement des données sensibles en base de données</li>
-                <li>Authentification à deux facteurs (2FA) optionnelle</li>
                 <li>Journal d'audit complet (traçabilité des actions)</li>
                 <li>Sauvegardes quotidiennes des données</li>
-                <li>Protection DDoS via Cloudflare</li>
+                <li>Limitation du nombre de requêtes simultanées par serveur</li>
                 <li>Rate limiting contre les attaques par force brute</li>
               </ul>
             </section>
@@ -169,7 +171,7 @@ export default function PrivacyPolicyPage() {
             <section>
               <h2 className="text-xl font-semibold text-white mb-3">8. Cookies</h2>
               <p>
-                NOXIA utilise des cookies pour améliorer l'expérience utilisateur (authentification, préférences). 
+                NOXIA utilise des cookies pour améliorer l'expérience utilisateur (authentification, préférences).
                 Vous pouvez configurer votre navigateur pour refuser les cookies.
               </p>
             </section>
@@ -177,7 +179,7 @@ export default function PrivacyPolicyPage() {
             <section>
               <h2 className="text-xl font-semibold text-white mb-3">9. Modifications de la politique</h2>
               <p>
-                NOXIA se réserve le droit de modifier cette politique à tout moment. Les modifications seront notifiées 
+                NOXIA se réserve le droit de modifier cette politique à tout moment. Les modifications seront notifiées
                 aux utilisateurs et prendront effet immédiatement.
               </p>
             </section>
@@ -188,17 +190,20 @@ export default function PrivacyPolicyPage() {
               <div className="mt-3 p-4 rounded-lg bg-dark-700/30 border border-dark-600">
                 <p className="text-dark-300"><strong className="text-white">Email :</strong> <a href="mailto:agenxia3@gmail.com" className="text-primary-400 hover:underline">agenxia3@gmail.com</a></p>
                 <p className="text-dark-300"><strong className="text-white">Téléphone :</strong> <a href="tel:+24174821635" className="text-primary-400 hover:underline">+241 74 82 16 35</a></p>
-                <p className="text-dark-300"><strong className="text-white">Adresse :</strong> Libreville, République gabonaise</p>
+                <p className="text-dark-300"><strong className="text-white">Adresse :</strong> Quartier Bambouchine, BP 111, Libreville, Gabon</p>
               </div>
             </section>
 
             <div className="mt-8 pt-6 border-t border-dark-700">
               <p className="text-xs text-green-400">
-                ✅ Version en vigueur au 01/09/2026
+                ✅ Version en vigueur au 06/11/2026
               </p>
             </div>
           </div>
         </div>
+      </div>
+      <div className="mt-12">
+        <Footer />
       </div>
     </div>
   )

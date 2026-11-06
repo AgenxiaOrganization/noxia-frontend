@@ -18,8 +18,13 @@ export function Footer() {
               className="flex items-center gap-3 mb-4 hover:opacity-80 transition-opacity"
               aria-label="Retour à l'accueil NOXIA"
             >
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center p-1.5">
-                <img 
+              {/* Tuile sombre, comme la Navbar : le logo est lui-meme un degrade
+                  indigo-vert, illisible sur un fond degrade de memes couleurs. */}
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center p-1"
+                style={{ background: '#020617', border: '1px solid #334155' }}
+              >
+                <img
                   src="/logos/NOXIA_Orbit_Logo.svg" 
                   alt="Logo NOXIA" 
                   className="w-full h-full object-contain"
@@ -31,6 +36,9 @@ export function Footer() {
             </a>
             <p className="text-sm" style={{ color: '#94a3b8' }}>
               Le Pilier intelligent pour les bars, snack-bars et boîtes de nuit.
+            </p>
+            <p className="text-xs mt-3 leading-relaxed" style={{ color: '#64748b' }}>
+              NOXIA est une plateforme éditée par AGENXIA.
             </p>
           </div>
 
@@ -48,6 +56,7 @@ export function Footer() {
               <li><a href="#faq" className="hover:text-white transition" style={{ color: '#94a3b8' }}>FAQ</a></li>
               <li><a href="/cgu" className="hover:text-white transition" style={{ color: '#94a3b8' }}>CGU</a></li>
               <li><a href="/politique-confidentialite" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Politique de confidentialité</a></li>
+              <li><a href="/mentions-legales" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Mentions légales</a></li>
               <li><a href="mailto:agenxia3@gmail.com" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Support</a></li>
             </ul>
           </div>
@@ -72,6 +81,8 @@ export function Footer() {
             <a href="/politique-confidentialite" className="hover:text-white transition" style={{ color: '#94a3b8' }}>
               Politique de confidentialité
             </a>
+            {' · '}
+            <a href="/mentions-legales" className="hover:text-white transition" style={{ color: '#94a3b8' }}>Mentions légales</a>
           </p>
           <div className="flex items-center gap-2 text-sm" style={{ color: '#94a3b8' }}>
             <span>Made by</span>
@@ -82,10 +93,12 @@ export function Footer() {
               className="flex items-center gap-2 hover:opacity-80 transition-opacity"
               aria-label="Agenxia - Site officiel"
             >
+              {/* Symbole seul (agenxia-mark.png, recadre du logo complet) : le
+                  logo complet, tres aere, devenait un rectangle blanc a 24 px. */}
               <img
-                src="/logos/agenxia-logo.png"
+                src="/logos/agenxia-mark.png"
                 alt="Logo Agenxia"
-                className="h-6 w-auto object-contain"
+                className="h-8 w-8 rounded-md object-contain"
               />
               <span className="font-semibold" style={{ color: '#a5b4fc' }}>Agenxia</span>
             </a>
