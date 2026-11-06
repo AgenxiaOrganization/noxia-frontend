@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { motion } from 'framer-motion'
 import { Send, Mail, User, MessageSquare, Phone } from 'lucide-react'
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://127.0.0.1:8000/api/v1'
@@ -55,39 +54,19 @@ export function ContactSection() {
   return (
     <section 
       id="contact" 
-      className="py-20 scroll-mt-16"
-      style={{ 
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #312e81 70%, #4f46e5 100%)' 
-      }}
+      className="nx-section nx-cv"
     >
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
+        <div className="text-center mb-12" data-reveal>
           <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-white">
             Contactez-nous
           </h2>
           <p className="text-lg" style={{ color: '#94a3b8' }}>
             Une question ? Besoin d'un devis personnalisé ? N'hésitez pas à nous écrire.
           </p>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          viewport={{ once: true }}
-          className="rounded-2xl p-6 sm:p-8 border"
-          style={{
-            background: 'rgba(255,255,255,0.05)',
-            backdropFilter: 'blur(10px)',
-            borderColor: 'rgba(255,255,255,0.1)'
-          }}
-        >
+        <div className="nx-card-soft p-6 sm:p-8" data-reveal>
           <form onSubmit={handleSubmit} className="space-y-4" aria-label="Formulaire de contact">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -240,7 +219,7 @@ export function ContactSection() {
               )}
             </div>
           </form>
-        </motion.div>
+        </div>
       </div>
     </section>
   )

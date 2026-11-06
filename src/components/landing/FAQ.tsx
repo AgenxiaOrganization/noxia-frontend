@@ -1,88 +1,25 @@
-'use client'
-
-import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { Plus } from 'lucide-react'
 import { faqs } from './faq-data'
 
+/** Accordéon natif (<details>) : accessible au clavier, aucun JavaScript. */
 export function FAQ() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null)
-
   return (
-    <section
-      id="faq"
-      className="py-20"
-      style={{
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #312e81 70%, #4f46e5 100%)'
-      }}
-    >
+    <section id="faq" className="nx-section nx-cv" aria-labelledby="faq-title">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="text-center max-w-2xl mx-auto mb-12"
-        >
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4 text-white">
-            Questions fréquentes
-          </h2>
-          <p className="text-lg" style={{ color: '#94a3b8' }}>
-            Tout ce qu'il faut savoir avant de vous lancer
-          </p>
-        </motion.div>
-
-        <div className="space-y-4">
-          {faqs.map((faq, index) => {
-            const isOpen = openIndex === index
-            const contentId = `faq-content-${index}`
-            const buttonId = `faq-button-${index}`
-
-            return (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -20 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="rounded-xl p-4 sm:p-5 transition-all hover:border-primary-500 group"
-                style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  backdropFilter: 'blur(10px)',
-                  border: isOpen ? '1px solid #6366f1' : '1px solid rgba(255,255,255,0.1)'
-                }}
-              >
-                <button
-                  id={buttonId}
-                  type="button"
-                  onClick={() => setOpenIndex(isOpen ? null : index)}
-                  aria-expanded={isOpen}
-                  aria-controls={contentId}
-                  className="w-full flex justify-between items-center gap-4 text-left cursor-pointer"
-                >
-                  <span className="font-semibold text-white group-hover:text-primary-400 transition">
-                    {faq.question}
-                  </span>
-                  <ChevronDown
-                    className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
-                    style={{ color: '#94a3b8' }}
-                    aria-hidden="true"
-                  />
-                </button>
-                {isOpen && (
-                  <div 
-                    id={contentId}
-                    role="region"
-                    aria-labelledby={buttonId}
-                    className="mt-3 p-3 rounded-lg" 
-                    style={{ background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.1)' }}
-                  >
-                    <p className="text-sm leading-relaxed" style={{ color: '#cbd5e1' }}>{faq.answer}</p>
-                  </div>
-                )}
-              </motion.div>
-            )
-          })}
+        <div className="text-center" data-reveal>
+          <p className="nx-eyebrow">FAQ</p>
+          <h2 id="faq-title" className="mt-4 text-3xl sm:text-4xl font-bold text-white">Questions fréquentes</h2>
+        </div>
+        <div className="mt-12 space-y-3">
+          {faqs.map((faq, index) => (
+            <details key={faq.question} className="nx-faq nx-card-soft" data-reveal style={{ ['--d' as string]: `${Math.min(index, 4) * 60}ms` }}>
+              <summary className="flex items-center justify-between gap-4 px-5 py-4 text-left font-semibold text-white">
+                {faq.question}
+                <Plus className="nx-faq-icon w-5 h-5 shrink-0 text-indigo-300" aria-hidden="true" />
+              </summary>
+              <div className="nx-faq-body px-5 pb-5 text-slate-400 leading-relaxed">{faq.answer}</div>
+            </details>
+          ))}
         </div>
       </div>
     </section>

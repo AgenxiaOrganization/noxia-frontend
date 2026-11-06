@@ -37,9 +37,6 @@ export function Footer() {
             <p className="text-sm" style={{ color: '#94a3b8' }}>
               Le Pilier intelligent pour les bars, snack-bars et boîtes de nuit.
             </p>
-            <p className="text-xs mt-3 leading-relaxed" style={{ color: '#64748b' }}>
-              NOXIA est une plateforme éditée par AGENXIA.
-            </p>
           </div>
 
           <div>
@@ -67,14 +64,14 @@ export function Footer() {
               <li><a href="mailto:agenxia3@gmail.com" className="hover:text-white transition" style={{ color: '#94a3b8' }}>agenxia3@gmail.com</a></li>
               <li><a href="tel:+24174821635" className="hover:text-white transition" style={{ color: '#94a3b8' }}>+241 74 82 16 35</a></li>
               <li><a href="https://wa.me/24174821635" className="hover:text-white transition" style={{ color: '#94a3b8' }} aria-label="Contacter NOXIA sur WhatsApp">WhatsApp</a></li>
-              <li><a href="https://t.me/noxia_user_bot" className="hover:text-white transition" style={{ color: '#94a3b8' }} aria-label="Contacter NOXIA sur Telegram">Telegram</a></li>
+              <li><a href="https://t.me/+lyFVQtdL8903MzJk" className="hover:text-white transition" style={{ color: '#94a3b8' }} aria-label="Contacter NOXIA sur Telegram">Telegram</a></li>
             </ul>
           </div>
         </div>
 
         <div className="border-t border-dark-800 mt-8 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm" style={{ color: '#94a3b8' }}>
-            &copy; 2026 NOXIA. Tous droits réservés.
+            &copy; 2026 NOXIA, édité par AGENXIA. Tous droits réservés.
             {' · '}
             <a href="/cgu" className="hover:text-white transition" style={{ color: '#94a3b8' }}>CGU</a>
             {' · '}

@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og'
 
 export const runtime = 'edge'
-export const alt = 'NOXIA — Gestion de bars, snack-bars et boîtes de nuit'
+export const alt = 'NOXIA : gestion de bars, snack-bars et boîtes de nuit'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
 

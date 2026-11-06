@@ -21,7 +21,7 @@ export const faqs = [
   {
     question: 'Mes données sont-elles sécurisées ?',
     answer:
-      "Oui. Chaque établissement dispose d'un espace de données strictement isolé — aucune donnée ne peut être partagée ou consultée entre deux entreprises clientes. Toutes les communications transitent en HTTPS chiffré, les mots de passe et identifiants sensibles sont chiffrés en base, et des sauvegardes automatiques de la base de données sont réalisées quotidiennement.",
+      "Oui. Chaque établissement dispose d'un espace de données strictement isolé : aucune donnée ne peut être partagée ou consultée entre deux entreprises clientes. Toutes les communications transitent en HTTPS chiffré, les mots de passe et identifiants sensibles sont chiffrés en base, et des sauvegardes automatiques de la base de données sont réalisées quotidiennement.",
   },
   {
     question: 'NOXIA fonctionne-t-il hors ligne ?',

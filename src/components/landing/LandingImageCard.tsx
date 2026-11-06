@@ -1,7 +1,4 @@
-'use client'
-
 import Image from 'next/image'
-import { motion } from 'framer-motion'
 import { LayoutDashboard, Package, QrCode, Users } from 'lucide-react'
 
 // Nom plutôt que composant : la carte est aussi utilisée depuis des composants serveur,
@@ -30,11 +27,9 @@ export function LandingImageCard({
 }: LandingImageCardProps) {
   const Icon = ICONS[icon]
   return (
-    <motion.figure
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-80px' }}
-      transition={{ duration: 0.7, delay: index * 0.12, ease: [0.22, 1, 0.36, 1] }}
+    <figure
+      data-reveal
+      style={{ ['--d' as string]: `${index * 120}ms` }}
       className="group relative overflow-hidden rounded-2xl border border-slate-50/10 bg-slate-950 shadow-xl shadow-black/30"
     >
       <div className={`relative overflow-hidden ${aspectClassName}`}>
@@ -58,7 +53,7 @@ export function LandingImageCard({
 
       <figcaption className="relative -mt-8 flex items-start gap-3.5 px-5 pb-5 sm:px-6 sm:pb-6">
         <span
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border backdrop-blur-md transition-transform duration-300 group-hover:-translate-y-0.5"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-transform duration-300 group-hover:-translate-y-0.5"
           style={{ background: `${color}26`, borderColor: `${color}55`, color }}
           aria-hidden="true"
         >
@@ -76,6 +71,6 @@ export function LandingImageCard({
         style={{ boxShadow: `inset 0 0 0 1px ${color}66, 0 20px 50px -25px ${color}` }}
         aria-hidden="true"
       />
-    </motion.figure>
+    </figure>
   )
 }

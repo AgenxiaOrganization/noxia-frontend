@@ -1,0 +1,356 @@
+/*
+ * Styles de la landing (importés par src/app/page.tsx et par la Navbar).
+ * Règles de performance : on n'anime que transform et opacity ; aucune
+ * animation n'est nécessaire pour lire la page (le HTML s'affiche tel quel
+ * sans JavaScript) ; tout s'arrête avec prefers-reduced-motion ; le zoom du
+ * hero est coupé sur les appareils faibles (.nx-lite, posée par
+ * LandingEffects) ; les maquettes ne tournent qu'à l'écran (.is-playing,
+ * retirée aussi quand l'onglet est caché).
+ */
+
+/* Ancres sous la navbar fixe (le défilement doux est activé par LandingEffects). */
+.nx-root [id] {
+  scroll-margin-top: 84px;
+}
+
+.nx-root {
+  background: #05060f;
+  color: #e2e8f0;
+}
+
+.nx-section {
+  position: relative;
+  padding-block: 5rem;
+}
+
+@media (min-width: 1024px) {
+  .nx-section {
+    padding-block: 6.5rem;
+  }
+}
+
+/* Sections sous le premier écran : mise en page et dessin seulement à
+   l'approche de l'écran (premier affichage plus rapide). Avant un saut
+   d'ancre, LandingEffects pose .nx-cv-off sur la racine pour atterrir au bon endroit. */
+.nx-cv {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
+.nx-cv-off .nx-cv {
+  content-visibility: visible;
+}
+
+.nx-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(129, 140, 248, 0.3);
+}
+
+.nx-gradient-text {
+  background: linear-gradient(90deg, #a5b4fc 0%, #818cf8 35%, #34d399 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Carte à bordure fine lumineuse (dégradé dans la bordure, sans flou). */
+.nx-card {
+  position: relative;
+  border-radius: 1.25rem;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(#0b1020, #0b1020) padding-box,
+    linear-gradient(140deg, rgba(129, 140, 248, 0.45), rgba(52, 211, 153, 0.18) 45%, rgba(255, 255, 255, 0.05)) border-box;
+}
+
+.nx-card-soft {
+  border-radius: 1.25rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.nx-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.875rem;
+  padding: 0.875rem 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(90deg, #6366f1, #4f46e5);
+  box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.65);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.nx-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.875rem;
+  padding: 0.875rem 1.5rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nx-btn-primary:hover,
+  .nx-btn-secondary:hover,
+  .nx-lift:hover {
+    transform: translateY(-2px);
+  }
+  .nx-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.nx-btn-primary:focus-visible,
+.nx-btn-secondary:focus-visible,
+.nx-root a:focus-visible,
+.nx-root button:focus-visible,
+.nx-root summary:focus-visible {
+  outline: 2px solid #a5b4fc;
+  outline-offset: 3px;
+}
+
+.nx-lift {
+  transition: transform 0.25s ease;
+}
+
+/* Lueur qui suit le curseur : un disque déplacé par transform (--mx/--my posés par LandingEffects). */
+.nx-hover-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.nx-hover-glow::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 340px;
+  height: 340px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.22), transparent 65%);
+  transform: translate(calc(var(--mx, -400px) - 170px), calc(var(--my, -400px) - 170px));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  [data-glow]:hover > .nx-hover-glow::before {
+    opacity: 1;
+  }
+}
+
+/* ---- Apparitions au défilement (une seule fois) ---- */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] {
+    transition:
+      opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: var(--d, 0ms);
+  }
+
+  [data-reveal].is-pending {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
+/* ---- Hero : zoom très lent de la photo, joué une seule fois (transform seul) ---- */
+@keyframes nx-hero-zoom {
+  from { transform: scale(1.08); }
+  to { transform: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nx-root:not(.nx-lite) .nx-hero-zoom {
+    animation: nx-hero-zoom 18s ease-out both;
+  }
+}
+
+/* ---- Mini-animations produit ---- */
+@keyframes nx-wipe { /* courbe qui se dessine : un cache qui se retire */
+  0% { transform: scaleX(1); }
+  45%, 85% { transform: scaleX(0); }
+  100% { transform: scaleX(0); opacity: 0; }
+}
+
+@keyframes nx-stock { /* niveau de stock qui baisse */
+  0%, 10% { transform: scaleX(0.92); }
+  60%, 88% { transform: scaleX(0.14); }
+  100% { transform: scaleX(0.92); }
+}
+
+@keyframes nx-alert { /* alerte qui apparaît quand le stock est bas */
+  0%, 55% { opacity: 0; transform: translateY(6px) scale(0.98); }
+  62%, 88% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+@keyframes nx-ticket { /* ticket qui s'imprime */
+  0%, 8% { transform: translateY(-100%); }
+  45%, 85% { transform: translateY(0); }
+  100% { transform: translateY(0); opacity: 0; }
+}
+
+@keyframes nx-bar { /* barres de rapport qui montent */
+  0%, 10% { transform: scaleY(0.15); }
+  45%, 90% { transform: scaleY(1); }
+  100% { transform: scaleY(0.15); }
+}
+
+/* Conversation qui s'écrit en boucle : chaque bulle a sa fenêtre d'apparition. */
+@keyframes nx-chat-1 { 0%, 6% { opacity: 0; transform: translateY(8px); } 12%, 92% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@keyframes nx-chat-2 { 0%, 16% { opacity: 0; transform: scale(0.9); } 20%, 30% { opacity: 1; transform: none; } 34%, 100% { opacity: 0; } }
+@keyframes nx-chat-3 { 0%, 32% { opacity: 0; transform: translateY(8px); } 38%, 92% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@keyframes nx-chat-4 { 0%, 48% { opacity: 0; transform: translateY(8px); } 54%, 92% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@keyframes nx-chat-5 { 0%, 60% { opacity: 0; transform: scale(0.9); } 64%, 72% { opacity: 1; transform: none; } 76%, 100% { opacity: 0; } }
+@keyframes nx-chat-6 { 0%, 74% { opacity: 0; transform: translateY(8px); } 80%, 92% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+@keyframes nx-dot {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40% { transform: translateY(-3px); opacity: 1; }
+}
+
+/* Lignes du journal qui arrivent l'une après l'autre. */
+@keyframes nx-log-1 { 0%, 5% { opacity: 0; transform: translateX(-8px); } 12%, 90% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@keyframes nx-log-2 { 0%, 25% { opacity: 0; transform: translateX(-8px); } 32%, 90% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@keyframes nx-log-3 { 0%, 45% { opacity: 0; transform: translateX(-8px); } 52%, 90% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+/* Etat par défaut (sans animation, avant le chargement, ou mouvement réduit) :
+   chaque maquette montre son état final, lisible. Un bloc ne s'anime que s'il
+   porte .is-playing : LandingEffects le pose une fois le navigateur libre,
+   seulement quand le bloc est à l'écran, et le retire quand l'onglet est
+   caché. */
+.nx-a-wipe { transform: scaleX(0); }
+
+@media (prefers-reduced-motion: no-preference) {
+
+  .nx-anim.is-playing .nx-a-wipe { animation: nx-wipe 7s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+  .nx-anim.is-playing .nx-a-stock { animation: nx-stock 7s ease-in-out infinite; }
+  .nx-anim.is-playing .nx-a-alert { animation: nx-alert 7s ease-in-out infinite; }
+  .nx-anim.is-playing .nx-a-ticket { animation: nx-ticket 6s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+  .nx-anim.is-playing .nx-a-bar { animation: nx-bar 6s ease-in-out infinite; animation-delay: var(--d, 0ms); }
+  .nx-anim.is-playing .nx-a-chat-1 { animation: nx-chat-1 12s ease infinite; }
+  .nx-anim.is-playing .nx-a-chat-2 { animation: nx-chat-2 12s ease infinite; }
+  .nx-anim.is-playing .nx-a-chat-3 { animation: nx-chat-3 12s ease infinite; }
+  .nx-anim.is-playing .nx-a-chat-4 { animation: nx-chat-4 12s ease infinite; }
+  .nx-anim.is-playing .nx-a-chat-5 { animation: nx-chat-5 12s ease infinite; }
+  .nx-anim.is-playing .nx-a-chat-6 { animation: nx-chat-6 12s ease infinite; }
+  .nx-anim.is-playing .nx-a-dot { animation: nx-dot 1.2s ease-in-out infinite; animation-delay: var(--d, 0ms); }
+  .nx-anim.is-playing .nx-a-log-1 { animation: nx-log-1 8s ease infinite; }
+  .nx-anim.is-playing .nx-a-log-2 { animation: nx-log-2 8s ease infinite; }
+  .nx-anim.is-playing .nx-a-log-3 { animation: nx-log-3 8s ease infinite; }
+}
+
+/* Listes de fonctionnalités des tarifs : coche dessinée en CSS. */
+.nx-li-yes,
+.nx-li-no {
+  position: relative;
+  padding-left: 1.5rem;
+}
+
+.nx-li-yes::before,
+.nx-li-no::before {
+  position: absolute;
+  left: 0.1rem;
+  top: 0;
+  font-weight: 700;
+}
+
+.nx-li-yes::before {
+  content: '✓';
+  color: #34d399;
+}
+
+.nx-li-no::before {
+  content: '✕';
+  color: #475569;
+}
+
+/* ---- FAQ : accordéon natif (<details>) ---- */
+.nx-faq summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.nx-faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.nx-faq .nx-faq-icon {
+  transition: transform 0.25s ease;
+}
+
+.nx-faq[open] .nx-faq-icon {
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nx-faq[open] .nx-faq-body {
+    animation: nx-faq-in 0.3s ease both;
+  }
+}
+
+@keyframes nx-faq-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---- Établissements : défilement horizontal automatique en boucle ---- */
+.nx-marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+
+.nx-marquee-track {
+  display: flex;
+  width: max-content;
+  padding-block: 0.5rem;
+}
+
+@keyframes nx-marquee {
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nx-marquee.is-playing .nx-marquee-track {
+    animation: nx-marquee var(--nx-marquee-duration, 40s) linear infinite;
+  }
+  .nx-marquee:hover .nx-marquee-track,
+  .nx-marquee:focus-within .nx-marquee-track,
+  .nx-marquee:active .nx-marquee-track {
+    animation-play-state: paused;
+  }
+}
+
+/* Mouvement réduit : pas de boucle, liste fixe défilable à la main. */
+@media (prefers-reduced-motion: reduce) {
+  .nx-marquee {
+    overflow-x: auto;
+    mask-image: none;
+    scrollbar-width: none;
+  }
+  .nx-marquee-copy {
+    display: none !important;
+  }
+}

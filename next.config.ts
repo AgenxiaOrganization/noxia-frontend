@@ -83,6 +83,12 @@ const nextConfig: NextConfig = {
   // distante Ngrok"). Sans effet en production (headers()/rewrites() restent
   // les seuls mécanismes actifs en prod).
   allowedDevOrigins: ["127.0.0.1", "10.2.0.2", "*.ngrok-free.app", "*.ngrok.io", "*.ngrok.app"],
+  images: {
+    formats: ["image/avif", "image/webp"],
+    // Logos des établissements (Cloudflare R2) affichés sur la landing :
+    // redimensionnés par next/image au lieu d'être servis bruts (jusqu'à 2 Mo).
+    remotePatterns: [{ protocol: "https", hostname: "*.r2.dev" }],
+  },
   async headers() {
     return [
       {
